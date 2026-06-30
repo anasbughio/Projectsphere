@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // Development mein localhost aur production mein Vercel URL
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  // Local development proxy and deployed same-origin API path
+  baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
 // Request Interceptor: Agar local storage mein token hai, toh har request ke header mein bhej do
