@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   // Local development proxy and deployed same-origin API path
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
 });
 
 // Request Interceptor: Agar local storage mein token hai, toh har request ke header mein bhej do
