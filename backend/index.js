@@ -5,6 +5,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const projectRoutes = require('./routes/projectRoutes');
 const app = express();
 
 
@@ -17,7 +18,7 @@ app.use(helmet());
 app.use(morgan('dev'));
 
 app.use('/api/v1/auth', authRoutes); // Yahan API path define kar diya hai
-
+app.use('/api/v1/projects', projectRoutes);
 
 
 const PORT = process.env.PORT || 5000;
