@@ -1,27 +1,38 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
-// Placeholder for Kanban Board
-const KanbanBoard = () => <div className="text-xl">Kanban Board Area</div>;
+// Placeholder for Kanban Board (added text-white for visibility on dark theme)
+const KanbanBoard = () => <div className="text-xl font-medium text-white">Kanban Board Area</div>;
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Auth Routes */}
+        {/* Auth Routes (Public) */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Route>
 
-        {/* Dashboard Routes */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Dashboard Routes (Protected) */}
+        <Route 
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          {/* Agar user authenticated hai aur root '/' par aata hai, toh usay board par bhej do */}
+          <Route path="/" element={<Navigate to="/board" replace />} />
           <Route path="/board" element={<KanbanBoard />} />
         </Route>
+
+        {/* Catch-all route: Agar koi invalid URL type kare, toh usay login par bhej do */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
