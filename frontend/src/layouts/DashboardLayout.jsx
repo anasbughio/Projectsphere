@@ -1,6 +1,6 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { LogOut, LayoutDashboard, FolderKanban } from 'lucide-react';
-
+import { Link } from 'react-router-dom';
 const DashboardLayout = () => {
   const navigate = useNavigate();
   // Local storage se user ka data nikal rahe hain taake sidebar mein naam show kar sakein
@@ -30,10 +30,10 @@ const DashboardLayout = () => {
               </a>
             </li>
             <li>
-              <a href="#" className="flex items-center gap-3 px-4 py-3 text-[#84889c] hover:text-white hover:bg-white/5 rounded-lg transition">
+              <Link to="/projects" className="flex items-center gap-3 px-4 py-3 text-[#84889c] hover:text-white hover:bg-white/5 rounded-lg transition">
                 <FolderKanban size={18} />
                 <span className="font-medium text-sm">Projects</span>
-              </a>
+              </Link>
             </li>
           </ul>
         </nav>
