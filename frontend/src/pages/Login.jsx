@@ -88,7 +88,7 @@ const Login = () => {
             type="button" 
             className="w-full bg-slate-100 text-slate-700 font-bold py-2.5 rounded-lg hover:bg-slate-200 transition border border-slate-200"
           >
-            Request Access
+            Request  Access
           </button>
         </div>
       </form>
