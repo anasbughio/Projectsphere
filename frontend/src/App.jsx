@@ -17,7 +17,7 @@ function App() {
 
         {/* Dashboard Routes */}
         <Route element={<DashboardLayout />}>
-          <Route path="/" element={<Navigate to="/board" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/board" element={<KanbanBoard />} />
         </Route>
       </Routes>
