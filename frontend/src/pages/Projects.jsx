@@ -48,6 +48,7 @@ const Projects = () => {
       setIsCreating(false);
     }
   };
+      const user = JSON.parse(localStorage.getItem('user'));
 
   return (
     <div className="h-full flex flex-col font-sans">
@@ -57,6 +58,7 @@ const Projects = () => {
           <h2 className="text-2xl font-bold text-white mb-1">Projects</h2>
           <p className="text-[#84889c] text-sm">Manage your workspace projects</p>
         </div>
+        {user?.role === 'Admin' && (
         <button 
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition"
@@ -64,6 +66,7 @@ const Projects = () => {
           <Plus size={18} />
           New Project
         </button>
+        )}
       </div>
 
       {/* Content Section */}
