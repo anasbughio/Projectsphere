@@ -20,11 +20,11 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       select: false, // Default queries mein password return nahi hoga
     },
-    role: {
-      type: String,
-      enum: ['Super Admin', 'Org Admin', 'Project Manager', 'Team Member', 'Client'],
-      default: 'Org Admin',
-    },
+role: {
+  type: String,
+  enum: ['Admin', 'Member', 'Developer', 'Designer'], // Yeh naye roles add kar diye hain
+  default: 'Member',
+},
     // Yeh field Multi-Tenancy ka core hai
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,

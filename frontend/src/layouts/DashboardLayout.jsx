@@ -80,10 +80,10 @@ const DashboardLayout = () => {
               </a>
             </li>
             <li>
-              <a href="#" className="flex items-center gap-3 px-4 py-2.5 text-[#84889c] hover:text-white hover:bg-white/5 rounded-xl transition font-medium text-sm">
+              <Link to="/team" className="flex items-center gap-3 px-4 py-2.5 text-[#84889c] hover:text-white hover:bg-white/5 rounded-xl transition font-medium text-sm">
                 <Users size={18} />
                 <span>Team</span>
-              </a>
+              </Link>
             </li>
           </ul>
         </nav>
