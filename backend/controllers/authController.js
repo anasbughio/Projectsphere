@@ -25,7 +25,7 @@ exports.registerOrg = async (req, res) => {
       name: userName,
       email,
       password,
-      role: 'Org Admin',
+      role: 'Admin',
       organizationId: organization._id,
     });
 
