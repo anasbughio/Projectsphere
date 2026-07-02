@@ -6,6 +6,7 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
+const taskRoutes = require('./routes/taskRoutes');
 const app = express();
 
 
@@ -17,8 +18,9 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 
-app.use('/api/v1/auth', authRoutes); // Yahan API path define kar diya hai
+app.use('/api/v1/auth', authRoutes); 
 app.use('/api/v1/projects', projectRoutes);
+app.use('/api/v1/tasks', taskRoutes);
 
 
 const PORT = process.env.PORT || 5000;

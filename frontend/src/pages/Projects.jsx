@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Plus, FolderKanban, MoreVertical, Calendar, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const Projects = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -88,7 +90,8 @@ const Projects = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <div key={project._id} className="bg-[#1a1c26] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group cursor-pointer">
+            <div key={project._id} className="bg-[#1a1c26] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group cursor-pointer"
+            onClick={() => navigate(`/projects/${project._id}`)}>
               <div className="flex justify-between items-start mb-4">
                 <div className="w-10 h-10 rounded-lg bg-[#7c7fff]/10 flex items-center justify-center text-[#7c7fff]">
                   <FolderKanban size={20} />
