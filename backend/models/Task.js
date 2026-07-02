@@ -21,6 +21,14 @@ const taskSchema = new mongoose.Schema(
       enum: ['Low', 'Medium', 'High', 'Urgent'],
       default: 'Medium',
     },
+    dueDate: {
+      type: Date,
+    },
+    department: {
+      type: String,
+      enum: ['Design', 'Frontend', 'Backend', 'DevOps', 'General'],
+      default: 'General',
+    },
     // Yeh task kis project ka hissa hai
     projectId: {
       type: mongoose.Schema.Types.ObjectId,

@@ -7,6 +7,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const taskRoutes = require('./routes/taskRoutes');
+const teamRoutes = require('./routes/teamRoutes'); // Upar imports mein
+
 const app = express();
 
 
@@ -21,6 +23,7 @@ app.use(morgan('dev'));
 app.use('/api/v1/auth', authRoutes); 
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/tasks', taskRoutes);
+app.use('/api/v1/team', teamRoutes);
 
 
 const PORT = process.env.PORT || 5000;

@@ -49,7 +49,9 @@ exports.getTasksByProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found or unauthorized' });
     }
 
-    const tasks = await Task.find({ projectId }).sort({ createdAt: -1 });
+    const tasks = await Task.find({ projectId })
+                        .populate('assignedTo', 'name') // Nayi line add ki hai
+                        .sort({ createdAt: -1 });
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -74,6 +76,23 @@ exports.updateTaskStatus = async (req, res) => {
     }
 
     res.json(task);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get ALL tasks for the logged-in user's organization (For Dashboard)
+// @route   GET /api/v1/tasks/global/all
+exports.getGlobalTasks = async (req, res) => {
+  try {
+    // 1. Pehle user ki organization ke saare projects nikalen
+    const projects = await Project.find({ organizationId: req.user.organizationId });
+    const projectIds = projects.map(p => p._id);
+
+    // 2. Phir un projects ke andar aane wale saare tasks fetch kar lein
+    const tasks = await Task.find({ projectId: { $in: projectIds } }).sort({ dueDate: 1 });
+
+    res.json(tasks);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
