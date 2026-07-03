@@ -152,7 +152,7 @@ const Login = () => {
 
             <div className="grid gap-3">
               <button
-             onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`}
+            onClick={() => window.location.href = '/api/v1/auth/google'}
               type="button" className="flex items-center justify-center gap-2 bg-[#1a1c26] border border-white/5 hover:bg-[#222533] transition text-[#a0a4b8] text-sm font-medium py-2.5 rounded-lg">
                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-4 h-4" />
                 Google
