@@ -8,7 +8,8 @@ const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const teamRoutes = require('./routes/teamRoutes'); // Upar imports mein
-
+const passport = require('passport');
+require('./config/passport');
 const app = express();
 
 

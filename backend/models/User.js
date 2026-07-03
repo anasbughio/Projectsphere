@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      // required: [true, 'Password is required'],
       minlength: 6,
       select: false, // Default queries mein password return nahi hoga
     },
@@ -29,7 +29,7 @@ role: {
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      required: true,
+      // required: true,
     },
   },
   { timestamps: true }

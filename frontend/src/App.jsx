@@ -8,7 +8,7 @@ import Projects from './pages/Projects';
 import Dashboard from './pages/Dashboard';
 import KanbanBoard from './pages/KanbanBoard';
 import Team from './pages/Team';
-
+import AuthSuccess from './pages/AuthSuccess';
 // Placeholder for Kanban Board (added text-white for visibility on dark theme)
 // const KanbanBoard = () => <div className="text-xl font-medium text-white">Kanban Board Area</div>;
 
@@ -21,7 +21,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Route>
-
+<Route path="/auth-success" element={<AuthSuccess />} />
         {/* Dashboard Routes (Protected) */}
         <Route 
           element={
