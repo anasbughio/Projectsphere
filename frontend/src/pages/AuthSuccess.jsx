@@ -18,8 +18,9 @@ const AuthSuccess = () => {
         // Data ko localStorage mein save karein
         localStorage.setItem('token', token);
         
-        // Ensure karte hain ke JSON format bilkul theek ho
-        const parsedUser = JSON.parse(userData);
+        // Decode the URL-encoded JSON data before parsing
+        const decodedUserData = decodeURIComponent(userData);
+        const parsedUser = JSON.parse(decodedUserData);
         localStorage.setItem('user', JSON.stringify(parsedUser));
         
         console.log("3. LocalStorage mein save ho gaya:", parsedUser);
