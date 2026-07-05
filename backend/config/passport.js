@@ -5,7 +5,7 @@ const Organization = require('../models/Organization');
 
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET, 
     callbackURL: `${process.env.BACKEND_URL}/api/v1/auth/google/callback`,
     proxy: true
   },
