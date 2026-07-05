@@ -4,7 +4,7 @@ const { createTask, getTasksByProject, updateTaskStatus,getGlobalTasks } = requi
 const { protect,authorizeRoles } = require('../middlewares/authMiddleware');
 
 router.route('/global/all').get(protect, getGlobalTasks);
-router.route('/').post(protect,authorizeRoles('Admin', 'Member', 'Developer', 'Designer'), createTask);
+router.route('/').post(protect, createTask);
 router.route('/project/:projectId').get(protect, getTasksByProject);
 router.route('/:id/status').patch(protect, updateTaskStatus);
 

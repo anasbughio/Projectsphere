@@ -8,8 +8,15 @@ const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const teamRoutes = require('./routes/teamRoutes'); // Upar imports mein
-
+const passport = require('passport');
+require('./config/passport');
 const app = express();
+
+// If running behind a proxy (e.g. Vercel), trust proxy for correct protocol
+app.set('trust proxy', 1);
+
+// Initialize passport middleware
+app.use(passport.initialize());
 
 
 connectDB(); 

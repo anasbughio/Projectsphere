@@ -46,11 +46,11 @@ const KanbanBoard = () => {
     setIsCreating(true);
     try {
       // payload mein assignedTo add kiya hai
-      const response = await api.post('/tasks', { 
+      const response = await api.post('/tasks', {
         title, description, status, priority, dueDate, department, projectId,
         assignedTo: assignedTo || null // Agar koi select nahi kiya toh null bhejein
       });
-      
+
       // Kyunke naya task abhi populate nahi hua backend se, usay properly state mein add kar rahe hain
       const selectedMember = team.find(m => m._id === assignedTo);
       const newTask = {
@@ -60,12 +60,13 @@ const KanbanBoard = () => {
 
       setTasks([newTask, ...tasks]);
       setIsModalOpen(false);
-      
+
       // Form reset
       setTitle(''); setDescription(''); setDueDate('');
       setDepartment('General'); setAssignedTo('');
     } catch (err) {
-      alert('Failed to create task');
+      console.error('Create task error:', err.response?.data || err);
+      alert(err.response?.data?.message || 'Failed to create task');
     } finally {
       setIsCreating(false);
     }
