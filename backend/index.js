@@ -12,6 +12,12 @@ const passport = require('passport');
 require('./config/passport');
 const app = express();
 
+// If running behind a proxy (e.g. Vercel), trust proxy for correct protocol
+app.set('trust proxy', 1);
+
+// Initialize passport middleware
+app.use(passport.initialize());
+
 
 connectDB(); 
 
