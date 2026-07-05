@@ -9,8 +9,8 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 
 // Google callback route
 router.get('/google/callback',
-  // If backend fails, send user back to frontend login (use env in production)
-  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login` }),
+  // 1. CHANGE HERE: Sirf '/login' likha hai
+  passport.authenticate('google', { session: false, failureRedirect: '/login' }),
   (req, res) => {
     const token = generateToken(req.user._id, req.user.organizationId, req.user.role);
     const userObj = {
@@ -21,9 +21,12 @@ router.get('/google/callback',
       organizationId: req.user.organizationId
     };
     const userDataStr = encodeURIComponent(JSON.stringify(userObj));
-    res.redirect(`${process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173'}/auth-success?token=${token}&userData=${userDataStr}`);
+    
+    // 2. CHANGE HERE: Sirf '/auth-success...' likha hai
+    res.redirect(`/auth-success?token=${token}&userData=${userDataStr}`);
   }
 );
+
 router.post('/register', registerOrg);
 router.post('/login', login);
 module.exports = router;
