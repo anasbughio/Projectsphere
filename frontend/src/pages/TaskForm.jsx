@@ -27,7 +27,11 @@ const TaskForm = () => {
   // 2. --- REAL-TIME SOCKET.IO LOGIC ---
   useEffect(() => {
     
-const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
+
+const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling']
+    });
 
     // User ki organization ka room join karein
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
