@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, FolderKanban, MoreVertical, Calendar, Loader2, Trash2 } from 'lucide-react';
+import { Plus, FolderKanban, Calendar, Loader2, Trash2, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -11,7 +11,8 @@ const Projects = () => {
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingProject, setEditingProject] = useState(null); // Edit mode check karne ke liye
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
@@ -42,20 +43,44 @@ const Projects = () => {
     fetchProjects();
   }, []);
 
-  // Create New Project
-  const handleCreateProject = async (e) => {
+  // Modal band karne aur fields clear karne ka function
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingProject(null);
+    setName('');
+    setDescription('');
+  };
+
+  // Edit button click handler
+  const handleEditClick = (e, project) => {
+    e.stopPropagation(); // Card click ho kar kanban board par na chala jaye
+    setEditingProject(project);
+    setName(project.name);
+    setDescription(project.description || '');
+    setIsModalOpen(true);
+  };
+
+  // Create & Update dono ko handle karega
+  const handleSubmitProject = async (e) => {
     e.preventDefault();
-    setIsCreating(true);
+    setIsSubmitting(true);
     try {
-      const response = await api.post('/projects', { name, description });
-      setProjects((prevProjects) => [response.data, ...prevProjects]);
-      setIsModalOpen(false);
-      setName('');
-      setDescription('');
+      if (editingProject) {
+        // UPDATE PROJECT API CALL
+        const response = await api.put(`/projects/${editingProject._id}`, { name, description });
+        setProjects((prevProjects) => 
+          prevProjects.map((p) => p._id === editingProject._id ? response.data : p)
+        );
+      } else {
+        // CREATE PROJECT API CALL
+        const response = await api.post('/projects', { name, description });
+        setProjects((prevProjects) => [response.data, ...prevProjects]);
+      }
+      handleCloseModal();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create project');
+      alert(err.response?.data?.message || 'Failed to save project');
     } finally {
-      setIsCreating(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -80,7 +105,10 @@ const Projects = () => {
         </div>
         {isAdmin && (
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            handleCloseModal();
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition"
         >
           <Plus size={18} />
@@ -113,23 +141,35 @@ const Projects = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <div key={project._id} className="bg-[#1a1c26] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group cursor-pointer"
-            onClick={() => navigate(`/projects/${project._id}`)}>
+            <div 
+              key={project._id} 
+              className="bg-[#1a1c26] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group cursor-pointer"
+              onClick={() => navigate(`/projects/${project._id}`)}
+            >
               <div className="flex justify-between items-start mb-4">
                 <div className="w-10 h-10 rounded-lg bg-[#7c7fff]/10 flex items-center justify-center text-[#7c7fff]">
                   <FolderKanban size={20} />
                 </div>
                 {isAdmin && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteProject(project._id);
-                    }}
-                    className="text-[#606479] hover:text-red-400 transition opacity-0 group-hover:opacity-100"
-                    title="Delete project"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => handleEditClick(e, project)}
+                      className="text-[#606479] hover:text-[#7c7fff] transition"
+                      title="Edit project"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteProject(project._id);
+                      }}
+                      className="text-[#606479] hover:text-red-400 transition"
+                      title="Delete project"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 )}
               </div>
               <h3 className="text-lg font-bold text-white mb-2 truncate">{project.name}</h3>
@@ -154,19 +194,22 @@ const Projects = () => {
         </div>
       )}
 
-      {/* Create Project Modal */}
+      {/* Create/Edit Project Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-[#2a2d3e] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-white/5">
-              <h3 className="text-xl font-bold text-white">Create New Project</h3>
-              <p className="text-[#84889c] text-sm mt-1">Set up a new workspace for your team.</p>
+              <h3 className="text-xl font-bold text-white">
+                {editingProject ? 'Edit Project' : 'Create New Project'}
+              </h3>
+              <p className="text-[#84889c] text-sm mt-1">
+                {editingProject ? 'Update your workspace project details.' : 'Set up a new workspace for your team.'}
+              </p>
             </div>
             
-            <form onSubmit={handleCreateProject} className="p-6">
+            <form onSubmit={handleSubmitProject} className="p-6">
               {/* =========================================
                   INPUTS BLOCK 
-                  (Inputs grouped strictly separate)
               ========================================= */}
               <div className="flex flex-col gap-5 mb-8">
                 <div>
@@ -193,24 +236,29 @@ const Projects = () => {
 
               {/* =========================================
                   BUTTONS BLOCK 
-                  (Actions grouped strictly separate)
               ========================================= */}
               <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
                 <button 
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white hover:bg-white/5 transition"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  disabled={isCreating}
+                  disabled={isSubmitting}
                   className={`px-6 py-2 rounded-lg text-sm font-semibold text-white transition flex items-center justify-center min-w-[120px] ${
-                    isCreating ? 'bg-[#5b5eb8] cursor-not-allowed' : 'bg-[#7c7fff] hover:bg-[#6b6de0]'
+                    isSubmitting ? 'bg-[#5b5eb8] cursor-not-allowed' : 'bg-[#7c7fff] hover:bg-[#6b6de0]'
                   }`}
                 >
-                  {isCreating ? <Loader2 size={16} className="animate-spin" /> : 'Create Project'}
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : editingProject ? (
+                    'Save Changes'
+                  ) : (
+                    'Create Project'
+                  )}
                 </button>
               </div>
             </form>
