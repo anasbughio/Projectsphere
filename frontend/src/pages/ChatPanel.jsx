@@ -56,7 +56,7 @@ const ChatPanel = ({ isOpen, onClose, organizationId, user,projectId }) => {
     } else {
       // PROD: send via REST, then refresh immediately for snappy feel
       try {
-        await fetch(`${API_URL}/api/v1/messages/${projectId}`, {
+        await fetch(`${API_URL}/messages/${projectId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(msgData),
