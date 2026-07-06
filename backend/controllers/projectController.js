@@ -33,8 +33,27 @@ exports.getProjects = async (req, res) => {
   }
 };
 
-// @desc    Delete project and its tasks
-// @route   DELETE /api/v1/projects/:id
+exports.updateProject = async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    
+    // Data isolation: Sirf wahi project update ho jo login user ki organization ka hai
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user.organizationId },
+      { name, description },
+      { new: true, runValidators: true }
+    );
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found or unauthorized access' });
+    }
+
+    res.json(project);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.deleteProject = async (req, res) => {
   try {
     const project = await Project.findOneAndDelete({
@@ -56,3 +75,4 @@ exports.deleteProject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
