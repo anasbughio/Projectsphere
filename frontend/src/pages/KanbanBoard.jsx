@@ -153,7 +153,7 @@ const KanbanBoard = () => {
       alert('You do not have permission to edit this task.');
       return;
     }
-  
+   
     setIsSaving(true);
 
     try {
@@ -245,11 +245,11 @@ const KanbanBoard = () => {
             <p className="text-[#84889c] text-sm">Manage tasks and tickets</p>
           </div>
         </div>
-       
+        
           <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
             <Plus size={18} /> New Task
           </button>
-      
+        
         <button 
   onClick={() => setIsChatOpen(!isChatOpen)} 
   className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg font-semibold transition"

@@ -210,9 +210,7 @@ const Projects = () => {
             </div>
             
             <form onSubmit={handleSubmitProject} className="p-6">
-              {/* =========================================
-                  INPUTS BLOCK 
-              ========================================= */}
+         
               <div className="flex flex-col gap-5 mb-8">
                 <div>
                   <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase tracking-wide">Project Name</label>
@@ -236,9 +234,7 @@ const Projects = () => {
                 </div>
               </div>
 
-              {/* =========================================
-                  BUTTONS BLOCK 
-              ========================================= */}
+             
               <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
                 <button 
                   type="button"
