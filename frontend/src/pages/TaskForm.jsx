@@ -27,7 +27,7 @@ const TaskForm = () => {
   // 2. --- REAL-TIME SOCKET.IO LOGIC ---
   useEffect(() => {
     
-const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
 
     // User ki organization ka room join karein
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');

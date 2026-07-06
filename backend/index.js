@@ -41,10 +41,8 @@ app.use('/api/v1/team', teamRoutes);
 // Socket Logic (Only initialize if not in production environment to avoid Vercel crash)
 const server = http.createServer(app);
 let io;
-
-if (process.env.NODE_ENV !== 'production') {
   io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: { origin: "*", methods: ["GET", "POST","PUT", "PATCH", "DELETE"] }
   });
 
   io.on('connection', (socket) => {
@@ -57,7 +55,7 @@ if (process.env.NODE_ENV !== 'production') {
       io.to(projectId).emit('receiveMessage', populatedMsg);
     });
   });
-}
+app.set('socketio', io);
 
 // REST API Routes
 app.get('/api/v1/messages/:projectId', async (req, res) => {
@@ -95,8 +93,7 @@ app.post('/api/v1/upload', upload.single('file'), async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Sirf local development mein server ko listen karwayein
-if (process.env.NODE_ENV !== 'production') {
+
   server.listen(PORT)
     .on('listening', () => console.log(`Server is running on port ${PORT}`))
     .on('error', (err) => {
@@ -106,5 +103,5 @@ if (process.env.NODE_ENV !== 'production') {
         console.error(err);
       }
     });
-}
+
 module.exports = app;

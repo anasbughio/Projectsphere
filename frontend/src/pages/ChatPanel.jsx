@@ -1,7 +1,11 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
+import { Send, X, Paperclip, Loader } from 'lucide-react';
+import api from '../services/api';
 const IS_PROD = import.meta.env.PROD; // Vite sets this automatically
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const ChatPanel = ({ isOpen, onClose, organizationId, user, projectId }) => {
+const ChatPanel = ({ isOpen, onClose, organizationId, user,projectId }) => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [isUploading, setIsUploading] = useState(false);

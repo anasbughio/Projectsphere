@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 const ChatBox = () => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
-  const socket = io('http://localhost:5000');
+  const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
   const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
