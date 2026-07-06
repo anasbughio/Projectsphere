@@ -23,37 +23,32 @@ exports.createTask = async (req, res) => {
   try {
     const { title, description, status, priority, dueDate, department, projectId, assignedTo } = req.body;
 
-    // 1. Check if project exists and belongs to user's organization
     const project = await Project.findOne({ 
       _id: projectId, 
       organizationId: req.user.organizationId 
     });
 
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found or unauthorized' });
-    }
+    if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    // 2. Create Task with strict isolation mapping
     const task = await Task.create({
-      title,
-      description,
-      status,
-      priority,
-      dueDate,
-      department,
-      projectId,
-      assignedTo,
-      isGlobal: false, // Yeh project task hai
-      createdBy: req.user._id, // Data Isolation
-      organizationId: req.user.organizationId, // Data Isolation
+      title, description, status, priority, dueDate, department, projectId, assignedTo,
+      isGlobal: false,
+      createdBy: req.user._id,
+      organizationId: req.user.organizationId,
     });
 
-    res.status(201).json(task);
+    // Populate for socket to have complete object
+    const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
+
+    // Socket Emit
+    const io = req.app.get('socketio');
+    io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
+
+    res.status(201).json(populatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 // @desc    Create new Global Task (Org Admin Only)
 // @route   POST /api/v1/tasks/global
 exports.createGlobalTask = async (req, res) => {
@@ -72,13 +67,18 @@ exports.createGlobalTask = async (req, res) => {
       dueDate,
       department,
       assignedTo,
-      isGlobal: true, // Tag laga diya
-      projectId: null, // Project se azad
+      isGlobal: true,
+      projectId: null,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
     });
 
-    res.status(201).json(task);
+    const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
+
+    const io = req.app.get('socketio');
+    io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
+
+    res.status(201).json(populatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -140,36 +140,29 @@ exports.getGlobalTasks = async (req, res) => {
   }
 };
 
-// @desc    Update Task Status (For Drag & Drop Kanban)
-// @route   PATCH /api/v1/tasks/:id/status
 exports.updateTaskStatus = async (req, res) => {
   try {
     const { status } = req.body;
     
     const task = await Task.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
-
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found or unauthorized access' });
-    }
-
-    if (!canModifyTask(req.user, task)) {
-      return res.status(403).json({ message: 'You do not have permission to update this task' });
-    }
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    if (!canModifyTask(req.user, task)) return res.status(403).json({ message: 'Unauthorized' });
 
     const updatedTask = await Task.findOneAndUpdate(
-      { _id: req.params.id, organizationId: req.user.organizationId },
+      { _id: req.params.id },
       { status },
-      { new: true, runValidators: true }
-    );
+      { new: true }
+    ).populate('assignedTo', 'name');
 
-    res.json(task);
+    // Socket Emit
+    const io = req.app.get('socketio');
+    io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
+
+    res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-// @desc    Delete any task (Project or Global)
-// @route   DELETE /api/v1/tasks/:id
 exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findOne({ 
@@ -186,7 +179,8 @@ exports.deleteTask = async (req, res) => {
     }
 
     await Task.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
-
+const io = req.app.get('socketio');
+io.to(req.user.organizationId.toString()).emit('taskDeleted', req.params.id);
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -198,25 +192,24 @@ exports.updateTask = async (req, res) => {
     const { title, description, priority, department } = req.body;
     
     const task = await Task.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
-
     if (!task) return res.status(404).json({ message: 'Task not found' });
-
-    if (!canModifyTask(req.user, task)) {
-      return res.status(403).json({ message: 'You do not have permission to edit this task' });
-    }
+    if (!canModifyTask(req.user, task)) return res.status(403).json({ message: 'Unauthorized' });
 
     const updatedTask = await Task.findOneAndUpdate(
-      { _id: req.params.id, organizationId: req.user.organizationId },
+      { _id: req.params.id },
       { title, description, priority, department },
-      { new: true, runValidators: true }
-    );
+      { new: true }
+    ).populate('assignedTo', 'name');
+
+    // Socket Emit
+    const io = req.app.get('socketio');
+    io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
 
     res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 exports.getTaskAnalytics = async (req, res) => {
   try {
     const orgId = req.user.organizationId;
