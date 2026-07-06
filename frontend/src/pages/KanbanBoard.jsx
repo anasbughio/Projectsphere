@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search } from 'lucide-react';
 import api from '../services/api';
+import { io } from 'socket.io-client'; // <-- Socket.io import kiya
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   
   const [tasks, setTasks] = useState([]);
-  const [team, setTeam] = useState([]); // Team members ki state
+  const [team, setTeam] = useState([]); 
   const [loading, setLoading] = useState(true);
   
   // --- NAYE FILTER STATES ---
@@ -26,7 +27,7 @@ const KanbanBoard = () => {
   const [priority, setPriority] = useState('Medium');
   const [dueDate, setDueDate] = useState('');
   const [department, setDepartment] = useState('General');
-  const [assignedTo, setAssignedTo] = useState(''); // Assignment State
+  const [assignedTo, setAssignedTo] = useState(''); 
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -40,6 +41,7 @@ const KanbanBoard = () => {
   const currentUserId = storedUser?._id;
   const isAdmin = userRole === 'admin';
   const canManageBoard = isAdmin;
+  
   const canModifyTask = (task) => {
     if (isAdmin) return true;
     if (!currentUserId) return false;
@@ -48,32 +50,75 @@ const KanbanBoard = () => {
     return taskCreator === currentUserId || taskAssignee === currentUserId;
   };
 
+  // 1. Initial Data Fetch
+  const fetchBoardData = async () => {
+    try {
+      const [taskRes, teamRes] = await Promise.all([
+        api.get(`/tasks/project/${projectId}`),
+        api.get('/team')
+      ]);
+
+      const normalizedTasks = taskRes.data.map((task) => {
+        const selectedMember = teamRes.data.find((member) => member._id === task.assignedTo);
+        return {
+          ...task,
+          assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
+        };
+      });
+
+      setTasks(normalizedTasks);
+      setTeam(teamRes.data);
+    } catch (error) {
+      console.error('Failed to load board data', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchBoardData = async () => {
-      try {
-        const [taskRes, teamRes] = await Promise.all([
-          api.get(`/tasks/project/${projectId}`),
-          api.get('/team')
-        ]);
-
-        const normalizedTasks = taskRes.data.map((task) => {
-          const selectedMember = teamRes.data.find((member) => member._id === task.assignedTo);
-          return {
-            ...task,
-            assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
-          };
-        });
-
-        setTasks(normalizedTasks);
-        setTeam(teamRes.data);
-      } catch (error) {
-        console.error('Failed to load board data', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchBoardData();
   }, [projectId]);
+
+  // 2. --- REAL-TIME SOCKET.IO LOGIC ---
+ useEffect(() => {
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+
+    // Join room
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    if (storedUser?.organizationId) {
+      socket.emit('joinOrganization', storedUser.organizationId);
+    }
+
+    // Event Listeners ko define karein
+    const handleCreated = (newTask) => {
+      setTasks((prev) => {
+        // Double add se bachne ke liye check: Agar pehle se hai toh wahi return karein
+        if (prev.find(t => t._id === newTask._id)) return prev;
+        return [newTask, ...prev];
+      });
+    };
+
+    const handleUpdated = (updatedTask) => {
+      setTasks((prev) => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+    };
+
+    const handleDeleted = (deletedTaskId) => {
+      setTasks((prev) => prev.filter(t => t._id !== deletedTaskId));
+    };
+
+    // Listeners attach karein
+    socket.on('taskCreated', handleCreated);
+    socket.on('taskUpdated', handleUpdated);
+    socket.on('taskDeleted', handleDeleted);
+
+    // --- YE SAB SE IMPORTANT HAI ---
+    return () => {
+      socket.off('taskCreated', handleCreated);
+      socket.off('taskUpdated', handleUpdated);
+      socket.off('taskDeleted', handleDeleted);
+      socket.disconnect();
+    };
+  }, []); // Dependancy mein projectId add kiya taake project change hone par update ho
 
   // --- FILTERING LOGIC ---
   const filteredTasks = tasks.filter(task => {
@@ -127,36 +172,16 @@ const KanbanBoard = () => {
 
     try {
       const payload = {
-        title,
-        description,
-        status,
-        priority,
-        dueDate: dueDate || null,
-        department,
-        projectId,
-        assignedTo: assignedTo || null
+        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null
       };
 
       if (editingTask) {
-        const response = await api.put(`/tasks/${editingTask._id}`, payload);
-        const selectedMember = team.find((member) => member._id === assignedTo);
-        const updatedTask = {
-          ...response.data,
-          assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
-        };
-
-        setTasks((prevTasks) => prevTasks.map((task) => task._id === editingTask._id ? updatedTask : task));
+        await api.put(`/tasks/${editingTask._id}`, payload);
       } else {
-        const response = await api.post('/tasks', payload);
-        const selectedMember = team.find((member) => member._id === assignedTo);
-        const newTask = {
-          ...response.data,
-          assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
-        };
-
-        setTasks((prevTasks) => [newTask, ...prevTasks]);
+        await api.post('/tasks', payload);
       }
 
+      await fetchBoardData();
       setIsModalOpen(false);
       setEditingTask(null);
       resetTaskForm();
@@ -178,8 +203,9 @@ const KanbanBoard = () => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
 
     try {
-      await api.delete(`/tasks/${taskId}`);
+      // Optimistic delete
       setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+      await api.delete(`/tasks/${taskId}`);
     } catch (error) {
       console.error('Delete task error:', error);
       alert('Failed to delete task');
@@ -213,7 +239,6 @@ const KanbanBoard = () => {
     }
   };
 
-  // Naya Logic: Ab counts aur map filtering filteredTasks se hoga
   const getTasksByStatus = (colStatus) => filteredTasks.filter(t => t.status === colStatus);
 
   if (loading) {
@@ -277,7 +302,6 @@ const KanbanBoard = () => {
       </div>
 
       <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
-        
         {/* Column: To Do */}
         <div className="w-[320px] min-w-[320px] flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-4 transition-colors hover:bg-[#1f222e]" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
           <div className="flex items-center justify-between mb-4 px-2">
@@ -310,7 +334,6 @@ const KanbanBoard = () => {
             {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} />)}
           </div>
         </div>
-
       </div>
 
       {/* Create/Edit Task Modal */}
@@ -322,9 +345,6 @@ const KanbanBoard = () => {
             </div>
             
             <form onSubmit={handleSubmitTask} className="p-6">
-              {/* =========================================
-                  INPUTS BLOCK 
-              ========================================= */}
               <div className="flex flex-col gap-5 mb-8">
                 <div>
                   <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Task Title</label>
@@ -372,7 +392,6 @@ const KanbanBoard = () => {
                   </div>
                 </div>
 
-                {/* Team Assignment Dropdown */}
                 <div>
                   <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Assign To</label>
                   <select 
@@ -390,9 +409,6 @@ const KanbanBoard = () => {
                 </div>
               </div>
 
-              {/* =========================================
-                  BUTTONS BLOCK 
-              ========================================= */}
               <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
                 <button type="button" onClick={() => { setIsModalOpen(false); setEditingTask(null); resetTaskForm(); }} className="px-4 py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white transition">Cancel</button>
                 <button type="submit" disabled={isSaving} className="px-6 py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex justify-center shadow-lg shadow-[#7c7fff]/20">
@@ -407,7 +423,6 @@ const KanbanBoard = () => {
   );
 };
 
-// TaskCard component remains the same
 const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard }) => {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
   const canInteract = canManageBoard || canModifyTask(task);
@@ -454,7 +469,6 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManag
           {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
         </div>
         
-        {/* Assigned User Avatar */}
         {task.assignedTo ? (
           <div 
             className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#7c7fff] to-[#5b5eb8] border border-[#242634] flex items-center justify-center text-[10px] text-white font-bold"
