@@ -79,7 +79,7 @@ const PORT = process.env.PORT || 5000;
 
 // Sirf Local pe listen karein
 if (process.env.NODE_ENV !== 'production') {
-  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 module.exports = app;
