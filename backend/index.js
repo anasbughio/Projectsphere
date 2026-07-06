@@ -77,9 +77,13 @@ app.post('/api/v1/upload', upload.single('file'), async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Sirf Local pe listen karein
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
-
+server.listen(PORT)
+  .on('listening', () => console.log(`Server is running on port ${PORT}`))
+  .on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${PORT} is already in use. Please close the other process.`);
+    } else {
+      console.error(err);
+    }
+  });
 module.exports = app;
