@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
 import { getGlobalTasks, createGlobalTask, updateTaskStatus, deleteTask, updateTaskDetails } from '../services/taskService';
 import { io } from 'socket.io-client';
+import ExampleUpload from '../components/ExampleUpload';
 
 const TaskForm = () => {
   const [tasks, setTasks] = useState([]);
@@ -26,7 +27,11 @@ const TaskForm = () => {
   // 2. --- REAL-TIME SOCKET.IO LOGIC ---
   useEffect(() => {
     
-const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
+
+const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling']
+    });
 
     // User ki organization ka room join karein
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -185,6 +190,12 @@ const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
         </div>
         <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="w-full md:w-auto bg-[#1a1c26] border border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none cursor-pointer"><option value="All">All Priorities</option><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Urgent">Urgent</option></select>
         <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-full md:w-auto bg-[#1a1c26] border border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none cursor-pointer"><option value="All">All Departments</option><option value="General">General</option><option value="Frontend">Frontend</option><option value="Backend">Backend</option><option value="Design">Design</option></select>
+      </div>
+
+      {/* --- FILE UPLOAD --- */}
+      <div className="bg-[#121218] p-4 rounded-xl border border-gray-800 mb-6">
+        <h3 className="text-sm font-semibold mb-3 text-gray-300">Upload Task Attachment</h3>
+        <ExampleUpload />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

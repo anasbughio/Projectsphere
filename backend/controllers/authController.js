@@ -2,9 +2,6 @@ const User = require('../models/User');
 const Organization = require('../models/Organization');
 const generateToken = require('../utils/generateToken');
 
-// @desc    Register new organization & admin user
-// @route   POST /api/v1/auth/register
-// @access  Public
 exports.registerOrg = async (req, res) => {
   try {
     const { orgName, userName, email, password } = req.body;
@@ -48,17 +45,16 @@ exports.registerOrg = async (req, res) => {
   }
 };
 
-// @desc    Login user & get token
-// @route   POST /api/v1/auth/login
-// @access  Public
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Email check karein (kyunke password select: false tha model mein, isliye yahan .select('+password') use kiya hai)
+    // Email check karein
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
+      // Yahan generateToken call ho raha hai, iske liye JWT_SECRET hona lazmi hai
       const token = generateToken(user._id, user.organizationId, user.role);
       
       res.json({
@@ -76,6 +72,12 @@ exports.login = async (req, res) => {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    // YEH LINE ADD KAREIN: Is se Vercel Logs mein exact error line number ke sath print hoga
+    console.error("🔴 LOGIN CRASH ERROR:", error); 
+    
+    res.status(500).json({ 
+      message: "Internal Server Error", 
+      errorDetails: error.message // Frontend network tab mein error detail dikhegi
+    });
   }
 };

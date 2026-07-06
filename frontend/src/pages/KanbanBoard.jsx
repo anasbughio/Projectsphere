@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search } from 'lucide-react';
 import api from '../services/api';
-import { io } from 'socket.io-client'; // <-- Socket.io import kiya
+import { io } from 'socket.io-client'; 
+import ChatPanel from './ChatPanel';
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const [isChatOpen, setIsChatOpen] = useState(false);
   
   const [tasks, setTasks] = useState([]);
   const [team, setTeam] = useState([]); 
   const [loading, setLoading] = useState(true);
   
-  // --- NAYE FILTER STATES ---
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -50,29 +51,19 @@ const KanbanBoard = () => {
     return taskCreator === currentUserId || taskAssignee === currentUserId;
   };
 
-  // 1. Initial Data Fetch
   const fetchBoardData = async () => {
     try {
       const [taskRes, teamRes] = await Promise.all([
         api.get(`/tasks/project/${projectId}`),
         api.get('/team')
       ]);
-
       const normalizedTasks = taskRes.data.map((task) => {
         const selectedMember = teamRes.data.find((member) => member._id === task.assignedTo);
-        return {
-          ...task,
-          assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
-        };
+        return { ...task, assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null };
       });
-
       setTasks(normalizedTasks);
       setTeam(teamRes.data);
-    } catch (error) {
-      console.error('Failed to load board data', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error('Failed to load board data', error); } finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -80,45 +71,43 @@ const KanbanBoard = () => {
   }, [projectId]);
 
   // 2. --- REAL-TIME SOCKET.IO LOGIC ---
- useEffect(() => {
-    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+  useEffect(() => {
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling']
+    });
 
-    // Join room
-    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
     if (storedUser?.organizationId) {
       socket.emit('joinOrganization', storedUser.organizationId);
     }
 
-    // Event Listeners ko define karein
     const handleCreated = (newTask) => {
-      setTasks((prev) => {
-        // Double add se bachne ke liye check: Agar pehle se hai toh wahi return karein
-        if (prev.find(t => t._id === newTask._id)) return prev;
-        return [newTask, ...prev];
-      });
+      if (newTask.projectId === projectId) {
+        setTasks((prev) => prev.find(t => t._id === newTask._id) ? prev : [newTask, ...prev]);
+      }
     };
 
     const handleUpdated = (updatedTask) => {
-      setTasks((prev) => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+      if (updatedTask.projectId === projectId) {
+        setTasks((prev) => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+      }
     };
 
     const handleDeleted = (deletedTaskId) => {
       setTasks((prev) => prev.filter(t => t._id !== deletedTaskId));
     };
 
-    // Listeners attach karein
     socket.on('taskCreated', handleCreated);
     socket.on('taskUpdated', handleUpdated);
     socket.on('taskDeleted', handleDeleted);
 
-    // --- YE SAB SE IMPORTANT HAI ---
     return () => {
       socket.off('taskCreated', handleCreated);
       socket.off('taskUpdated', handleUpdated);
       socket.off('taskDeleted', handleDeleted);
       socket.disconnect();
     };
-  }, []); // Dependancy mein projectId add kiya taake project change hone par update ho
+  }, [projectId]);// Dependancy mein projectId add kiya taake project change hone par update ho
 
   // --- FILTERING LOGIC ---
   const filteredTasks = tasks.filter(task => {
@@ -164,10 +153,7 @@ const KanbanBoard = () => {
       alert('You do not have permission to edit this task.');
       return;
     }
-    if (!canManageBoard && !editingTask) {
-      alert('Only admins can create tasks in this project.');
-      return;
-    }
+   
     setIsSaving(true);
 
     try {
@@ -184,6 +170,8 @@ const KanbanBoard = () => {
       await fetchBoardData();
       setIsModalOpen(false);
       setEditingTask(null);
+
+
       resetTaskForm();
     } catch (err) {
       console.error('Task save error:', err.response?.data || err);
@@ -257,11 +245,17 @@ const KanbanBoard = () => {
             <p className="text-[#84889c] text-sm">Manage tasks and tickets</p>
           </div>
         </div>
-        {canManageBoard && (
+        
           <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
             <Plus size={18} /> New Task
           </button>
-        )}
+        
+        <button 
+  onClick={() => setIsChatOpen(!isChatOpen)} 
+  className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg font-semibold transition"
+>
+  {isChatOpen ? 'Close Chat' : 'Open Chat'}
+</button>
       </div>
 
       {/* --- ADVANCED FILTER BAR --- */}
@@ -419,6 +413,13 @@ const KanbanBoard = () => {
           </div>
         </div>
       )}
+      <ChatPanel 
+  isOpen={isChatOpen} 
+  onClose={() => setIsChatOpen(false)} 
+  organizationId={storedUser?.organizationId} 
+  user={storedUser} 
+  projectId={projectId}
+/>
     </div>
   );
 };
