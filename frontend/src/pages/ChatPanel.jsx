@@ -15,7 +15,7 @@ const ChatPanel = ({ isOpen, onClose, organizationId, user,projectId }) => {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/v1/messages/${projectId}`);
+      const res = await fetch(`${API_URL}/messages/${projectId}`);
       const data = await res.json();
       setMessages(data);
     } catch (err) {
