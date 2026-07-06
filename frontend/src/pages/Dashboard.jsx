@@ -4,6 +4,10 @@ import {
   MoreVertical, Calendar, Clock, AlertCircle, 
   ArrowUpRight, AlertTriangle, Loader2, FolderKanban
 } from 'lucide-react';
+import { 
+  PieChart, Pie, Cell, 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend 
+} from 'recharts';
 import api from '../services/api';
 
 const Dashboard = () => {
@@ -16,7 +20,7 @@ const Dashboard = () => {
       try {
         const [projectRes, taskRes] = await Promise.all([
           api.get('/projects'),
-          api.get('/tasks/global/all')
+          api.get('/tasks/global/all') // Ya agar aapne dedicated endpoint use karna ho toh wo laga lein
         ]);
         setProjects(projectRes.data);
         setTasks(taskRes.data);
@@ -49,7 +53,6 @@ const Dashboard = () => {
     .slice(0, 3);
 
   // --- TEAM WORKLOAD CALCULATIONS ---
-  // Bachne ke liye division by zero se, hum total pending tasks check karte hain
   const totalPending = pendingTasks.length || 1; 
 
   const getWorkload = (dept) => {
@@ -62,6 +65,37 @@ const Dashboard = () => {
     { name: 'Frontend', percent: getWorkload('Frontend') },
     { name: 'Backend', percent: getWorkload('Backend') },
     { name: 'DevOps', percent: getWorkload('DevOps') }
+  ];
+
+  // ==========================================
+  // --- CHART DATA CALCULATIONS ---
+  // ==========================================
+  
+  // 1. Status Data for Pie Chart
+  const statusCounts = { 'To Do': 0, 'In Progress': 0, 'Done': 0 };
+  tasks.forEach(t => {
+    if (statusCounts[t.status] !== undefined) statusCounts[t.status]++;
+  });
+  
+  const statusData = [
+    { name: 'To Do', value: statusCounts['To Do'] },
+    { name: 'In Progress', value: statusCounts['In Progress'] },
+    { name: 'Done', value: statusCounts['Done'] }
+  ];
+
+  const STATUS_COLORS = ['#606479', '#f59e0b', '#10b981'];
+
+  // 2. Priority Data for Bar Chart
+  const priorityCounts = { 'Low': 0, 'Medium': 0, 'High': 0, 'Urgent': 0 };
+  tasks.forEach(t => {
+    if (priorityCounts[t.priority] !== undefined) priorityCounts[t.priority]++;
+  });
+
+  const priorityData = [
+    { name: 'Low', count: priorityCounts['Low'], fill: '#3b82f6' },
+    { name: 'Medium', count: priorityCounts['Medium'], fill: '#8b5cf6' },
+    { name: 'High', count: priorityCounts['High'], fill: '#f97316' },
+    { name: 'Urgent', count: priorityCounts['Urgent'], fill: '#ef4444' }
   ];
 
   return (
@@ -124,7 +158,63 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* MAIN CONTENT GRID */}
+      {/* 2. ANALYTICS CHARTS BLOCK (NEW) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Task Status Pie Chart */}
+        <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-6 h-[320px] flex flex-col">
+          <h2 className="text-lg font-bold text-white mb-4">Task Status Distribution</h2>
+          <div className="flex-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#2a2d3e', borderColor: '#4b4e63', color: '#fff', borderRadius: '8px' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Legend verticalAlign="bottom" height={36} iconType="circle"/>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Task Priority Bar Chart */}
+        <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-6 h-[320px] flex flex-col">
+          <h2 className="text-lg font-bold text-white mb-4">Tasks by Priority</h2>
+          <div className="flex-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={priorityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="#84889c" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#84889c" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip 
+                  cursor={{ fill: '#2a2d3e' }} 
+                  contentStyle={{ backgroundColor: '#2a2d3e', borderColor: '#4b4e63', color: '#fff', borderRadius: '8px' }}
+                />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {priorityData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 3. MAIN CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 flex flex-col gap-6">
           
@@ -185,7 +275,6 @@ const Dashboard = () => {
                 <div key={dept.name} className="flex items-center gap-4">
                   <span className="w-20 text-sm font-medium text-white">{dept.name}</span>
                   <div className="flex-1 h-6 bg-[#121218] rounded-md overflow-hidden flex border border-white/5 relative">
-                    {/* Agar workload 0% hai toh bar empty rahega */}
                     <div 
                       className="bg-[#7c7fff] h-full flex items-center px-2 text-[10px] font-bold text-[#121218] transition-all duration-500 ease-in-out" 
                       style={{ width: `${dept.percent}%` }}

@@ -39,3 +39,10 @@ export const updateTaskDetails = async (taskId, taskData) => {
   const response = await api.put(`/tasks/${taskId}`, taskData);
   return response.data;
 };
+
+
+// Get Task Analytics for Dashboard
+export const getAnalyticsStats = async () => {
+  const response = await api.get('/tasks/analytics/stats');
+  return response.data;
+};
