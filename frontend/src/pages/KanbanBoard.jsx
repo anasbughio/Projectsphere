@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2 } from 'lucide-react';
 import api from '../services/api';
 
 const KanbanBoard = () => {
@@ -12,7 +12,8 @@ const KanbanBoard = () => {
   const [loading, setLoading] = useState(true);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -25,12 +26,20 @@ const KanbanBoard = () => {
   useEffect(() => {
     const fetchBoardData = async () => {
       try {
-        // Tasks aur Team Members dono ek sath fetch kar rahe hain
         const [taskRes, teamRes] = await Promise.all([
           api.get(`/tasks/project/${projectId}`),
           api.get('/team')
         ]);
-        setTasks(taskRes.data);
+
+        const normalizedTasks = taskRes.data.map((task) => {
+          const selectedMember = teamRes.data.find((member) => member._id === task.assignedTo);
+          return {
+            ...task,
+            assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
+          };
+        });
+
+        setTasks(normalizedTasks);
         setTeam(teamRes.data);
       } catch (error) {
         console.error('Failed to load board data', error);
@@ -41,34 +50,90 @@ const KanbanBoard = () => {
     fetchBoardData();
   }, [projectId]);
 
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    setIsCreating(true);
-    try {
-      // payload mein assignedTo add kiya hai
-      const response = await api.post('/tasks', {
-        title, description, status, priority, dueDate, department, projectId,
-        assignedTo: assignedTo || null // Agar koi select nahi kiya toh null bhejein
-      });
+  const resetTaskForm = () => {
+    setTitle('');
+    setDescription('');
+    setStatus('To Do');
+    setPriority('Medium');
+    setDueDate('');
+    setDepartment('General');
+    setAssignedTo('');
+  };
 
-      // Kyunke naya task abhi populate nahi hua backend se, usay properly state mein add kar rahe hain
-      const selectedMember = team.find(m => m._id === assignedTo);
-      const newTask = {
-        ...response.data,
-        assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
+  const openCreateModal = () => {
+    setEditingTask(null);
+    resetTaskForm();
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (task) => {
+    setEditingTask(task);
+    setTitle(task.title || '');
+    setDescription(task.description || '');
+    setStatus(task.status || 'To Do');
+    setPriority(task.priority || 'Medium');
+    setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+    setDepartment(task.department || 'General');
+    setAssignedTo(task.assignedTo?._id || '');
+    setIsModalOpen(true);
+  };
+
+  const handleSubmitTask = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    try {
+      const payload = {
+        title,
+        description,
+        status,
+        priority,
+        dueDate: dueDate || null,
+        department,
+        projectId,
+        assignedTo: assignedTo || null
       };
 
-      setTasks([newTask, ...tasks]);
-      setIsModalOpen(false);
+      if (editingTask) {
+        const response = await api.put(`/tasks/${editingTask._id}`, payload);
+        const selectedMember = team.find((member) => member._id === assignedTo);
+        const updatedTask = {
+          ...response.data,
+          assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
+        };
 
-      // Form reset
-      setTitle(''); setDescription(''); setDueDate('');
-      setDepartment('General'); setAssignedTo('');
+        setTasks((prevTasks) => prevTasks.map((task) => task._id === editingTask._id ? updatedTask : task));
+      } else {
+        const response = await api.post('/tasks', payload);
+        const selectedMember = team.find((member) => member._id === assignedTo);
+        const newTask = {
+          ...response.data,
+          assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null
+        };
+
+        setTasks((prevTasks) => [newTask, ...prevTasks]);
+      }
+
+      setIsModalOpen(false);
+      setEditingTask(null);
+      resetTaskForm();
     } catch (err) {
-      console.error('Create task error:', err.response?.data || err);
-      alert(err.response?.data?.message || 'Failed to create task');
+      console.error('Task save error:', err.response?.data || err);
+      alert(err.response?.data?.message || 'Failed to save task');
     } finally {
-      setIsCreating(false);
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      await api.delete(`/tasks/${taskId}`);
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+    } catch (error) {
+      console.error('Delete task error:', error);
+      alert('Failed to delete task');
     }
   };
 
@@ -109,7 +174,7 @@ const KanbanBoard = () => {
             <p className="text-[#84889c] text-sm">Manage tasks and tickets</p>
           </div>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
+        <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
           <Plus size={18} /> New Task
         </button>
       </div>
@@ -123,7 +188,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('To Do').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} />)}
+            {getTasksByStatus('To Do').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} />)}
           </div>
         </div>
 
@@ -134,7 +199,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('In Progress').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} />)}
+            {getTasksByStatus('In Progress').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} />)}
           </div>
         </div>
 
@@ -145,7 +210,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} />)}
+            {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} />)}
           </div>
         </div>
 
@@ -156,10 +221,10 @@ const KanbanBoard = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-[#2a2d3e] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-white/5">
-              <h3 className="text-xl font-bold text-white">Create New Task</h3>
+              <h3 className="text-xl font-bold text-white">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
             </div>
             
-            <form onSubmit={handleCreateTask} className="p-6">
+            <form onSubmit={handleSubmitTask} className="p-6">
               {/* =========================================
                   INPUTS BLOCK 
               ========================================= */}
@@ -232,9 +297,9 @@ const KanbanBoard = () => {
                   BUTTONS BLOCK 
               ========================================= */}
               <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white transition">Cancel</button>
-                <button type="submit" disabled={isCreating} className="px-6 py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex justify-center">
-                  {isCreating ? <Loader2 size={16} className="animate-spin" /> : 'Add Task'}
+                <button type="button" onClick={() => { setIsModalOpen(false); setEditingTask(null); resetTaskForm(); }} className="px-4 py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white transition">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-6 py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex justify-center">
+                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : editingTask ? 'Save Changes' : 'Add Task'}
                 </button>
               </div>
             </form>
@@ -245,7 +310,7 @@ const KanbanBoard = () => {
   );
 };
 
-const TaskCard = ({ task, onDragStart }) => {
+const TaskCard = ({ task, onDragStart, onEdit, onDelete }) => {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
 
   return (
@@ -255,6 +320,14 @@ const TaskCard = ({ task, onDragStart }) => {
       className="bg-[#242634] p-4 rounded-xl border border-white/5 hover:border-white/20 transition cursor-grab active:cursor-grabbing group shadow-sm"
     >
       <div className="flex justify-between items-start mb-2">
+        <div className="flex gap-2">
+          <button onClick={() => onEdit(task)} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
+            <Edit3 size={14} />
+          </button>
+          <button onClick={() => onDelete(task._id)} className="p-1 rounded text-[#606479] hover:text-red-400 transition" title="Delete task">
+            <Trash2 size={14} />
+          </button>
+        </div>
         <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${
           task.priority === 'Urgent' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
           task.priority === 'High' ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
