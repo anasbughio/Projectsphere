@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search } from 'lucide-react';
 import api from '../services/api';
 
 const KanbanBoard = () => {
@@ -10,6 +10,11 @@ const KanbanBoard = () => {
   const [tasks, setTasks] = useState([]);
   const [team, setTeam] = useState([]); // Team members ki state
   const [loading, setLoading] = useState(true);
+  
+  // --- NAYE FILTER STATES ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('All');
+  const [departmentFilter, setDepartmentFilter] = useState('All');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,6 +54,16 @@ const KanbanBoard = () => {
     };
     fetchBoardData();
   }, [projectId]);
+
+  // --- FILTERING LOGIC ---
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
+    const matchesDepartment = departmentFilter === 'All' || task.department === departmentFilter;
+    
+    return matchesSearch && matchesPriority && matchesDepartment;
+  });
 
   const resetTaskForm = () => {
     setTitle('');
@@ -156,7 +171,8 @@ const KanbanBoard = () => {
     }
   };
 
-  const getTasksByStatus = (colStatus) => tasks.filter(t => t.status === colStatus);
+  // Naya Logic: Ab counts aur map filtering filteredTasks se hoga
+  const getTasksByStatus = (colStatus) => filteredTasks.filter(t => t.status === colStatus);
 
   if (loading) {
     return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-[#7c7fff]" size={40} /></div>;
@@ -164,7 +180,7 @@ const KanbanBoard = () => {
 
   return (
     <div className="h-full flex flex-col font-sans">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/projects')} className="p-2 hover:bg-white/5 rounded-lg text-[#606479] hover:text-white transition">
             <ArrowLeft size={20} />
@@ -177,6 +193,43 @@ const KanbanBoard = () => {
         <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
           <Plus size={18} /> New Task
         </button>
+      </div>
+
+      {/* --- ADVANCED FILTER BAR --- */}
+      <div className="bg-[#1a1c26] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-4 shadow-sm">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 text-[#606479]" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search project tasks..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#121218] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-white focus:outline-none focus:border-[#7c7fff] transition"
+          />
+        </div>
+        <select 
+          value={priorityFilter} 
+          onChange={(e) => setPriorityFilter(e.target.value)} 
+          className="bg-[#121218] border border-white/5 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+        >
+          <option value="All">All Priorities</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+        <select 
+          value={departmentFilter} 
+          onChange={(e) => setDepartmentFilter(e.target.value)} 
+          className="bg-[#121218] border border-white/5 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+        >
+          <option value="All">All Departments</option>
+          <option value="General">General</option>
+          <option value="Design">Design</option>
+          <option value="Frontend">Frontend</option>
+          <option value="Backend">Backend</option>
+          <option value="DevOps">DevOps</option>
+        </select>
       </div>
 
       <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
@@ -216,7 +269,7 @@ const KanbanBoard = () => {
 
       </div>
 
-      {/* Create Task Modal */}
+      {/* Create/Edit Task Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-[#2a2d3e] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
@@ -231,17 +284,17 @@ const KanbanBoard = () => {
               <div className="flex flex-col gap-5 mb-8">
                 <div>
                   <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Task Title</label>
-                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none" />
+                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Description</label>
-                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none resize-none h-20" />
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition resize-none h-20" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Status</label>
-                    <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none cursor-pointer">
+                    <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
                       <option value="To Do">To Do</option>
                       <option value="In Progress">In Progress</option>
                       <option value="Done">Done</option>
@@ -249,7 +302,7 @@ const KanbanBoard = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Priority</label>
-                    <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none cursor-pointer">
+                    <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
@@ -261,11 +314,11 @@ const KanbanBoard = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Due Date</label>
-                    <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none" />
+                    <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Department</label>
-                    <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none cursor-pointer">
+                    <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
                       <option value="General">General</option>
                       <option value="Design">Design</option>
                       <option value="Frontend">Frontend</option>
@@ -281,7 +334,7 @@ const KanbanBoard = () => {
                   <select 
                     value={assignedTo} 
                     onChange={(e) => setAssignedTo(e.target.value)} 
-                    className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none cursor-pointer"
+                    className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
                   >
                     <option value="">Unassigned</option>
                     {team.map(member => (
@@ -298,7 +351,7 @@ const KanbanBoard = () => {
               ========================================= */}
               <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
                 <button type="button" onClick={() => { setIsModalOpen(false); setEditingTask(null); resetTaskForm(); }} className="px-4 py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white transition">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-6 py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex justify-center">
+                <button type="submit" disabled={isSaving} className="px-6 py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex justify-center shadow-lg shadow-[#7c7fff]/20">
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : editingTask ? 'Save Changes' : 'Add Task'}
                 </button>
               </div>
@@ -310,6 +363,7 @@ const KanbanBoard = () => {
   );
 };
 
+// TaskCard component remains the same
 const TaskCard = ({ task, onDragStart, onEdit, onDelete }) => {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
 

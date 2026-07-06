@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { 
   createTask, 
-  createGlobalTask, // <-- Naya import
+  createGlobalTask, 
   getTasksByProject, 
   updateTaskStatus,
   getGlobalTasks,
   updateTask,
-  deleteTask 
+  deleteTask ,
+  getTaskAnalytics
 } = require('../controllers/taskController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 
@@ -28,5 +29,5 @@ router.route('/project/:projectId').get(protect, getTasksByProject);
 router.route('/:id/status').patch(protect, updateTaskStatus);
 router.route('/:id').delete(protect, deleteTask);
 router.route('/:id').put(protect, updateTask);
-
+router.route('/analytics/stats').get(protect, getTaskAnalytics);
 module.exports = router;

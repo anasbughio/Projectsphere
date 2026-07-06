@@ -180,3 +180,32 @@ exports.updateTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getTaskAnalytics = async (req, res) => {
+  try {
+    const orgId = req.user.organizationId;
+
+    // 1. Status ke hisaab se tasks count karna (To Do, In Progress, Done)
+    const statusStats = await Task.aggregate([
+      { $match: { organizationId: orgId } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    // 2. Priority ke hisaab se tasks count karna
+    const priorityStats = await Task.aggregate([
+      { $match: { organizationId: orgId } },
+      { $group: { _id: '$priority', count: { $sum: 1 } } }
+    ]);
+
+    // 3. Total Tasks
+    const totalTasks = await Task.countDocuments({ organizationId: orgId });
+
+    res.status(200).json({
+      totalTasks,
+      statusStats,
+      priorityStats
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Analytics fetch karne mein masla hua", error: error.message });
+  }
+};
