@@ -1,11 +1,32 @@
 const express = require('express');
 const router = express.Router();
-const { createTask, getTasksByProject, updateTaskStatus,getGlobalTasks } = require('../controllers/taskController');
-const { protect,authorizeRoles } = require('../middlewares/authMiddleware');
+const { 
+  createTask, 
+  createGlobalTask, // <-- Naya import
+  getTasksByProject, 
+  updateTaskStatus,
+  getGlobalTasks,
+  updateTask,
+  deleteTask 
+} = require('../controllers/taskController');
+const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 
+
+// Get all global tasks
 router.route('/global/all').get(protect, getGlobalTasks);
+
+// Create a global task (Strictly for Org Admin)
+router.route('/global').post(protect, authorizeRoles('Org Admin'), createGlobalTask);
+
+// Create a new project-specific task
 router.route('/').post(protect, createTask);
+
+// Get all tasks for a specific project
 router.route('/project/:projectId').get(protect, getTasksByProject);
+
+// Update status of any task (Drag & Drop)
 router.route('/:id/status').patch(protect, updateTaskStatus);
+router.route('/:id').delete(protect, deleteTask);
+router.route('/:id').put(protect, updateTask);
 
 module.exports = router;

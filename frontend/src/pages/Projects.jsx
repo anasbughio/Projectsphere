@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, FolderKanban, MoreVertical, Calendar, Loader2 } from 'lucide-react';
+import { Plus, FolderKanban, MoreVertical, Calendar, Loader2, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -14,6 +14,17 @@ const Projects = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+
+  const normalizeRole = (role) => {
+    if (!role) return '';
+    const normalized = role.toString().trim().toLowerCase();
+    if (['admin', 'org admin', 'organization admin'].includes(normalized)) return 'admin';
+    if (['member', 'team member'].includes(normalized)) return 'member';
+    return normalized;
+  };
+
+  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+  const isAdmin = normalizeRole(storedUser?.role) === 'admin';
 
   // Fetch Projects from API
   const fetchProjects = async () => {
@@ -37,8 +48,7 @@ const Projects = () => {
     setIsCreating(true);
     try {
       const response = await api.post('/projects', { name, description });
-      // Naya project list mein sab se upar add kar dein
-      setProjects([response.data, ...projects]);
+      setProjects((prevProjects) => [response.data, ...prevProjects]);
       setIsModalOpen(false);
       setName('');
       setDescription('');
@@ -48,7 +58,17 @@ const Projects = () => {
       setIsCreating(false);
     }
   };
-      const user = JSON.parse(localStorage.getItem('user'));
+
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+
+    try {
+      await api.delete(`/projects/${projectId}`);
+      setProjects((prevProjects) => prevProjects.filter((project) => project._id !== projectId));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete project');
+    }
+  };
 
   return (
     <div className="h-full flex flex-col font-sans">
@@ -58,7 +78,7 @@ const Projects = () => {
           <h2 className="text-2xl font-bold text-white mb-1">Projects</h2>
           <p className="text-[#84889c] text-sm">Manage your workspace projects</p>
         </div>
-        {user?.role === 'Admin' && (
+        {isAdmin && (
         <button 
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition"
@@ -99,9 +119,18 @@ const Projects = () => {
                 <div className="w-10 h-10 rounded-lg bg-[#7c7fff]/10 flex items-center justify-center text-[#7c7fff]">
                   <FolderKanban size={20} />
                 </div>
-                <button className="text-[#606479] hover:text-white transition opacity-0 group-hover:opacity-100">
-                  <MoreVertical size={18} />
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteProject(project._id);
+                    }}
+                    className="text-[#606479] hover:text-red-400 transition opacity-0 group-hover:opacity-100"
+                    title="Delete project"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
               <h3 className="text-lg font-bold text-white mb-2 truncate">{project.name}</h3>
               <p className="text-[#84889c] text-sm mb-6 line-clamp-2 min-h-[40px]">
