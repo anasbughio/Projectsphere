@@ -36,6 +36,8 @@ const normalizeRole = (role) => {
   return normalized;
 };
 
+exports.normalizeRole = normalizeRole;
+
 exports.authorizeRoles = (...roles) => {
   const allowedRoles = roles.map(normalizeRole);
 

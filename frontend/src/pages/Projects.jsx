@@ -131,12 +131,14 @@ const Projects = () => {
           <FolderKanban size={48} className="text-[#606479] mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No projects found</h3>
           <p className="text-[#84889c] mb-6">Get started by creating your first project.</p>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-[#1a1c26] border border-white/10 hover:bg-[#222533] text-white px-4 py-2 rounded-lg font-medium transition"
-          >
-            <Plus size={16} /> Create Project
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-[#1a1c26] border border-white/10 hover:bg-[#222533] text-white px-4 py-2 rounded-lg font-medium transition"
+            >
+              <Plus size={16} /> Create Project
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,5 +1,21 @@
 const Task = require('../models/Task');
 const Project = require('../models/Project');
+const { normalizeRole } = require('../middlewares/authMiddleware');
+
+const isAdmin = (user) => normalizeRole(user?.role) === 'admin';
+
+const canModifyTask = (user, task) => {
+  if (!user || !task) return false;
+  if (isAdmin(user)) return true;
+
+  const userId = user._id?.toString();
+  if (!userId) return false;
+
+  return (
+    task.createdBy?.toString() === userId ||
+    task.assignedTo?.toString() === userId
+  );
+};
 
 // @desc    Create new Project Task (Regular Task)
 // @route   POST /api/v1/tasks
@@ -42,8 +58,8 @@ exports.createTask = async (req, res) => {
 // @route   POST /api/v1/tasks/global
 exports.createGlobalTask = async (req, res) => {
   try {
-    if (req.user.role !== 'Org Admin') {
-      return res.status(403).json({ message: 'Only Org Admin can create global tasks' });
+    if (!isAdmin(req.user)) {
+      return res.status(403).json({ message: 'Only admins can create global tasks' });
     }
 
     const { title, description, status, priority, dueDate, department, assignedTo } = req.body;
@@ -84,15 +100,19 @@ exports.getTasksByProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found or unauthorized' });
     }
 
-    // Strict Data Isolation: User ko sirf wohi conversation/task dikhe jo usne banaya hai ya usay assign hua hai
-    const tasks = await Task.find({ 
+    const query = {
       projectId: projectId,
       organizationId: req.user.organizationId,
-      $or: [
+    };
+
+    if (!isAdmin(req.user)) {
+      query.$or = [
         { createdBy: req.user._id },
         { assignedTo: req.user._id }
-      ]
-    })
+      ];
+    }
+
+    const tasks = await Task.find(query)
     .populate('assignedTo', 'name')
     .sort({ createdAt: -1 });
 
@@ -126,16 +146,21 @@ exports.updateTaskStatus = async (req, res) => {
   try {
     const { status } = req.body;
     
-    // Sirf wahi task update ho jo is user ki organization ka hissa ho
-    const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, organizationId: req.user.organizationId }, 
-      { status }, 
-      { new: true, runValidators: true }
-    );
+    const task = await Task.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found or unauthorized access' });
     }
+
+    if (!canModifyTask(req.user, task)) {
+      return res.status(403).json({ message: 'You do not have permission to update this task' });
+    }
+
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user.organizationId },
+      { status },
+      { new: true, runValidators: true }
+    );
 
     res.json(task);
   } catch (error) {
@@ -147,15 +172,20 @@ exports.updateTaskStatus = async (req, res) => {
 // @route   DELETE /api/v1/tasks/:id
 exports.deleteTask = async (req, res) => {
   try {
-    // Data Isolation: Sirf apni organization ka task delete ho
-    const task = await Task.findOneAndDelete({ 
-      _id: req.params.id, 
-      organizationId: req.user.organizationId 
+    const task = await Task.findOne({ 
+      _id: req.params.id,
+      organizationId: req.user.organizationId
     });
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found or unauthorized access' });
     }
+
+    if (!canModifyTask(req.user, task)) {
+      return res.status(403).json({ message: 'You do not have permission to delete this task' });
+    }
+
+    await Task.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
 
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
@@ -167,15 +197,21 @@ exports.updateTask = async (req, res) => {
   try {
     const { title, description, priority, department } = req.body;
     
-    // Data Isolation: Sirf apni org ka task update ho
-    const task = await Task.findOneAndUpdate(
+    const task = await Task.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    if (!canModifyTask(req.user, task)) {
+      return res.status(403).json({ message: 'You do not have permission to edit this task' });
+    }
+
+    const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id, organizationId: req.user.organizationId },
       { title, description, priority, department },
       { new: true, runValidators: true }
     );
 
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    res.json(task);
+    res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
