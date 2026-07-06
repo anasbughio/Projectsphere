@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { UserPlus, Mail, Shield, MoreVertical, Loader2, Users } from 'lucide-react';
 import api from '../services/api';
 
+const normalizeRole = (role) => {
+  if (!role) return '';
+  const normalized = role.toString().trim().toLowerCase();
+  if (['admin', 'org admin', 'organization admin'].includes(normalized)) return 'admin';
+  if (['member', 'team member'].includes(normalized)) return 'member';
+  return normalized;
+};
+
 const Team = () => {
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +23,9 @@ const Team = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Member');
+
+  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+  const isAdmin = normalizeRole(storedUser?.role) === 'admin';
 
   // Fetch Team Members
   useEffect(() => {
@@ -66,13 +77,15 @@ const Team = () => {
           <h2 className="text-2xl font-bold text-white mb-1">Team Workspace</h2>
           <p className="text-[#84889c] text-sm">Manage your team members and roles</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20"
-        >
-          <UserPlus size={18} />
-          Add Member
-        </button>
+        {isAdmin && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20"
+          >
+            <UserPlus size={18} />
+            Add Member
+          </button>
+        )}
       </div>
 
       {/* Team Grid */}

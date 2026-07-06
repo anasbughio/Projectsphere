@@ -28,6 +28,26 @@ const KanbanBoard = () => {
   const [department, setDepartment] = useState('General');
   const [assignedTo, setAssignedTo] = useState(''); // Assignment State
 
+  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+  const normalizeRole = (role) => {
+    if (!role) return '';
+    const normalized = role.toString().trim().toLowerCase();
+    if (['admin', 'org admin', 'organization admin'].includes(normalized)) return 'admin';
+    if (['member', 'team member'].includes(normalized)) return 'member';
+    return normalized;
+  };
+  const userRole = normalizeRole(storedUser?.role);
+  const currentUserId = storedUser?._id;
+  const isAdmin = userRole === 'admin';
+  const canManageBoard = isAdmin;
+  const canModifyTask = (task) => {
+    if (isAdmin) return true;
+    if (!currentUserId) return false;
+    const taskCreator = task?.createdBy?.toString?.() || task?.createdBy;
+    const taskAssignee = task?.assignedTo?._id?.toString?.() || task?.assignedTo;
+    return taskCreator === currentUserId || taskAssignee === currentUserId;
+  };
+
   useEffect(() => {
     const fetchBoardData = async () => {
       try {
@@ -95,6 +115,14 @@ const KanbanBoard = () => {
 
   const handleSubmitTask = async (e) => {
     e.preventDefault();
+    if (!canManageBoard && editingTask && !canModifyTask(editingTask)) {
+      alert('You do not have permission to edit this task.');
+      return;
+    }
+    if (!canManageBoard && !editingTask) {
+      alert('Only admins can create tasks in this project.');
+      return;
+    }
     setIsSaving(true);
 
     try {
@@ -141,6 +169,12 @@ const KanbanBoard = () => {
   };
 
   const handleDeleteTask = async (taskId) => {
+    const taskToDelete = tasks.find((task) => task._id === taskId);
+    if (!taskToDelete) return;
+    if (!canModifyTask(taskToDelete)) {
+      alert('You do not have permission to delete this task.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this task?')) return;
 
     try {
@@ -152,13 +186,21 @@ const KanbanBoard = () => {
     }
   };
 
-  const handleDragStart = (e, taskId) => e.dataTransfer.setData('taskId', taskId);
+  const handleDragStart = (e, taskId, task) => {
+    if (!canModifyTask(task)) return;
+    e.dataTransfer.setData('taskId', taskId);
+  };
   const handleDragOver = (e) => e.preventDefault(); 
   
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId) return;
+    const taskToUpdate = tasks.find((task) => task._id === taskId);
+    if (!taskToUpdate || !canModifyTask(taskToUpdate)) {
+      alert('You do not have permission to move this task.');
+      return;
+    }
 
     const previousTasks = [...tasks];
     setTasks(tasks.map(task => task._id === taskId ? { ...task, status: newStatus } : task));
@@ -190,9 +232,11 @@ const KanbanBoard = () => {
             <p className="text-[#84889c] text-sm">Manage tasks and tickets</p>
           </div>
         </div>
-        <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
-          <Plus size={18} /> New Task
-        </button>
+        {canManageBoard && (
+          <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
+            <Plus size={18} /> New Task
+          </button>
+        )}
       </div>
 
       {/* --- ADVANCED FILTER BAR --- */}
@@ -241,7 +285,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('To Do').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} />)}
+            {getTasksByStatus('To Do').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} />)}
           </div>
         </div>
 
@@ -252,7 +296,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('In Progress').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} />)}
+            {getTasksByStatus('In Progress').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} />)}
           </div>
         </div>
 
@@ -263,7 +307,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} />)}
+            {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} />)}
           </div>
         </div>
 
@@ -364,23 +408,28 @@ const KanbanBoard = () => {
 };
 
 // TaskCard component remains the same
-const TaskCard = ({ task, onDragStart, onEdit, onDelete }) => {
+const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard }) => {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
+  const canInteract = canManageBoard || canModifyTask(task);
 
   return (
     <div 
-      draggable
-      onDragStart={(e) => onDragStart(e, task._id)}
-      className="bg-[#242634] p-4 rounded-xl border border-white/5 hover:border-white/20 transition cursor-grab active:cursor-grabbing group shadow-sm"
+      draggable={canInteract}
+      onDragStart={(e) => onDragStart(e, task._id, task)}
+      className={`bg-[#242634] p-4 rounded-xl border border-white/5 hover:border-white/20 transition ${canInteract ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} group shadow-sm`}
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex gap-2">
-          <button onClick={() => onEdit(task)} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
-            <Edit3 size={14} />
-          </button>
-          <button onClick={() => onDelete(task._id)} className="p-1 rounded text-[#606479] hover:text-red-400 transition" title="Delete task">
-            <Trash2 size={14} />
-          </button>
+          {(canManageBoard || canModifyTask(task)) && (
+            <>
+              <button onClick={() => onEdit(task)} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
+                <Edit3 size={14} />
+              </button>
+              <button onClick={() => onDelete(task._id)} className="p-1 rounded text-[#606479] hover:text-red-400 transition" title="Delete task">
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
         </div>
         <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${
           task.priority === 'Urgent' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
