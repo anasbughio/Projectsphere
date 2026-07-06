@@ -1,19 +1,34 @@
 const mongoose = require('mongoose');
 
+// Connection ko cache karne ke liye global variable
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error.message}`);
-    console.error(error);
-    // In production we want the process to exit so the failure is obvious.
-    // In development, avoid exiting so the server (and Socket.IO) can stay up
-    // while you diagnose DNS / network issues.
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
-    }
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+    };
+
+    cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
+      return mongoose;
+    });
   }
+  
+  try {
+    cached.conn = await cached.promise;
+    console.log(`MongoDB Connected: ${cached.conn.connection.host}`);
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
 };
 
 module.exports = connectDB;
