@@ -77,13 +77,16 @@ app.post('/api/v1/upload', upload.single('file'), async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT)
-  .on('listening', () => console.log(`Server is running on port ${PORT}`))
-  .on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`Port ${PORT} is already in use. Please close the other process.`);
-    } else {
-      console.error(err);
-    }
-  });
+// Sirf local development mein server ko listen karwayein
+if (process.env.NODE_ENV !== 'production') {
+  server.listen(PORT)
+    .on('listening', () => console.log(`Server is running on port ${PORT}`))
+    .on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${PORT} is already in use. Please close the other process.`);
+      } else {
+        console.error(err);
+      }
+    });
+}
 module.exports = app;
