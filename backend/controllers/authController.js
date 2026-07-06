@@ -2,9 +2,6 @@ const User = require('../models/User');
 const Organization = require('../models/Organization');
 const generateToken = require('../utils/generateToken');
 
-// @desc    Register new organization & admin user
-// @route   POST /api/v1/auth/register
-// @access  Public
 exports.registerOrg = async (req, res) => {
   try {
     const { orgName, userName, email, password } = req.body;

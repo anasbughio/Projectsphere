@@ -69,6 +69,24 @@ app.get('/api/v1/messages/:projectId', async (req, res) => {
     res.status(500).json({ message: "Error loading chat" });
   }
 });
+app.post('/api/v1/messages/:projectId', async (req, res) => {
+  try {
+    const { text, sender, fileUrl } = req.body;
+    const { projectId } = req.params;
+
+    const newMessage = await Message.create({ text, sender, projectId, fileUrl });
+    const populatedMsg = await Message.findById(newMessage._id).populate('sender', 'name');
+
+    // If socket.io IS running (non-prod), also broadcast it live
+    if (io) {
+      io.to(projectId).emit('receiveMessage', populatedMsg);
+    }
+
+    res.status(201).json(populatedMsg);
+  } catch (error) {
+    res.status(500).json({ message: "Error sending message" });
+  }
+});
 
 app.post('/api/v1/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });

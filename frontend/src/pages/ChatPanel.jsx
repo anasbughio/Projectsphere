@@ -1,57 +1,69 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
-import { Send, X, Paperclip, Loader } from 'lucide-react';
-import api from '../services/api';
-const ChatPanel = ({ isOpen, onClose, organizationId, user,projectId }) => {
+const IS_PROD = import.meta.env.PROD; // Vite sets this automatically
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const ChatPanel = ({ isOpen, onClose, organizationId, user, projectId }) => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const socketRef = useRef();
+  const pollRef = useRef();
   const chatEndRef = useRef(null);
 
- useEffect(() => {
   const fetchMessages = async () => {
     try {
-      // organizationId ki jagah projectId use karein
-      const res = await fetch(`http://localhost:5000/api/v1/messages/${projectId}`);
+      const res = await fetch(`${API_URL}/api/v1/messages/${projectId}`);
       const data = await res.json();
       setMessages(data);
-    } catch (err) { console.error("Error fetching history"); }
+    } catch (err) {
+      console.error("Error fetching history", err);
+    }
   };
-  
-  if (projectId) fetchMessages();
-}, [projectId]);
 
   useEffect(() => {
-    // Backend connection
-    socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
-    
- if (projectId) {
-    socketRef.current.emit('joinProjectChat', projectId);
-  }
-
-    // Message receive karna
-    socketRef.current.on('receiveMessage', (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    return () => socketRef.current.disconnect();
+    if (projectId) fetchMessages();
   }, [projectId]);
 
-  // Auto-scroll to bottom
+  useEffect(() => {
+    if (!projectId) return;
+
+    if (!IS_PROD) {
+      // DEV: real-time via socket.io
+      socketRef.current = io(API_URL);
+      socketRef.current.emit('joinProjectChat', projectId);
+      socketRef.current.on('receiveMessage', (msg) => {
+        setMessages((prev) => [...prev, msg]);
+      });
+      return () => socketRef.current.disconnect();
+    } else {
+      // PROD: no sockets on Vercel — poll instead
+      pollRef.current = setInterval(fetchMessages, 3000); // every 3s
+      return () => clearInterval(pollRef.current);
+    }
+  }, [projectId]);
+
   useEffect(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages]);
 
- const sendMessage = () => {
-  if (!text.trim()) return;
-  const msgData = { 
-    text, 
-    sender: user._id, // Yahan name ki jagah ID bhejen
-    projectId
+  const sendMessage = async () => {
+    if (!text.trim()) return;
+    const msgData = { text, sender: user._id, projectId };
+
+    if (!IS_PROD && socketRef.current) {
+      socketRef.current.emit('sendMessage', msgData);
+    } else {
+      // PROD: send via REST, then refresh immediately for snappy feel
+      try {
+        await fetch(`${API_URL}/api/v1/messages/${projectId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(msgData),
+        });
+        fetchMessages();
+      } catch (err) {
+        console.error("Send failed", err);
+      }
+    }
+    setText('');
   };
-  socketRef.current.emit('sendMessage', msgData);
-  setText('');
-};
 
 const handleFileUpload = async (e) => {
   const file = e.target.files[0];
