@@ -17,7 +17,7 @@ const upload = multer({ dest: 'uploads/' });
 require('./config/passport');
 
 const app = express();
-
+const server = http.createServer(app);
 // Middlewares
 app.use(cors({
   origin: [process.env.FRONTEND_URL || "http://localhost:5173"],
@@ -29,7 +29,7 @@ app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));
 app.use(passport.initialize());
 
-// DB Connection
+
 connectDB();
 
 // Routes
@@ -39,7 +39,7 @@ app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/team', teamRoutes);
 
 // Socket Logic (Only initialize if not in production environment to avoid Vercel crash)
-const server = http.createServer(app);
+
 let io;
   io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST","PUT", "PATCH", "DELETE"] }
