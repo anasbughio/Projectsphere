@@ -47,7 +47,7 @@ exports.registerOrg = async (req, res) => {
       console.error("CRITICAL ERROR IN EMAIL SENDING:", error);
       await User.findByIdAndDelete(user._id);
       await Organization.findByIdAndDelete(organization._id);
-      return res.status(500).json({ message: 'Error sending verification email. Try again.' });
+      return res.status(500).json({ message: 'Error sending verification email. Check the server email configuration.' });
     }
 
     // Yahan tokens NAHI bhejenge, sirf success message denge
