@@ -25,7 +25,7 @@ const DashboardLayout = () => {
     } catch (error) {
       console.error("Logout API failed", error);
     } finally {
-      // 2. Frontend se LocalStorage (Access Token & User Data) clear karein
+  
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
