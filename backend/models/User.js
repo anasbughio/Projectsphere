@@ -31,6 +31,9 @@ role: {
       ref: 'Organization',
       // required: true,
     },
+    refreshToken: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
