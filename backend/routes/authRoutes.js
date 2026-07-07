@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { registerOrg, login } = require('../controllers/authController');
+const { registerOrg, login ,refreshToken, logout} = require('../controllers/authController');
 const generateToken = require('../utils/generateToken');
 const passport = require('passport');
 
@@ -29,4 +29,6 @@ router.get('/google/callback',
 
 router.post('/register', registerOrg);
 router.post('/login', login);
+router.get('/refresh', refreshToken); // 👉 Naya route
+router.post('/logout', logout);
 module.exports = router;

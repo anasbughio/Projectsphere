@@ -18,10 +18,20 @@ const DashboardLayout = () => {
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+ const handleLogout = async () => {
+    try {
+      // 1. Backend API ko call karein taake Refresh Token Cookie aur DB entry delete ho jaye
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error("Logout API failed", error);
+    } finally {
+  
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // 3. User ko wapas Login page par bhej dein
+      navigate('/login');
+    }
   };
 
   // Active route check karne ke liye helper
