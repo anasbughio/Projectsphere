@@ -13,6 +13,7 @@ import KanbanBoard from './pages/KanbanBoard';
 import Team from './pages/Team';
 import AuthSuccess from './pages/AuthSuccess';
 import TaskForm from './pages/TaskForm';
+import VerifyEmail from './pages/VerifyEmail';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify" element={<VerifyEmail />} />
         </Route>
 
 

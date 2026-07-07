@@ -34,6 +34,13 @@ role: {
     refreshToken: {
       type: String,
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationCode: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

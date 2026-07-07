@@ -20,7 +20,8 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Base URL pehle hi '/api/v1' hai, isliye yahan sirf '/auth/register' use kiya hai
+      // Backend se sirf response le rahe hain, token nahi save kar rahe
+      // Kyunke abhi email verify hona baqi hai!
       const response = await api.post('/auth/register', {
         orgName,
         userName,
@@ -28,10 +29,11 @@ const Register = () => {
         password
       });
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // 👉 NAYA FLOW: 
+      // User ko login karwane ke bajaye OTP wali screen par bhej rahe hain
+      // Email pass kar rahe hain taake wo screen par dikha sake
+      navigate('/verify', { state: { email: email } });
       
-      navigate('/board');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {

@@ -17,28 +17,76 @@ exports.registerOrg = async (req, res) => {
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ message: 'User already exists' });
 
+    // 6-digit random verification code banayen
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     const organization = await Organization.create({ name: orgName });
 
     const user = await User.create({
-      name: userName, email, password, role: 'Admin', organizationId: organization._id,
+      name: userName, 
+      email, 
+      password, 
+      role: 'Admin', 
+      organizationId: organization._id,
+      verificationCode // OTP save kar liya
     });
 
-    // Dono tokens generate karein
-    const { accessToken, refreshToken } = generateToken(user._id, organization._id, user.role);
+    // Email Send Karein
+    const emailHtml = `
+      <h2>Welcome to ProjectSphere!</h2>
+      <p>Your email verification code is: <strong>${verificationCode}</strong></p>
+      <p>Please enter this code in the app to complete your registration.</p>
+    `;
+
+    try {
+      await sendEmail({ email: user.email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml });
+    } catch (error) {
+      // Agar email send fail ho jaye
+      await User.findByIdAndDelete(user._id);
+      await Organization.findByIdAndDelete(organization._id);
+      return res.status(500).json({ message: 'Error sending verification email. Try again.' });
+    }
+
+    // Yahan tokens NAHI bhejenge, sirf success message denge
+    res.status(200).json({
+      message: 'Verification code sent to your email',
+      email: user.email // Frontend isay use karega OTP screen par
+    });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.isEmailVerified) return res.status(400).json({ message: 'Email already verified' });
+
+    if (user.verificationCode !== code) {
+      return res.status(400).json({ message: 'Invalid verification code' });
+    }
+
+    // Code match ho gaya! Ab user ko verify kar dein
+    user.isEmailVerified = true;
+    user.verificationCode = undefined; // OTP clear kar dein taake dobara use na ho
     
-    // Refresh token DB mein save karein
+    // Ab user ko dual-tokens issue karein (Login process complete)
+    const { accessToken, refreshToken } = generateToken(user._id, user.organizationId, user.role);
+    
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    // Cookie set karein
     res.cookie('jwt_refresh', refreshToken, cookieOptions);
 
-    res.status(201).json({
-      message: 'Organization and Admin registered successfully',
-      token: accessToken, // 15-min token
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: organization._id },
+    res.json({
+      message: 'Email verified and logged in successfully',
+      token: accessToken,
+      user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId },
     });
-  } catch (error) { res.status(500).json({ message: error.message }); }
+
+  } catch (error) { res.status(500).json({ message: "Internal Server Error" }); }
 };
 
 
