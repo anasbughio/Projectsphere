@@ -20,7 +20,6 @@ const DashboardLayout = () => {
 
  const handleLogout = async () => {
     try {
-      // 1. Backend API ko call karein taake Refresh Token Cookie aur DB entry delete ho jaye
       await api.post('/auth/logout');
     } catch (error) {
       console.error("Logout API failed", error);
@@ -28,8 +27,6 @@ const DashboardLayout = () => {
   
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      
-      // 3. User ko wapas Login page par bhej dein
       navigate('/login');
     }
   };
