@@ -4,6 +4,8 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
   // 👉 NAYA: Cookies ko backend tak bhejne ke liye laazmi hai
   withCredentials: true, 
+  // Fail fast in production when backend is unreachable
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000,
 });
 
 // Request Interceptor (Access token add karne ke liye)
