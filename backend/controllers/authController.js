@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Organization = require('../models/Organization');
 const generateToken = require('../utils/generateToken');
+const sendEmail = require('../utils/sendEmail');
 const jwt = require('jsonwebtoken');
 
 const cookieOptions = {
@@ -39,9 +40,11 @@ exports.registerOrg = async (req, res) => {
     `;
 
     try {
+      console.log("Attempting to send email to:", user.email);
       await sendEmail({ email: user.email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml });
+      console.log("Email sent successfully!");
     } catch (error) {
-      // Agar email send fail ho jaye
+      console.error("CRITICAL ERROR IN EMAIL SENDING:", error);
       await User.findByIdAndDelete(user._id);
       await Organization.findByIdAndDelete(organization._id);
       return res.status(500).json({ message: 'Error sending verification email. Try again.' });
