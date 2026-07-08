@@ -10,10 +10,18 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 
 // Google callback route
 router.get('/google/callback',
-  // 1. CHANGE HERE: Sirf '/login' likha hai
   passport.authenticate('google', { session: false, failureRedirect: '/login' }),
-  (req, res) => {
-    const token = generateToken(req.user._id, req.user.organizationId, req.user.role);
+  async (req, res) => {
+    const token = await generateToken(req.user._id, req.user.organizationId, req.user.role);
+    // 2. Object mein se asli string extract karein
+    let actualToken = tokenData;
+    if (typeof tokenData === 'object') {
+      // Zyadatar accessToken ya token ke naam se property hoti hai
+      actualToken = tokenData.accessToken || tokenData.token; 
+    }
+
+    // Terminal mein check karne ke liye taake confirm ho jaye
+    console.log("--> Asli Token:", actualToken);
     const userObj = {
       _id: req.user._id,
       name: req.user.name,
@@ -22,7 +30,7 @@ router.get('/google/callback',
       organizationId: req.user.organizationId
     };
     const userDataStr = encodeURIComponent(JSON.stringify(userObj));
-    res.redirect(`${FRONTEND_URL}/auth-success?token=${token}&userData=${userDataStr}`);
+    res.redirect(`${FRONTEND_URL}/auth-success?token=${actualToken}&userData=${userDataStr}`);
   }
 );
 
