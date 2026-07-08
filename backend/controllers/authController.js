@@ -4,7 +4,7 @@ const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
 const jwt = require('jsonwebtoken');
 const Otp = require('../models/Otp');
-
+const bcrypt = require('bcryptjs');
 const cookieOptions = {
   httpOnly: true,
   secure: true, // Render par HTTPS hota hai isliye ye true hona chahiye
@@ -176,4 +176,73 @@ exports.logout = async (req, res) => {
   // Cookie clear karein
   res.clearCookie('jwt_refresh', { httpOnly: true, secure: true, sameSite: 'none' });
   res.json({ message: 'Logged out successfully' });
+};
+
+// POST /api/v1/auth/forgot-password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // 1. Check karein user DB mein hai ya nahi
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found with this email" });
+    }
+
+    // 2. 6-digit OTP Generate karein
+    const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 3. OTP ko DB mein save karein (expiry time ke sath e.g., 10 mins)
+    user.resetPasswordOtp = resetOtp;
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; 
+    await user.save();
+
+    // 4. Brevo ke zariye Email bhejein
+    const emailOptions = {
+      email: user.email,
+      subject: "ProjectSphere - Password Reset OTP",
+      html: `<h3>Your Password Reset OTP is: ${resetOtp}</h3><p>This OTP is valid for 10 minutes.</p>`
+    };
+
+    await sendEmail(emailOptions);
+
+    res.status(200).json({ success: true, message: "Password reset OTP sent to email" });
+
+  } catch (error) {
+    console.error("---> ❌ Forgot Password Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    // 1. User find karein aur OTP match/expiry check karein
+    const user = await User.findOne({
+      email,
+      resetPasswordOtp: otp,
+      resetPasswordExpires: { $gt: Date.now() } // Ensure OTP expire nahi hua
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid or Expired OTP" });
+    }
+
+    // 2. Naya password hash karein (agar plain text save nahi kar rahe)
+   user.password = newPassword;
+    // 3. Purana OTP clear kar dein
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordExpires = undefined;
+    
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password reset successfully! You can now login." });
+
+  } catch (error) {
+    console.error("---> ❌ Reset Password Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
 };

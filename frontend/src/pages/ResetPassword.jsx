@@ -1,30 +1,38 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import api from '../services/api';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, KeyRound, ArrowRight } from 'lucide-react';
+import api from '../services/api'; // Make sure path is correct
 
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+const ResetPassword = () => {
+  const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  // Agar forgot-password screen se email pass hui hai toh automatically set kar dein
+  const [email, setEmail] = useState(location.state?.email || '');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleResetPassword = async (e) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/reset-password', { email, otp, newPassword });
+      setMessage(response.data.message);
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      navigate('/board');
+      // Success ke baad user ko thori der mein login par bhej dein
+      setTimeout(() => {
+        navigate('/login');
+      }, 2500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      setError(err.response?.data?.message || 'Failed to reset password. Please check your OTP.');
     } finally {
       setLoading(false);
     }
@@ -40,14 +48,13 @@ const Login = () => {
       {/* Header outside the card */}
       <div className="text-center mb-8 z-10">
         <h1 className="text-3xl font-extrabold text-[#d2d4ff] tracking-wide mb-1">ProjectSphere</h1>
-        <p className="text-[#a0a4b8] text-sm">Enterprise-grade productivity, redefined.</p>
       </div>
 
       {/* Main Card */}
       <div className="bg-[#2a2d3e]/90 backdrop-blur-xl border border-white/5 p-8 rounded-2xl shadow-2xl w-full max-w-[420px] z-10">
         <div className="text-center mb-8">
-          <h2 className="text-xl font-bold text-white mb-1">Welcome Back</h2>
-          <p className="text-[#84889c] text-sm">Please enter your details to sign in</p>
+          <h2 className="text-xl font-bold text-white mb-1">Create New Password</h2>
+          <p className="text-[#84889c] text-sm">Enter the OTP sent to your email and your new password.</p>
         </div>
         
         {error && (
@@ -56,10 +63,15 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleLogin}>
+        {message && (
+          <div className="mb-6 p-3 bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-lg text-center font-medium">
+            {message}
+          </div>
+        )}
+
+        <form onSubmit={handleResetPassword}>
           {/* =========================================
               INPUTS BLOCK 
-              (Inputs grouped strictly separate)
           ========================================= */}
           <div className="flex flex-col gap-5 mb-6">
             
@@ -81,20 +93,36 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password Input */}
+            {/* OTP Input */}
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-semibold text-[#84889c] tracking-wide">Password</label>
-                <Link to="/forgot-password" className="text-xs font-medium text-[#7c7fff] hover:text-[#979aff] transition">Forgot password?</Link>
+              <label className="block text-xs font-semibold text-[#84889c] mb-2 tracking-wide">6-Digit OTP</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <KeyRound size={16} className="text-[#606479]" />
+                </div>
+                <input 
+                  type="text" 
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                  maxLength={6}
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white placeholder-[#4b4e63] tracking-widest focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition"
+                  placeholder="123456"
+                />
               </div>
+            </div>
+
+            {/* New Password Input */}
+            <div>
+              <label className="block text-xs font-semibold text-[#84889c] mb-2 tracking-wide">New Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock size={16} className="text-[#606479]" />
                 </div>
                 <input 
                   type={showPassword ? "text" : "password"} 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   required
                   className="w-full pl-10 pr-10 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition"
                   placeholder="••••••••"
@@ -110,28 +138,15 @@ const Login = () => {
                 </div>
               </div>
             </div>
-
-            {/* Checkbox */}
-            <div className="flex items-center mt-1">
-              <input 
-                type="checkbox" 
-                id="remember" 
-                className="w-4 h-4 rounded border-white/10 bg-[#1a1c26] text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer"
-              />
-              <label htmlFor="remember" className="ml-2 text-xs font-medium text-[#84889c] cursor-pointer">
-                Stay logged in for 30 days
-              </label>
-            </div>
             
           </div>
 
           {/* =========================================
               BUTTONS BLOCK 
-              (Actions grouped strictly separate)
           ========================================= */}
           <div className="flex flex-col gap-5 mt-8">
             
-            {/* Primary Sign In Button */}
+            {/* Reset Password Button */}
             <button 
               type="submit" 
               disabled={loading}
@@ -139,42 +154,15 @@ const Login = () => {
                 loading ? 'bg-[#5b5eb8] cursor-not-allowed' : 'bg-[#7c7fff] hover:bg-[#6b6de0]'
               }`}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Resetting...' : 'Reset Password'}
               {!loading && <ArrowRight size={16} />}
             </button>
-
-            {/* Divider */}
-            <div className="flex items-center justify-center gap-3">
-              <div className="h-px w-full bg-white/5"></div>
-              <span className="text-[10px] font-semibold text-[#606479] tracking-widest whitespace-nowrap">OR CONTINUE WITH</span>
-              <div className="h-px w-full bg-white/5"></div>
-            </div>
-
-            <div className="grid gap-3">
-              <button
-            onClick={() => window.location.href = '/api/v1/auth/google'}
-              type="button" className="flex items-center justify-center gap-2 bg-[#1a1c26] border border-white/5 hover:bg-[#222533] transition text-[#a0a4b8] text-sm font-medium py-2.5 rounded-lg">
-               <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-4 h-4" />
-                Google
-              </button>
-            </div>
             
           </div>
         </form>
       </div>
-
-      {/* Footer text outside the card */}
-      <div className="mt-8 z-10 text-center">
-        <p className="text-sm text-[#606479]">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-[#7c7fff] hover:text-[#979aff] font-medium transition">
-            Request Access
-          </Link>
-        </p>
-      </div>
-      
     </div>
   );
 };
 
-export default Login;
+export default ResetPassword;

@@ -41,6 +41,12 @@ role: {
     verificationCode: {
       type: String,
     },
+    resetPasswordOtp: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
