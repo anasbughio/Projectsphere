@@ -4,6 +4,7 @@ const { registerOrg, login ,refreshToken, logout,verifyEmail,forgotPassword, res
 const generateToken = require('../utils/generateToken');
 const passport = require('passport');
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'localhost:5173'; // Default frontend URL
 // Google login trigger karega
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
@@ -23,7 +24,7 @@ router.get('/google/callback',
     const userDataStr = encodeURIComponent(JSON.stringify(userObj));
     
     // 2. CHANGE HERE: Sirf '/auth-success...' likha hai
-    res.redirect(`/auth-success?token=${token}&userData=${userDataStr}`);
+    res.redirect(`${FRONTEND_URL}/auth-success?token=${token}&userData=${userDataStr}`);
   }
 );
 
