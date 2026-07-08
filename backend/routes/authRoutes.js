@@ -4,7 +4,7 @@ const { registerOrg, login ,refreshToken, logout,verifyEmail,forgotPassword, res
 const generateToken = require('../utils/generateToken');
 const passport = require('passport');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'localhost:5173'; // Default frontend URL
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 // Google login trigger karega
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
