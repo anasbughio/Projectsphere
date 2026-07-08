@@ -1,47 +1,30 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const sendEmail = async (options) => {
-  const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
+  const resendApiKey = process.env.RESEND_API_KEY;
 
-  if (!emailUser || !emailPass) {
-    console.error("---> ❌ EMAIL CREDENTIALS MISSING IN ENV");
-    throw new Error('Email credentials missing');
+  if (!resendApiKey) {
+    console.error("---> ❌ RESEND_API_KEY IS MISSING IN ENV");
+    throw new Error('Resend API key missing');
   }
 
-  console.log("---> 🔄 Configuring Mail Transporter...");
-  
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-      user: emailUser,
-      pass: emailPass,
-    },
-    // 👉 YEH DO LINES SARA RAHAZ KHOL DENGY
-    logger: true, 
-    debug: true,
-    // Render connection issues ke liye
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
-
-  const mailOptions = {
-    from: `"ProjectSphere" <${emailUser}>`,
-    to: options.email,
-    subject: options.subject,
-    html: options.html,
-  };
+  const resend = new Resend(resendApiKey);
 
   try {
-    console.log("---> ⏳ Starting to send mail...");
-    const info = await transporter.sendMail(mailOptions);
-    console.log('---> ✅ Email sent out of Node:', info.messageId);
-    return info;
+    console.log("---> ⏳ Sending Email via Resend API to:", options.email);
+    
+    const data = await resend.emails.send({
+      // Resend Free Tier par 'from' email yahi hoti hai:
+      from: 'ProjectSphere <onboarding@resend.dev>', 
+      to: options.email,
+      subject: options.subject,
+      html: options.html,
+    });
+    
+    console.log('---> ✅ Email sent successfully via Resend API! ID:', data.id);
+    return data;
   } catch (error) {
-    console.error('---> ❌ Exact Nodemailer Error:', error);
+    console.error('---> ❌ Resend API Error:', error);
     throw error;
   }
 };
