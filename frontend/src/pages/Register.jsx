@@ -20,7 +20,8 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Base URL pehle hi '/api/v1' hai, isliye yahan sirf '/auth/register' use kiya hai
+      // Backend se sirf response le rahe hain, token nahi save kar rahe
+      // Kyunke abhi email verify hona baqi hai!
       const response = await api.post('/auth/register', {
         orgName,
         userName,
@@ -28,12 +29,18 @@ const Register = () => {
         password
       });
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // 👉 NAYA FLOW: 
+      // User ko login karwane ke bajaye OTP wali screen par bhej rahe hain
+      // Email pass kar rahe hain taake wo screen par dikha sake
+      navigate('/verify', { state: { email: email } });
       
-      navigate('/board');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      // Axios timeout or network errors may not have response
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setError('Server is unreachable. Please try again later.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -173,9 +180,9 @@ const Register = () => {
               {!loading && <ArrowRight size={16} />}
             </button>
             
-             <div className="grid gap-3">
+            <div className="grid gap-3">
               <button
-             onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`}
+             onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || ''}/auth/google`}
               type="button" className="flex items-center justify-center gap-2 bg-[#1a1c26] border border-white/5 hover:bg-[#222533] transition text-[#a0a4b8] text-sm font-medium py-2.5 rounded-lg">
                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-4 h-4" />
                 Google

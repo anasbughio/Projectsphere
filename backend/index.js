@@ -17,10 +17,37 @@ const upload = multer({ dest: 'uploads/' });
 require('./config/passport');
 
 const app = express();
-
+const server = http.createServer(app);
 // Middlewares
+// Configure CORS origins from env var(s). Accept comma-separated list.
+const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use((req, res, next) => {
+  console.log('Incoming request:', req.method, req.path, 'Origin:', req.headers.origin || 'n/a');
+  // Log shallow body preview but redact sensitive fields
+  if (req.body) {
+    const preview = { ...req.body };
+    if (preview.password) preview.password = '[REDACTED]';
+    try {
+      console.log('Body preview:', Object.keys(preview).length ? JSON.stringify(preview) : '<empty>');
+    } catch (e) {
+      console.log('Body preview: <unserializable>');
+    }
+  }
+  next();
+});
+
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || "http://localhost:5173"],
+  origin: function(origin, callback) {
+    // Allow non-browser requests (like curl or server-to-server) when origin is undefined
+    if (!origin) return callback(null, true);
+    if (frontendUrls.includes(origin)) return callback(null, true);
+    console.warn('Blocked CORS origin:', origin);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -29,7 +56,7 @@ app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));
 app.use(passport.initialize());
 
-// DB Connection
+
 connectDB();
 
 // Routes
@@ -39,7 +66,7 @@ app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/team', teamRoutes);
 
 // Socket Logic (Only initialize if not in production environment to avoid Vercel crash)
-const server = http.createServer(app);
+
 let io;
   io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST","PUT", "PATCH", "DELETE"] }

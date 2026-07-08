@@ -1,7 +1,9 @@
 const User = require('../models/User');
 const Organization = require('../models/Organization');
 const generateToken = require('../utils/generateToken');
+const sendEmail = require('../utils/sendEmail');
 const jwt = require('jsonwebtoken');
+const Otp = require('../models/Otp');
 
 const cookieOptions = {
   httpOnly: true,
@@ -15,33 +17,95 @@ exports.registerOrg = async (req, res) => {
     const { orgName, userName, email, password } = req.body;
 
     const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: 'User already exists' });
+    if (userExists) return res.status(400).json({ message: 'User already exists and is verified' });
 
-    const organization = await Organization.create({ name: orgName });
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    const user = await User.create({
-      name: userName, email, password, role: 'Admin', organizationId: organization._id,
+    const emailHtml = `
+      <h2>Welcome to ProjectSphere!</h2>
+      <p>Your email verification code is: <strong>${verificationCode}</strong></p>
+      <p>This code will expire in 10 minutes. Please enter it in the app to complete your registration.</p>
+    `;
+
+    // 1. Pehle purana koi OTP ho toh delete karein
+    await Otp.findOneAndDelete({ email });
+    
+    // 2. Naya OTP Database mein foran save karein
+    await Otp.create({
+      email,
+      otp: verificationCode,
+      userData: { orgName, userName, password }
+    });
+    console.log("---> ✅ Temporary OTP saved in DB");
+
+    // 3. 🚀 BACKGROUND EMAIL (Yahan se 'await' hata diya hai)
+    // Ab server email ka wait nahi karega, foran response de dega.
+    sendEmail({ email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml })
+      .then(() => console.log("---> 📧 Background Email sent successfully!"))
+      .catch((error) => console.error("---> ❌ Background Email failed:", error.message));
+
+    // 4. Frontend ko FORAN 200 OK bhej dein taake Vercel timeout na ho!
+    return res.status(200).json({
+      message: 'Verification code sent to your email',
+      email: email 
     });
 
-    // Dono tokens generate karein
-    const { accessToken, refreshToken } = generateToken(user._id, organization._id, user.role);
+  } catch (error) { 
+    console.error("Register Error:", error);
+    res.status(500).json({ message: "Internal Server Error" }); 
+  }
+};
+
+// 2. VERIFY EMAIL (Yahan par Asal DB mein save hoga)
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    // 1. OTP Collection se record dhoondein
+    const otpRecord = await Otp.findOne({ email });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'OTP expired or not found. Please register again.' });
+    }
+
+    // 2. OTP Match karein
+    if (otpRecord.otp !== code) {
+      return res.status(400).json({ message: 'Invalid verification code' });
+    }
+
+    // 3. OTP THEEK HAI! 🎉 Ab Asal DB mein Organization aur User create karein
+    const { orgName, userName, password } = otpRecord.userData;
+
+    const organization = await Organization.create({ name: orgName });
+    const user = await User.create({
+      name: userName, 
+      email, 
+      password, // Pre-save hook automatically bcrypt kar dega
+      role: 'Admin', 
+      organizationId: organization._id,
+      isEmailVerified: true // Direct verified true set karein
+    });
+
+    // 4. Temporary OTP record ko DB se urra dein
+    await Otp.findByIdAndDelete(otpRecord._id);
     
-    // Refresh token DB mein save karein
+    // 5. Dual-tokens issue karein (Login process complete)
+    const { accessToken, refreshToken } = generateToken(user._id, user.organizationId, user.role);
+    
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    // Cookie set karein
     res.cookie('jwt_refresh', refreshToken, cookieOptions);
 
     res.status(201).json({
-      message: 'Organization and Admin registered successfully',
-      token: accessToken, // 15-min token
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: organization._id },
+      message: 'Email verified and Account Created Successfully!',
+      token: accessToken,
+      user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId },
     });
-  } catch (error) { res.status(500).json({ message: error.message }); }
+
+  } catch (error) { 
+    res.status(500).json({ message: "Internal Server Error" }); 
+  }
 };
-
-
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// Connection ko cache karne ke liye global variable
+// Caching ka logic sirf Serverless environments (Vercel) ke liye useful hai
 let cached = global.mongoose;
 
 if (!cached) {
@@ -8,21 +8,26 @@ if (!cached) {
 }
 
 const connectDB = async () => {
-  if (cached.conn) return cached.conn;
+  // Agar pehle se connection mojood hai, toh wahi use karein
+  if (cached.conn) {
+    return cached.conn;
+  }
 
+  // Agar connection promise nahi hai, toh connect karein
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false,
+      bufferCommands: true, // Local ke liye 'true' hona behtar hai
+      maxPoolSize: 10,
     };
 
-    cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
-      return mongoose;
+    cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongooseInstance) => {
+      console.log(`MongoDB Connected: ${mongooseInstance.connection.host}`);
+      return mongooseInstance;
     });
   }
-  
+
   try {
     cached.conn = await cached.promise;
-    console.log(`MongoDB Connected: ${cached.conn.connection.host}`);
   } catch (e) {
     cached.promise = null;
     throw e;
