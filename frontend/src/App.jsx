@@ -14,6 +14,8 @@ import Team from './pages/Team';
 import AuthSuccess from './pages/AuthSuccess';
 import TaskForm from './pages/TaskForm';
 import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword'; // Ya jahan aapne save kiya hai
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -31,6 +33,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
 
