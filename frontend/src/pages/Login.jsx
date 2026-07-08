@@ -118,9 +118,6 @@ const Login = () => {
                 id="remember" 
                 className="w-4 h-4 rounded border-white/10 bg-[#1a1c26] text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer"
               />
-              <label htmlFor="remember" className="ml-2 text-xs font-medium text-[#84889c] cursor-pointer">
-                Stay logged in for 30 days
-              </label>
             </div>
             
           </div>
