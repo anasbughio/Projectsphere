@@ -1,30 +1,40 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-  const resendApiKey = process.env.RESEND_API_KEY;
+  const emailUser = process.env.BREVO_SMTP_USER;
+  const emailPass = process.env.BREVO_SMTP_PASS;
 
-  if (!resendApiKey) {
-    console.error("---> ❌ RESEND_API_KEY IS MISSING IN ENV");
-    throw new Error('Resend API key missing');
+  if (!emailUser || !emailPass) {
+    console.error("---> ❌ BREVO CREDENTIALS MISSING IN ENV");
+    throw new Error('Brevo credentials missing');
   }
 
-  const resend = new Resend(resendApiKey);
+  // Brevo SMTP Configuration
+  const transporter = nodemailer.createTransport({
+    host: 'smtp-relay.brevo.com',
+    port: 587, // Render port 587 allow karta hai Brevo ke liye
+    secure: false, // Port 587 ke liye false hota hai
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
+  });
+
+  const mailOptions = {
+    // Note: 'from' mein wahi email likhein jis se Brevo account banaya hai
+    from: `"ProjectSphere" <anasbughio@gmail.com>`,
+    to: options.email,
+    subject: options.subject,
+    html: options.html,
+  };
 
   try {
-    console.log("---> ⏳ Sending Email via Resend API to:", options.email);
-    
-    const data = await resend.emails.send({
-      // Resend Free Tier par 'from' email yahi hoti hai:
-      from: 'ProjectSphere <onboarding@resend.dev>', 
-      to: options.email,
-      subject: options.subject,
-      html: options.html,
-    });
-    
-    console.log('---> ✅ Email sent successfully via Resend API! ID:', data.id);
-    return data;
+    console.log("---> ⏳ Sending Email via Brevo to:", options.email);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('---> ✅ Email sent successfully via Brevo! ID:', info.messageId);
+    return info;
   } catch (error) {
-    console.error('---> ❌ Resend API Error:', error);
+    console.error('---> ❌ Brevo SMTP Error:', error);
     throw error;
   }
 };
