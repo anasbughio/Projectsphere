@@ -22,8 +22,6 @@ router.get('/google/callback',
       organizationId: req.user.organizationId
     };
     const userDataStr = encodeURIComponent(JSON.stringify(userObj));
-    
-    // 2. CHANGE HERE: Sirf '/auth-success...' likha hai
     res.redirect(`${FRONTEND_URL}/auth-success?token=${token}&userData=${userDataStr}`);
   }
 );
