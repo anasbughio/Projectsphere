@@ -40,7 +40,7 @@ exports.registerOrg = async (req, res) => {
     `;
 
     try {
-      console.log("Attempting to send email to:", user.email);
+      console.log("DEBUG: Email User in Production:", process.env.EMAIL_USER);
       await sendEmail({ email: user.email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml });
       console.log("Email sent successfully!");
     } catch (error) {
