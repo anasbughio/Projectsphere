@@ -5,16 +5,27 @@ const sendEmail = async (options) => {
   const emailPass = process.env.EMAIL_PASS;
 
   if (!emailUser || !emailPass) {
-    throw new Error('Email credentials missing in Render Environment');
+    console.error("---> ❌ EMAIL CREDENTIALS MISSING IN ENV");
+    throw new Error('Email credentials missing');
   }
 
-  // Sirf service: 'Gmail' likhne se Nodemailer khud best Host, Port aur Secure settings pick kar leta hai!
+  console.log("---> 🔄 Configuring Mail Transporter...");
+  
   const transporter = nodemailer.createTransport({
-    service: 'Gmail', 
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
       user: emailUser,
       pass: emailPass,
     },
+    // 👉 YEH DO LINES SARA RAHAZ KHOL DENGY
+    logger: true, 
+    debug: true,
+    // Render connection issues ke liye
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 
   const mailOptions = {
@@ -25,11 +36,12 @@ const sendEmail = async (options) => {
   };
 
   try {
+    console.log("---> ⏳ Starting to send mail...");
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent instantly:', info.messageId);
+    console.log('---> ✅ Email sent out of Node:', info.messageId);
     return info;
   } catch (error) {
-    console.error('Email send failed:', error);
+    console.error('---> ❌ Exact Nodemailer Error:', error);
     throw error;
   }
 };
