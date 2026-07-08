@@ -3,6 +3,7 @@ const Organization = require('../models/Organization');
 const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
 const jwt = require('jsonwebtoken');
+const Otp = require('../models/Otp');
 
 const cookieOptions = {
   httpOnly: true,
@@ -11,71 +12,87 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
+// 1. REGISTER ORG (Sirf OTP aur Temporary Data Save Karega)
 exports.registerOrg = async (req, res) => {
   try {
     const { orgName, userName, email, password } = req.body;
 
+    // Check karein ke kahin asal DB mein user pehle se toh nahi
     const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: 'User already exists' });
+    if (userExists) return res.status(400).json({ message: 'User already exists and is verified' });
 
     // 6-digit random verification code banayen
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const organization = await Organization.create({ name: orgName });
-
-    const user = await User.create({
-      name: userName, 
-      email, 
-      password, 
-      role: 'Admin', 
-      organizationId: organization._id,
-      verificationCode // OTP save kar liya
-    });
 
     // Email Send Karein
     const emailHtml = `
       <h2>Welcome to ProjectSphere!</h2>
       <p>Your email verification code is: <strong>${verificationCode}</strong></p>
-      <p>Please enter this code in the app to complete your registration.</p>
+      <p>This code will expire in 10 minutes. Please enter it in the app to complete your registration.</p>
     `;
 
     try {
-      console.log("DEBUG: Email User in Production:", process.env.EMAIL_USER);
-      await sendEmail({ email: user.email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml });
-      console.log("Email sent successfully!");
-    } catch (error) {
-      console.error("CRITICAL ERROR IN EMAIL SENDING:", error);
-      await User.findByIdAndDelete(user._id);
-      await Organization.findByIdAndDelete(organization._id);
-      return res.status(500).json({ message: 'Error sending verification email. Check the server email configuration.' });
-    }
+      console.log("---> ⏳ Sending Email first...");
+      await sendEmail({ email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml });
+      
+      // Email successful hone ke baad, Purana koi OTP ho toh delete karein
+      await Otp.findOneAndDelete({ email });
+      
+      // Ab Data ko sirf Temporary OTP collection mein dalen (Asal DB mein nahi)
+      await Otp.create({
+        email,
+        otp: verificationCode,
+        userData: { orgName, userName, password }
+      });
+      console.log("---> ✅ Email sent and Temporary OTP saved");
 
-    // Yahan tokens NAHI bhejenge, sirf success message denge
-    res.status(200).json({
-      message: 'Verification code sent to your email',
-      email: user.email // Frontend isay use karega OTP screen par
-    });
-  } catch (error) { res.status(500).json({ message: error.message }); }
+      return res.status(200).json({
+        message: 'Verification code sent to your email',
+        email: email 
+      });
+
+    } catch (error) {
+      console.error("Email Error:", error.message);
+      return res.status(500).json({ message: 'Email service unavailable. Please try again.' });
+    }
+  } catch (error) { 
+    res.status(500).json({ message: error.message }); 
+  }
 };
 
+// 2. VERIFY EMAIL (Yahan par Asal DB mein save hoga)
 exports.verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    // 1. OTP Collection se record dhoondein
+    const otpRecord = await Otp.findOne({ email });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'OTP expired or not found. Please register again.' });
+    }
 
-    if (user.isEmailVerified) return res.status(400).json({ message: 'Email already verified' });
-
-    if (user.verificationCode !== code) {
+    // 2. OTP Match karein
+    if (otpRecord.otp !== code) {
       return res.status(400).json({ message: 'Invalid verification code' });
     }
 
-    // Code match ho gaya! Ab user ko verify kar dein
-    user.isEmailVerified = true;
-    user.verificationCode = undefined; // OTP clear kar dein taake dobara use na ho
+    // 3. OTP THEEK HAI! 🎉 Ab Asal DB mein Organization aur User create karein
+    const { orgName, userName, password } = otpRecord.userData;
+
+    const organization = await Organization.create({ name: orgName });
+    const user = await User.create({
+      name: userName, 
+      email, 
+      password, // Pre-save hook automatically bcrypt kar dega
+      role: 'Admin', 
+      organizationId: organization._id,
+      isEmailVerified: true // Direct verified true set karein
+    });
+
+    // 4. Temporary OTP record ko DB se urra dein
+    await Otp.findByIdAndDelete(otpRecord._id);
     
-    // Ab user ko dual-tokens issue karein (Login process complete)
+    // 5. Dual-tokens issue karein (Login process complete)
     const { accessToken, refreshToken } = generateToken(user._id, user.organizationId, user.role);
     
     user.refreshToken = refreshToken;
@@ -83,16 +100,16 @@ exports.verifyEmail = async (req, res) => {
 
     res.cookie('jwt_refresh', refreshToken, cookieOptions);
 
-    res.json({
-      message: 'Email verified and logged in successfully',
+    res.status(201).json({
+      message: 'Email verified and Account Created Successfully!',
       token: accessToken,
       user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId },
     });
 
-  } catch (error) { res.status(500).json({ message: "Internal Server Error" }); }
+  } catch (error) { 
+    res.status(500).json({ message: "Internal Server Error" }); 
+  }
 };
-
-
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
