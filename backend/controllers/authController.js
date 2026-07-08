@@ -12,51 +12,47 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
-// 1. REGISTER ORG (Sirf OTP aur Temporary Data Save Karega)
 exports.registerOrg = async (req, res) => {
   try {
     const { orgName, userName, email, password } = req.body;
 
-    // Check karein ke kahin asal DB mein user pehle se toh nahi
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ message: 'User already exists and is verified' });
 
-    // 6-digit random verification code banayen
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Email Send Karein
     const emailHtml = `
       <h2>Welcome to ProjectSphere!</h2>
       <p>Your email verification code is: <strong>${verificationCode}</strong></p>
       <p>This code will expire in 10 minutes. Please enter it in the app to complete your registration.</p>
     `;
 
-    try {
-      console.log("---> ⏳ Sending Email first...");
-      await sendEmail({ email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml });
-      
-      // Email successful hone ke baad, Purana koi OTP ho toh delete karein
-      await Otp.findOneAndDelete({ email });
-      
-      // Ab Data ko sirf Temporary OTP collection mein dalen (Asal DB mein nahi)
-      await Otp.create({
-        email,
-        otp: verificationCode,
-        userData: { orgName, userName, password }
-      });
-      console.log("---> ✅ Email sent and Temporary OTP saved");
+    // 1. Pehle purana koi OTP ho toh delete karein
+    await Otp.findOneAndDelete({ email });
+    
+    // 2. Naya OTP Database mein foran save karein
+    await Otp.create({
+      email,
+      otp: verificationCode,
+      userData: { orgName, userName, password }
+    });
+    console.log("---> ✅ Temporary OTP saved in DB");
 
-      return res.status(200).json({
-        message: 'Verification code sent to your email',
-        email: email 
-      });
+    // 3. 🚀 BACKGROUND EMAIL (Yahan se 'await' hata diya hai)
+    // Ab server email ka wait nahi karega, foran response de dega.
+    sendEmail({ email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml })
+      .then(() => console.log("---> 📧 Background Email sent successfully!"))
+      .catch((error) => console.error("---> ❌ Background Email failed:", error.message));
 
-    } catch (error) {
-      console.error("Email Error:", error.message);
-      return res.status(500).json({ message: 'Email service unavailable. Please try again.' });
-    }
+    // 4. Frontend ko FORAN 200 OK bhej dein taake Vercel timeout na ho!
+    return res.status(200).json({
+      message: 'Verification code sent to your email',
+      email: email 
+    });
+
   } catch (error) { 
-    res.status(500).json({ message: error.message }); 
+    console.error("Register Error:", error);
+    res.status(500).json({ message: "Internal Server Error" }); 
   }
 };
 
