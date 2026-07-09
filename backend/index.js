@@ -79,7 +79,14 @@ let io;
       socket.join(String(orgId));
       console.log(`User joined organization room: ${orgId}`);
     });
+    
     socket.on('joinProjectChat', (projectId) => socket.join(projectId));
+    
+  socket.on('joinUserRoom', (userId) => {
+    socket.join(String(userId));
+    console.log(`User joined personal notification room: ${userId}`);
+  });
+
     
     socket.on('sendMessage', async (data) => {
       const { text, sender, projectId, fileUrl } = data;
