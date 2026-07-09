@@ -1,7 +1,8 @@
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const { normalizeRole } = require('../middlewares/authMiddleware');
-const Notification = require('../models/Notification'); // Agar file bani hui hai toh
+const Notification = require('../models/Notification'); 
+const { logAudit } = require('../utils/auditLogger');
 
 const isAdmin = (user) => normalizeRole(user?.role) === 'admin';
 
@@ -35,6 +36,14 @@ exports.createTask = async (req, res) => {
       isGlobal: false,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
+    });
+    await logAudit({
+      organizationId: req.user.organizationId, 
+      user: req.user._id, // Jis user ne task banaya
+      action: 'TASK_CREATED',
+      entityType: 'Task',
+      entityId: task._id,
+      details: `Task "${task.title}" was created.`
     });
 
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');

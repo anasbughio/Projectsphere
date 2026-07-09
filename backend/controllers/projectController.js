@@ -1,5 +1,5 @@
 const Project = require('../models/Project');
-
+const { logAudit } = require('../utils/auditLogger');
 // Create a New Project
 exports.createProject = async (req, res) => {
   try {
@@ -12,7 +12,14 @@ exports.createProject = async (req, res) => {
       organizationId: req.user.organizationId,
       createdBy: req.user._id,
     });
-
+await logAudit({
+      organizationId: req.user.organizationId, // Ye protected route hai is liye req.user available hoga
+      user: req.user._id,
+      action: 'PROJECT_CREATED',
+      entityType: 'Project',
+      entityId: project._id,
+      details: `Project "${project.name}" was created.`
+    });
     res.status(201).json(project);
   } catch (error) {
     res.status(500).json({ message: error.message });

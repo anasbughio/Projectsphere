@@ -5,6 +5,7 @@ const sendEmail = require('../utils/sendEmail');
 const jwt = require('jsonwebtoken');
 const Otp = require('../models/Otp');
 const bcrypt = require('bcryptjs');
+const { logAudit } = require('../utils/auditLogger');
 const cookieOptions = {
   httpOnly: true,
   secure: true, // Render par HTTPS hota hai isliye ye true hona chahiye
@@ -116,7 +117,14 @@ exports.login = async (req, res) => {
     if (user && (await user.matchPassword(password))) {
       const { accessToken, refreshToken } = generateToken(user._id, user.organizationId, user.role);
       
-      // Refresh token DB mein save karein
+      await logAudit({
+      organizationId: user.organizationId, // Yahan req.user nahi hoga kyunke user abhi login ho raha hai
+      user: user._id,
+      action: 'USER_LOGIN',
+      entityType: 'User',
+      entityId: user._id,
+      details: `${user.name} logged into the system.`
+    });
       user.refreshToken = refreshToken;
       await user.save({ validateBeforeSave: false });
 
