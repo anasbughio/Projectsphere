@@ -1,6 +1,7 @@
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const { normalizeRole } = require('../middlewares/authMiddleware');
+const Notification = require('../models/Notification'); // Agar file bani hui hai toh
 
 const isAdmin = (user) => normalizeRole(user?.role) === 'admin';
 
@@ -17,8 +18,6 @@ const canModifyTask = (user, task) => {
   );
 };
 
-// @desc    Create new Project Task (Regular Task)
-// @route   POST /api/v1/tasks
 exports.createTask = async (req, res) => {
   try {
     const { title, description, status, priority, dueDate, department, projectId, assignedTo } = req.body;
@@ -41,14 +40,31 @@ exports.createTask = async (req, res) => {
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
 
     const io = req.app.get('socketio');
+    
+    // 1. Existing Logic: Poori organization ki board screen update karne ke liye
     io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
+
+    // 2. 🔥 NEW LOGIC: Sirf Assigned User ko live Bell Notification bhejne ke liye
+    if (assignedTo && String(assignedTo) !== String(req.user._id)) {
+      // Step A: Database mein save karein
+      const notification = await Notification.create({
+        recipient: assignedTo,
+        sender: req.user._id,
+        type: 'TASK_ASSIGNED',
+        title: 'New Task Assigned',
+        message: `You have been assigned a new task: "${title}"`,
+        relatedId: task._id
+      });
+
+      // Step B: Us user ke personal socket room mein push karein
+      io.to(String(assignedTo)).emit('newNotification', notification);
+    }
 
     res.status(201).json(populatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 // @desc    Create new Global Task (Org Admin Only)
 // @route   POST /api/v1/tasks/global
 exports.createGlobalTask = async (req, res) => {

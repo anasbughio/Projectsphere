@@ -5,6 +5,7 @@ import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
 import TaskDetailsModal from './TaskDetailsModal';
+import NotificationBell from '../components/NotificationBell';
 const KanbanBoard = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -249,16 +250,23 @@ const KanbanBoard = () => {
           </div>
         </div>
         
+       <div className="flex items-center gap-4"> {/* <-- Main ne in sab ko ek gap-4 wale div mein daal diya hai */}
+          
+          {/* 🔥 YAHAN BELL ICON LAGA DIYA */}
+          <NotificationBell user={storedUser} socket={socketInstance} />
+
           <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
             <Plus size={18} /> New Task
           </button>
         
-        <button 
-  onClick={() => setIsChatOpen(!isChatOpen)} 
-  className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg font-semibold transition"
->
-  {isChatOpen ? 'Close Chat' : 'Open Chat'}
-</button>
+          <button 
+            onClick={() => setIsChatOpen(!isChatOpen)} 
+            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg font-semibold transition"
+          >
+            {isChatOpen ? 'Close Chat' : 'Open Chat'}
+          </button>
+
+        </div>
       </div>
 
       {/* --- ADVANCED FILTER BAR --- */}
