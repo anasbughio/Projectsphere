@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema(
   {
-    // --- 1. Basic Task Details (Dono ke liye same) ---
     title: {
       type: String,
       required: [true, 'Task title is required'],
@@ -30,35 +29,39 @@ const taskSchema = new mongoose.Schema(
       enum: ['Design', 'Frontend', 'Backend', 'DevOps', 'General'],
       default: 'General',
     },
-
-    // --- 2. Identity & Isolation (Dono ke liye zaroori) ---
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true, // Jisne task banaya (Security ke liye lazmi)
+      required: true,
     },
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      required: true, // Data strictly ek organization ke andar rakhne ke liye
+      required: true,
     },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', // VA team ya kisi specific member ko assign karne ke liye
+      ref: 'User',
     },
-
-    // --- 3. The Magic Switch (Project vs Global) ---
     isGlobal: {
       type: Boolean,
-      default: false, // Agar true hoga, toh yeh poori organization ka task ban jayega
+      default: false,
     },
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Project',
-      required: false, // Ab yeh optional hai. Global task mein yeh empty (null) rahega.
+      required: false,
+    },
+    // ADDED: Soft-delete flag according to document
+    isDeleted: {
+      type: Boolean,
+      default: false,
     }
   },
   { timestamps: true }
 );
+
+// ADDED: Compound index on organizationId and projectId for fast tenant-scoped queries
+taskSchema.index({ organizationId: 1, projectId: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

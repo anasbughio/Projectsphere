@@ -16,7 +16,6 @@ const projectSchema = new mongoose.Schema(
       enum: ['Planning', 'Active', 'Completed', 'On Hold'],
       default: 'Planning',
     },
-    // Strict Data Isolation: Yeh project kis org ka hai
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
@@ -27,8 +26,16 @@ const projectSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    // ADDED: Soft-delete flag according to document
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    }
   },
   { timestamps: true }
 );
+
+// ADDED: Compound index according to document
+projectSchema.index({ organizationId: 1, _id: 1 });
 
 module.exports = mongoose.model('Project', projectSchema);

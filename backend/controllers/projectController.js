@@ -1,16 +1,15 @@
 const Project = require('../models/Project');
-const Task = require('../models/Task');
 
-// @desc    Create new project
-// @route   POST /api/v1/projects
+// Create a New Project
 exports.createProject = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, status } = req.body;
 
     const project = await Project.create({
       name,
       description,
-      organizationId: req.user.organizationId, // Data isolation enforced
+      status: status || 'Planning',
+      organizationId: req.user.organizationId,
       createdBy: req.user._id,
     });
 
@@ -20,59 +19,63 @@ exports.createProject = async (req, res) => {
   }
 };
 
-// @desc    Get all projects for the logged-in user's organization
-// @route   GET /api/v1/projects
+// Get All Active Projects (Soft-deleted projects hide rahenge)
 exports.getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ organizationId: req.user.organizationId })
-      .sort({ createdAt: -1 });
+    const projects = await Project.find({
+      organizationId: req.user.organizationId,
+      isDeleted: false // Sirf active projects aayenge
+    }).populate('createdBy', 'name email'); // Creator ka naam bhi sath bhej rahe hain
 
-    res.json(projects);
+    res.status(200).json(projects);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Update a Project
 exports.updateProject = async (req, res) => {
   try {
-    const { name, description } = req.body;
-    
-    // Data isolation: Sirf wahi project update ho jo login user ki organization ka hai
+    const { name, description, status } = req.body;
+
+    // Pehle check karein ke project mojood hai aur is user ki org ka hai
+    const project = await Project.findOne({
+      _id: req.params.id,
+      organizationId: req.user.organizationId,
+      isDeleted: false
+    });
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    project.name = name || project.name;
+    project.description = description || project.description;
+    project.status = status || project.status;
+
+    const updatedProject = await project.save();
+    res.status(200).json(updatedProject);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Soft Delete a Project
+exports.deleteProject = async (req, res) => {
+  try {
+    // Database se udane ke bajaye sirf flag true kar rahe hain
     const project = await Project.findOneAndUpdate(
       { _id: req.params.id, organizationId: req.user.organizationId },
-      { name, description },
-      { new: true, runValidators: true }
+      { isDeleted: true },
+      { new: true }
     );
 
     if (!project) {
-      return res.status(404).json({ message: 'Project not found or unauthorized access' });
+      return res.status(404).json({ message: 'Project not found' });
     }
 
-    res.json(project);
+    res.status(200).json({ message: 'Project moved to trash successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-exports.deleteProject = async (req, res) => {
-  try {
-    const project = await Project.findOneAndDelete({
-      _id: req.params.id,
-      organizationId: req.user.organizationId,
-    });
-
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found or unauthorized access' });
-    }
-
-    await Task.deleteMany({
-      projectId: project._id,
-      organizationId: req.user.organizationId,
-    });
-
-    res.json({ message: 'Project deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-

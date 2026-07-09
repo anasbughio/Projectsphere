@@ -25,7 +25,8 @@ exports.createTask = async (req, res) => {
 
     const project = await Project.findOne({ 
       _id: projectId, 
-      organizationId: req.user.organizationId 
+      organizationId: req.user.organizationId,
+      isDeleted: false 
     });
 
     if (!project) return res.status(404).json({ message: 'Project not found' });
@@ -37,10 +38,8 @@ exports.createTask = async (req, res) => {
       organizationId: req.user.organizationId,
     });
 
-    // Populate for socket to have complete object
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
 
-    // Socket Emit
     const io = req.app.get('socketio');
     io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
 
@@ -49,6 +48,7 @@ exports.createTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 // @desc    Create new Global Task (Org Admin Only)
 // @route   POST /api/v1/tasks/global
 exports.createGlobalTask = async (req, res) => {
@@ -60,13 +60,7 @@ exports.createGlobalTask = async (req, res) => {
     const { title, description, status, priority, dueDate, department, assignedTo } = req.body;
 
     const task = await Task.create({
-      title,
-      description,
-      status,
-      priority,
-      dueDate,
-      department,
-      assignedTo,
+      title, description, status, priority, dueDate, department, assignedTo,
       isGlobal: true,
       projectId: null,
       createdBy: req.user._id,
@@ -90,10 +84,10 @@ exports.getTasksByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    // Security check: Project user ka hi hona chahiye
     const project = await Project.findOne({ 
       _id: projectId, 
-      organizationId: req.user.organizationId 
+      organizationId: req.user.organizationId,
+      isDeleted: false 
     });
 
     if (!project) {
@@ -103,6 +97,7 @@ exports.getTasksByProject = async (req, res) => {
     const query = {
       projectId: projectId,
       organizationId: req.user.organizationId,
+      isDeleted: false 
     };
 
     if (!isAdmin(req.user)) {
@@ -126,10 +121,10 @@ exports.getTasksByProject = async (req, res) => {
 // @route   GET /api/v1/tasks/global/all
 exports.getGlobalTasks = async (req, res) => {
   try {
-    // Sirf is organization ke global tasks uthayen (Poori team ke liye visible)
     const tasks = await Task.find({ 
       isGlobal: true, 
-      organizationId: req.user.organizationId 
+      organizationId: req.user.organizationId,
+      isDeleted: false 
     })
     .populate('assignedTo', 'name')
     .sort({ dueDate: 1, createdAt: -1 });
@@ -144,7 +139,12 @@ exports.updateTaskStatus = async (req, res) => {
   try {
     const { status } = req.body;
     
-    const task = await Task.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+    const task = await Task.findOne({ 
+      _id: req.params.id, 
+      organizationId: req.user.organizationId,
+      isDeleted: false 
+    });
+    
     if (!task) return res.status(404).json({ message: 'Task not found' });
     if (!canModifyTask(req.user, task)) return res.status(403).json({ message: 'Unauthorized' });
 
@@ -154,7 +154,6 @@ exports.updateTaskStatus = async (req, res) => {
       { new: true }
     ).populate('assignedTo', 'name');
 
-    // Socket Emit
     const io = req.app.get('socketio');
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
 
@@ -163,11 +162,13 @@ exports.updateTaskStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findOne({ 
       _id: req.params.id,
-      organizationId: req.user.organizationId
+      organizationId: req.user.organizationId,
+      isDeleted: false
     });
 
     if (!task) {
@@ -178,10 +179,16 @@ exports.deleteTask = async (req, res) => {
       return res.status(403).json({ message: 'You do not have permission to delete this task' });
     }
 
-    await Task.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
-const io = req.app.get('socketio');
-io.to(req.user.organizationId.toString()).emit('taskDeleted', req.params.id);
-    res.json({ message: 'Task deleted successfully' });
+    // Hard delete ki jagah findOneAndUpdate lagaya hai
+    await Task.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user.organizationId },
+      { isDeleted: true },
+      { new: true }
+    );
+
+    const io = req.app.get('socketio');
+    io.to(req.user.organizationId.toString()).emit('taskDeleted', req.params.id);
+    res.json({ message: 'Task moved to trash successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -191,7 +198,12 @@ exports.updateTask = async (req, res) => {
   try {
     const { title, description, priority, department } = req.body;
     
-    const task = await Task.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+    const task = await Task.findOne({ 
+      _id: req.params.id, 
+      organizationId: req.user.organizationId,
+      isDeleted: false 
+    });
+    
     if (!task) return res.status(404).json({ message: 'Task not found' });
     if (!canModifyTask(req.user, task)) return res.status(403).json({ message: 'Unauthorized' });
 
@@ -201,7 +213,6 @@ exports.updateTask = async (req, res) => {
       { new: true }
     ).populate('assignedTo', 'name');
 
-    // Socket Emit
     const io = req.app.get('socketio');
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
 
@@ -210,24 +221,22 @@ exports.updateTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 exports.getTaskAnalytics = async (req, res) => {
   try {
     const orgId = req.user.organizationId;
 
-    // 1. Status ke hisaab se tasks count karna (To Do, In Progress, Done)
     const statusStats = await Task.aggregate([
-      { $match: { organizationId: orgId } },
+      { $match: { organizationId: orgId, isDeleted: false } },
       { $group: { _id: '$status', count: { $sum: 1 } } }
     ]);
 
-    // 2. Priority ke hisaab se tasks count karna
     const priorityStats = await Task.aggregate([
-      { $match: { organizationId: orgId } },
+      { $match: { organizationId: orgId, isDeleted: false } },
       { $group: { _id: '$priority', count: { $sum: 1 } } }
     ]);
 
-    // 3. Total Tasks
-    const totalTasks = await Task.countDocuments({ organizationId: orgId });
+    const totalTasks = await Task.countDocuments({ organizationId: orgId, isDeleted: false });
 
     res.status(200).json({
       totalTasks,
