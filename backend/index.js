@@ -14,6 +14,7 @@ const passport = require('passport');
 const Message = require('./models/Message');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
+const collaborationRoutes = require('./routes/collaborationRoutes');
 require('./config/passport');
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/team', teamRoutes);
+app.use('/api/v1/collaboration', collaborationRoutes);
 
 // Socket Logic (Only initialize if not in production environment to avoid Vercel crash)
 
@@ -73,6 +75,10 @@ let io;
   });
 
   io.on('connection', (socket) => {
+    socket.on('joinOrganization', (orgId) => {
+      socket.join(String(orgId));
+      console.log(`User joined organization room: ${orgId}`);
+    });
     socket.on('joinProjectChat', (projectId) => socket.join(projectId));
     
     socket.on('sendMessage', async (data) => {
