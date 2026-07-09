@@ -192,11 +192,7 @@ const socket = io(SOCKET_URL, {
         <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-full md:w-auto bg-[#1a1c26] border border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none cursor-pointer"><option value="All">All Departments</option><option value="General">General</option><option value="Frontend">Frontend</option><option value="Backend">Backend</option><option value="Design">Design</option></select>
       </div>
 
-      {/* --- FILE UPLOAD --- */}
-      <div className="bg-[#121218] p-4 rounded-xl border border-gray-800 mb-6">
-        <h3 className="text-sm font-semibold mb-3 text-gray-300">Upload Task Attachment</h3>
-        <ExampleUpload />
-      </div>
+  
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {columns.map(colStatus => (

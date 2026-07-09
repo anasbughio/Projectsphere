@@ -14,8 +14,9 @@ import Team from './pages/Team';
 import AuthSuccess from './pages/AuthSuccess';
 import TaskForm from './pages/TaskForm';
 import VerifyEmail from './pages/VerifyEmail';
-import ForgotPassword from './pages/ForgotPassword'; // Ya jahan aapne save kiya hai
+import ForgotPassword from './pages/ForgotPassword'; 
 import ResetPassword from './pages/ResetPassword';
+import AcceptInvite from './pages/AcceptInvite'; 
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
           <Route path="/projects/:projectId" element={<KanbanBoard />} />
           <Route path="/team" element={<Team />} />
           <Route path="/tasks" element={<TaskForm />} />
+          <Route element={<AcceptInvite />} path="/accept-invite" />
         </Route>
 
 

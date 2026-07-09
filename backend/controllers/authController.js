@@ -56,7 +56,6 @@ exports.registerOrg = async (req, res) => {
   }
 };
 
-// 2. VERIFY EMAIL (Yahan par Asal DB mein save hoga)
 exports.verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
@@ -80,7 +79,7 @@ exports.verifyEmail = async (req, res) => {
       name: userName, 
       email, 
       password, // Pre-save hook automatically bcrypt kar dega
-      role: 'Admin', 
+      role: 'Org Admin', // <-- YAHAN CHANGE KIYA HAI (Document ke mutabiq)
       organizationId: organization._id,
       isEmailVerified: true // Direct verified true set karein
     });
@@ -103,9 +102,12 @@ exports.verifyEmail = async (req, res) => {
     });
 
   } catch (error) { 
-    res.status(500).json({ message: "Internal Server Error" }); 
+    // Yahan console.error lagana bohot zaroori hai taake production errors asani se trace ho sakein
+    console.error("Verify Email Error:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message }); 
   }
 };
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;

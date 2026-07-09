@@ -47,7 +47,7 @@ const Team = () => {
     e.preventDefault();
     setIsAdding(true);
     try {
-      const response = await api.post('/team', { name, email, password, role });
+      const response = await api.post('/team/invite', { name, email, password, role });
       setTeam([response.data, ...team]);
       setIsModalOpen(false);
       
@@ -101,7 +101,7 @@ const Team = () => {
             <div key={member._id} className="bg-[#1a1c26] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#7c7fff] to-[#5b5eb8] flex items-center justify-center text-lg font-bold text-white shadow-lg">
-                  {member.name.charAt(0).toUpperCase()}
+                {member.name ? member.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <button className="text-[#606479] hover:text-white transition opacity-0 group-hover:opacity-100">
                   <MoreVertical size={18} />
@@ -134,18 +134,10 @@ const Team = () => {
             </div>
             
             <form onSubmit={handleAddMember} className="p-6">
-              {/* =========================================
+             {/* =========================================
                   INPUTS BLOCK (Strictly Separate)
               ========================================= */}
               <div className="flex flex-col gap-5 mb-8">
-                <div>
-                  <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Full Name</label>
-                  <input 
-                    type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff]"
-                    placeholder="E.g. Haseeb Bhai"
-                  />
-                </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Email Address</label>
                   <input 
@@ -155,23 +147,15 @@ const Team = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Temporary Password</label>
-                  <input 
-                    type="password" required value={password} onChange={(e) => setPassword(e.target.value)} minLength="6"
-                    className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff]"
-                    placeholder="Enter min 6 characters"
-                  />
-                </div>
-                <div>
                   <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Role</label>
                   <select 
                     value={role} onChange={(e) => setRole(e.target.value)}
                     className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none cursor-pointer"
                   >
-                    <option value="Member">Member (View & Edit Tasks)</option>
-                    <option value="Admin">Admin (Full Access)</option>
-                    <option value="Developer">Developer</option>
-                    <option value="Designer">Designer</option>
+                    <option value="Org Admin">Org Admin (Full Access)</option>
+                    <option value="Project Manager">Project Manager (Manage Projects)</option>
+                    <option value="Team Member">Team Member (View & Edit Tasks)</option>
+                    <option value="Client">Client (View Only)</option>
                   </select>
                 </div>
               </div>
@@ -190,7 +174,7 @@ const Team = () => {
                   type="submit" disabled={isAdding} 
                   className="px-6 py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex justify-center"
                 >
-                  {isAdding ? <Loader2 size={16} className="animate-spin" /> : 'Add Member'}
+                  {isAdding ? <Loader2 size={16} className="animate-spin" /> : 'Send Invite'}
                 </button>
               </div>
             </form>
