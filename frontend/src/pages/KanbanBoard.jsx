@@ -4,11 +4,12 @@ import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Ed
 import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
-
+import TaskDetailsModal from './TaskDetailsModal';
 const KanbanBoard = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
   
   const [tasks, setTasks] = useState([]);
   const [team, setTeam] = useState([]); 
@@ -29,6 +30,7 @@ const KanbanBoard = () => {
   const [dueDate, setDueDate] = useState('');
   const [department, setDepartment] = useState('General');
   const [assignedTo, setAssignedTo] = useState(''); 
+  const [socketInstance, setSocketInstance] = useState(null);
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -72,15 +74,16 @@ const KanbanBoard = () => {
 
   // 2. --- REAL-TIME SOCKET.IO LOGIC ---
   useEffect(() => {
-    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
-    const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling']
-    });
+   const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
+  const socket = io(SOCKET_URL, {
+    transports: ['websocket', 'polling']
+  });
+  
+  setSocketInstance(socket); // 🔥 Socket ko state mein save kiya
 
-    if (storedUser?.organizationId) {
-      socket.emit('joinOrganization', storedUser.organizationId);
-    }
-
+  if (storedUser?.organizationId) {
+    socket.emit('joinOrganization', storedUser.organizationId);
+  }
     const handleCreated = (newTask) => {
       if (newTask.projectId === projectId) {
         setTasks((prev) => prev.find(t => t._id === newTask._id) ? prev : [newTask, ...prev]);
@@ -303,7 +306,18 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('To Do').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} />)}
+           {getTasksByStatus('To Do').map(task => (
+  <TaskCard 
+    key={task._id} 
+    task={task} 
+    onDragStart={handleDragStart} 
+    onEdit={openEditModal} 
+    onDelete={handleDeleteTask} 
+    canModifyTask={canModifyTask} 
+    canManageBoard={canManageBoard}
+    onClick={() => setSelectedTask(task)} // <--- Naya prop
+  />
+))}
           </div>
         </div>
 
@@ -314,7 +328,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('In Progress').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} />)}
+            {getTasksByStatus('In Progress').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>)}
           </div>
         </div>
 
@@ -325,7 +339,7 @@ const KanbanBoard = () => {
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} />)}
+            {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>)}
           </div>
         </div>
       </div>
@@ -337,7 +351,7 @@ const KanbanBoard = () => {
             <div className="p-6 border-b border-white/5">
               <h3 className="text-xl font-bold text-white">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
             </div>
-            
+         
             <form onSubmit={handleSubmitTask} className="p-6">
               <div className="flex flex-col gap-5 mb-8">
                 <div>
@@ -413,6 +427,14 @@ const KanbanBoard = () => {
           </div>
         </div>
       )}
+         {selectedTask && (
+  <TaskDetailsModal 
+    task={selectedTask} 
+    onClose={() => setSelectedTask(null)} 
+    organizationId={storedUser?.organizationId}
+    socket={socketInstance}
+  />
+)}
       <ChatPanel 
   isOpen={isChatOpen} 
   onClose={() => setIsChatOpen(false)} 
@@ -424,12 +446,13 @@ const KanbanBoard = () => {
   );
 };
 
-const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard }) => {
+const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard, onClick }) => { // <--- onClick add kiya
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
   const canInteract = canManageBoard || canModifyTask(task);
 
   return (
     <div 
+      onClick={onClick} // <--- Click event yahan bind hoga
       draggable={canInteract}
       onDragStart={(e) => onDragStart(e, task._id, task)}
       className={`bg-[#242634] p-4 rounded-xl border border-white/5 hover:border-white/20 transition ${canInteract ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} group shadow-sm`}
@@ -438,10 +461,10 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManag
         <div className="flex gap-2">
           {(canManageBoard || canModifyTask(task)) && (
             <>
-              <button onClick={() => onEdit(task)} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
+              <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
                 <Edit3 size={14} />
               </button>
-              <button onClick={() => onDelete(task._id)} className="p-1 rounded text-[#606479] hover:text-red-400 transition" title="Delete task">
+              <button onClick={(e) => { e.stopPropagation(); onDelete(task._id); }} className="p-1 rounded text-[#606479] hover:text-red-400 transition" title="Delete task">
                 <Trash2 size={14} />
               </button>
             </>
