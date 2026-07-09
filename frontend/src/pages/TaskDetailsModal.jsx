@@ -49,7 +49,6 @@ const TaskDetailsModal = ({ task, onClose, organizationId, socket }) => {
     if (!newComment.trim()) return;
     try {
       const res = await api.post(`/collaboration/${task._id}/comments`, { text: newComment });
-      setComments((prev) => [...prev, res.data]);
       setNewComment('');
     } catch (err) { alert('Failed to add comment'); }
   };
