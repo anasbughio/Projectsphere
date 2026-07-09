@@ -112,20 +112,11 @@ const Login = () => {
             </div>
 
             {/* Checkbox */}
-            <div className="flex items-center mt-1">
-              <input 
-                type="checkbox" 
-                id="remember" 
-                className="w-4 h-4 rounded border-white/10 bg-[#1a1c26] text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer"
-              />
-            </div>
+           
             
           </div>
 
-          {/* =========================================
-              BUTTONS BLOCK 
-              (Actions grouped strictly separate)
-          ========================================= */}
+        
           <div className="flex flex-col gap-5 mt-8">
             
             {/* Primary Sign In Button */}
@@ -148,8 +139,8 @@ const Login = () => {
             </div>
 
             <div className="grid gap-3">
-              <button
-            onClick={() => window.location.href = '/api/v1/auth/google'}
+             <button
+             onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || ''}/auth/google`}
               type="button" className="flex items-center justify-center gap-2 bg-[#1a1c26] border border-white/5 hover:bg-[#222533] transition text-[#a0a4b8] text-sm font-medium py-2.5 rounded-lg">
                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-4 h-4" />
                 Google
