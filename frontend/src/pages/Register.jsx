@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Building2, User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Building2, User, Mail, Lock, Eye, EyeOff, ArrowRight, LayoutGrid } from 'lucide-react';
 import api from '../services/api';
 
 const Register = () => {
@@ -20,8 +20,6 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Backend se sirf response le rahe hain, token nahi save kar rahe
-      // Kyunke abhi email verify hona baqi hai!
       const response = await api.post('/auth/register', {
         orgName,
         userName,
@@ -29,13 +27,10 @@ const Register = () => {
         password
       });
       
-      // 👉 NAYA FLOW: 
       // User ko login karwane ke bajaye OTP wali screen par bhej rahe hain
-      // Email pass kar rahe hain taake wo screen par dikha sake
       navigate('/verify', { state: { email: email } });
       
     } catch (err) {
-      // Axios timeout or network errors may not have response
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
         setError('Server is unreachable. Please try again later.');
       } else {
@@ -47,160 +42,185 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-b from-[#3a3b4e] via-[#2a2a35] to-[#121218] p-4 relative overflow-hidden font-sans">
+    /* Outer container with flex-col and justify-between for Top, Center, and Bottom layout */
+    <div className="min-h-screen w-full flex flex-col justify-between items-center bg-[#09090b] relative overflow-hidden font-sans">
       
-      {/* Background visual effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-[#7c7fff] opacity-10 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-0 w-full h-[30%] bg-gradient-to-t from-[#10101a] to-transparent pointer-events-none border-t border-white/5"></div>
+      {/* Background glow effect */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[500px] bg-[#5a5fe0] opacity-[0.08] blur-[120px] rounded-full pointer-events-none"></div>
 
-      {/* Header outside the card */}
-      <div className="text-center mb-8 z-10 mt-4">
-        <h1 className="text-3xl font-extrabold text-[#d2d4ff] tracking-wide mb-1">ProjectSphere</h1>
-        <p className="text-[#a0a4b8] text-sm">Enterprise-grade productivity, redefined.</p>
-      </div>
-
-      {/* Main Card */}
-      <div className="bg-[#2a2d3e]/90 backdrop-blur-xl border border-white/5 p-8 rounded-2xl shadow-2xl w-full max-w-[420px] z-10">
-        <div className="text-center mb-8">
-          <h2 className="text-xl font-bold text-white mb-1">Create Organization</h2>
-          <p className="text-[#84889c] text-sm">Setup your multi-tenant workspace</p>
+      {/* TOP HEADER */}
+      <div className="flex flex-col items-center mt-8 sm:mt-12 z-10">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <LayoutGrid className="text-[#a5a7fa]" size={22} fill="currentColor" fillOpacity={0.2} />
+          <h1 className="text-2xl font-bold text-white tracking-wide">ProjectSphere</h1>
         </div>
-        
-        {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg text-center font-medium">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleRegister}>
-          {/* =========================================
-              INPUTS BLOCK 
-              (Inputs grouped strictly separate)
-          ========================================= */}
-          <div className="flex flex-col gap-5 mb-6">
-            
-            {/* Organization Name Input */}
-            <div>
-              <label className="block text-xs font-semibold text-[#84889c] mb-2 tracking-wide uppercase">Organization Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Building2 size={16} className="text-[#606479]" />
-                </div>
-                <input 
-                  type="text" 
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition"
-                  placeholder="E.g. MLBench Pvt Ltd"
-                />
-              </div>
-            </div>
-
-            {/* Admin Name Input */}
-            <div>
-              <label className="block text-xs font-semibold text-[#84889c] mb-2 tracking-wide uppercase">Admin Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User size={16} className="text-[#606479]" />
-                </div>
-                <input 
-                  type="text" 
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition"
-                  placeholder="Anas Bughio"
-                />
-              </div>
-            </div>
-
-            {/* Email Input */}
-            <div>
-              <label className="block text-xs font-semibold text-[#84889c] mb-2 tracking-wide uppercase">Admin Email</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail size={16} className="text-[#606479]" />
-                </div>
-                <input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition"
-                  placeholder="admin@organization.com"
-                />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <label className="block text-xs font-semibold text-[#84889c] mb-2 tracking-wide uppercase">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock size={16} className="text-[#606479]" />
-                </div>
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full pl-10 pr-10 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition"
-                  placeholder="••••••••"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[#606479] hover:text-[#a0a4b8] focus:outline-none transition flex items-center justify-center"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-          </div>
-
-          {/* =========================================
-              BUTTONS BLOCK 
-              (Actions grouped strictly separate)
-          ========================================= */}
-          <div className="flex flex-col gap-5 mt-8">
-            
-            {/* Primary Submit Button */}
-            <button 
-              type="submit" 
-              disabled={loading}
-              className={`w-full flex items-center justify-center gap-2 text-white font-semibold py-2.5 rounded-lg transition ${
-                loading ? 'bg-[#5b5eb8] cursor-not-allowed' : 'bg-[#7c7fff] hover:bg-[#6b6de0]'
-              }`}
-            >
-              {loading ? 'Creating workspace...' : 'Register Workspace'}
-              {!loading && <ArrowRight size={16} />}
-            </button>
-            
-            <div className="grid gap-3">
-              <button
-             onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || ''}/auth/google`}
-              type="button" className="flex items-center justify-center gap-2 bg-[#1a1c26] border border-white/5 hover:bg-[#222533] transition text-[#a0a4b8] text-sm font-medium py-2.5 rounded-lg">
-               <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-4 h-4" />
-                Google
-              </button>
-            </div>
-          </div>
-        </form>
-        
+        <p className="text-[10px] font-bold tracking-[0.2em] text-[#606479] uppercase">Enterprise Tier</p>
       </div>
 
-      {/* Footer text outside the card */}
-      <div className="mt-8 z-10 text-center mb-4">
-        <p className="text-sm text-[#606479]">
-          Already have an account?{' '}
-          <Link to="/login" className="text-[#7c7fff] hover:text-[#979aff] font-medium transition">
-            Sign in
-          </Link>
-        </p>
+      {/* MAIN CARD (Centered) - Width barha kar 520px kar di gayi hai */}
+      <div className="w-full max-w-[520px] z-10 px-4 my-auto py-6">
+        <div className="bg-[#16171d] border border-white/[0.04] p-8 sm:p-10 rounded-[1.25rem] shadow-2xl w-full">
+          
+          {/* Card Header - Left Aligned */}
+          <div className="mb-8 text-left">
+            <h2 className="text-2xl font-semibold text-white mb-1.5 tracking-tight">Create Organization</h2>
+            <p className="text-[#84889c] text-sm">Setup your multi-tenant workspace.</p>
+          </div>
+          
+          {error && (
+            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg text-center font-medium">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleRegister}>
+            
+            {/* =========================================
+                INPUTS BLOCK
+            ========================================= */}
+            <div className="flex flex-col gap-4">
+              
+              {/* Organization Name Input */}
+              <div className="block text-left">
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Organization Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Building2 size={15} className="text-[#606479]" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-[#0c0d12] border border-transparent rounded-lg text-white text-sm placeholder-[#4b4e63] focus:border-[#5a5fe0] focus:ring-1 focus:ring-[#5a5fe0] focus:outline-none transition-all"
+                    placeholder="E.g. MLBench Pvt Ltd"
+                  />
+                </div>
+              </div>
+
+              {/* Admin Name Input */}
+              <div className="block text-left">
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Admin Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <User size={15} className="text-[#606479]" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-[#0c0d12] border border-transparent rounded-lg text-white text-sm placeholder-[#4b4e63] focus:border-[#5a5fe0] focus:ring-1 focus:ring-[#5a5fe0] focus:outline-none transition-all"
+                    placeholder="Anas Bughio"
+                  />
+                </div>
+              </div>
+
+              {/* Admin Email Input */}
+              <div className="block text-left">
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Admin Email</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Mail size={15} className="text-[#606479]" />
+                  </div>
+                  <input 
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-[#0c0d12] border border-transparent rounded-lg text-white text-sm placeholder-[#4b4e63] focus:border-[#5a5fe0] focus:ring-1 focus:ring-[#5a5fe0] focus:outline-none transition-all"
+                    placeholder="admin@organization.com"
+                  />
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="block text-left">
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Password</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock size={15} className="text-[#606479]" />
+                  </div>
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-10 py-3 bg-[#0c0d12] border border-transparent rounded-lg text-white text-sm placeholder-[#4b4e63] focus:border-[#5a5fe0] focus:ring-1 focus:ring-[#5a5fe0] focus:outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[#606479] hover:text-[#a0a4b8] focus:outline-none transition flex items-center justify-center"
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+
+            {/* =========================================
+                BUTTONS BLOCK
+            ========================================= */}
+            <div className="flex flex-col gap-4 mt-8">
+              
+              {/* Primary Submit Button */}
+              <div className="block">
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className={`w-full flex items-center justify-center gap-2 text-white font-semibold py-3 rounded-lg text-sm transition-all shadow-md ${
+                    loading ? 'bg-[#4b4d99] cursor-not-allowed shadow-none' : 'bg-[#5a5fe0] hover:bg-[#6c70f0]'
+                  }`}
+                >
+                  {loading ? 'Creating workspace...' : 'Register Workspace'}
+                  {!loading && <ArrowRight size={15} />}
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center justify-center gap-3 mt-1 mb-1">
+                <div className="h-px w-full bg-white/[0.04]"></div>
+                <span className="text-[10px] font-semibold text-[#4b4e63] tracking-widest whitespace-nowrap">OR CONTINUE WITH</span>
+                <div className="h-px w-full bg-white/[0.04]"></div>
+              </div>
+
+              {/* Google Button */}
+              <div className="block">
+                <button
+                  onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || ''}/auth/google`}
+                  type="button" 
+                  className="w-full flex items-center justify-center gap-2.5 bg-transparent border border-white/[0.08] hover:bg-white/[0.02] transition text-[#a0a4b8] text-sm font-semibold py-3 rounded-lg"
+                >
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-4 h-4 opacity-80" />
+                  Continue with Google
+                </button>
+              </div>
+
+              {/* Sign In Link */}
+              <div className="block text-center mt-2">
+                <p className="text-xs text-[#84889c]">
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-[#a5a7fa] hover:text-white font-semibold transition">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+              
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* BOTTOM FOOTER */}
+      <div className="flex items-center justify-center gap-6 mb-8 z-10 text-[11px] font-semibold text-[#4b4e63]">
+        <Link to="/privacy" className="hover:text-[#84889c] transition">Privacy Policy</Link>
+        <Link to="/terms" className="hover:text-[#84889c] transition">Terms of Service</Link>
+        <Link to="/security" className="hover:text-[#84889c] transition">Contact Security</Link>
       </div>
       
     </div>

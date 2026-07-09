@@ -15,6 +15,10 @@ const Message = require('./models/Message');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const collaborationRoutes = require('./routes/collaborationRoutes');
+// Import karein
+const auditRoutes = require('./routes/auditRoutes');
+
+
 require('./config/passport');
 
 const app = express();
@@ -66,8 +70,7 @@ app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/team', teamRoutes);
 app.use('/api/v1/collaboration', collaborationRoutes);
-
-// Socket Logic (Only initialize if not in production environment to avoid Vercel crash)
+app.use('/api/v1/auditlogs', auditRoutes);
 
 let io;
   io = new Server(server, {

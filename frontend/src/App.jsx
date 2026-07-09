@@ -17,6 +17,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword'; 
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite'; 
+import AuditLogs from './pages/AuditLogs';
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
           <Route path="/team" element={<Team />} />
           <Route path="/tasks" element={<TaskForm />} />
           <Route element={<AcceptInvite />} path="/accept-invite" />
+          <Route path="/activity" element={<AuditLogs />} />
         </Route>
 
 

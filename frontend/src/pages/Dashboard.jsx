@@ -9,6 +9,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 import api from '../services/api';
+import { Link } from 'react-router-dom';
+
 
 const Dashboard = () => {
   const [projects, setProjects] = useState([]);
@@ -67,9 +69,7 @@ const Dashboard = () => {
     { name: 'DevOps', percent: getWorkload('DevOps') }
   ];
 
-  // ==========================================
-  // --- CHART DATA CALCULATIONS ---
-  // ==========================================
+
   
   // 1. Status Data for Pie Chart
   const statusCounts = { 'To Do': 0, 'In Progress': 0, 'Done': 0 };
@@ -101,7 +101,16 @@ const Dashboard = () => {
   return (
     <div className="flex flex-col gap-6 font-sans pb-8">
       
-      {/* 1. TOP KPI CARDS BLOCK */}
+    {/* 1. TOP KPI CARDS BLOCK */}
+      <div className="flex items-center justify-end w-full my-4">
+  <Link
+    to="/activity"
+    className="flex items-center gap-2 px-4 py-2.5 bg-[#5a5fe0]/10 hover:bg-[#5a5fe0]/20 text-[#5a5fe0] hover:text-white text-sm font-medium rounded-lg border border-[#5a5fe0]/20 transition-all duration-200 shadow-sm"
+  >
+    <Activity size={18} />
+    <span>View Activity History</span>
+  </Link>
+</div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
           <div className="flex justify-between items-start mb-4">

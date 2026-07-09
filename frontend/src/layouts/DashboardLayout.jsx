@@ -36,10 +36,6 @@ const DashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#121218] text-white flex font-sans overflow-hidden">
-      
-      {/* =========================================
-          SIDEBAR BLOCK
-      ========================================= */}
       <aside className="w-[260px] bg-[#1a1c26] border-r border-white/5 flex flex-col z-20">
         
         {/* Logo Section */}
