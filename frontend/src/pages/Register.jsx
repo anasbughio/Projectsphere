@@ -1,30 +1,41 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, LayoutGrid } from 'lucide-react';
+import { Building2, User, Mail, Lock, Eye, EyeOff, ArrowRight, LayoutGrid } from 'lucide-react';
 import api from '../services/api';
 
-const Login = () => {
+const Register = () => {
+  const [orgName, setOrgName] = useState('');
+  const [userName, setUserName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/register', {
+        orgName,
+        userName,
+        email,
+        password
+      });
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // User ko login karwane ke bajaye OTP wali screen par bhej rahe hain
+      navigate('/verify', { state: { email: email } });
       
-      navigate('/board');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setError('Server is unreachable. Please try again later.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -38,7 +49,7 @@ const Login = () => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[500px] bg-[#5a5fe0] opacity-[0.08] blur-[120px] rounded-full pointer-events-none"></div>
 
       {/* TOP HEADER */}
-      <div className="flex flex-col items-center mt-0 z-10">
+      <div className="flex flex-col items-center mt-8 sm:mt-12 z-10">
         <div className="flex items-center gap-2.5 mb-1.5">
           <LayoutGrid className="text-[#a5a7fa]" size={22} fill="currentColor" fillOpacity={0.2} />
           <h1 className="text-2xl font-bold text-white tracking-wide">ProjectSphere</h1>
@@ -46,14 +57,14 @@ const Login = () => {
         <p className="text-[10px] font-bold tracking-[0.2em] text-[#606479] uppercase">Enterprise Tier</p>
       </div>
 
-      {/* MAIN CARD (Centered) */}
-      <div className="w-full max-w-[420px] z-10 px-4 my-auto">
+      {/* MAIN CARD (Centered) - Width barha kar 520px kar di gayi hai */}
+      <div className="w-full max-w-[520px] z-10 px-4 my-auto py-6">
         <div className="bg-[#16171d] border border-white/[0.04] p-8 sm:p-10 rounded-[1.25rem] shadow-2xl w-full">
           
           {/* Card Header - Left Aligned */}
           <div className="mb-8 text-left">
-            <h2 className="text-2xl font-semibold text-white mb-1.5 tracking-tight">Welcome Back</h2>
-            <p className="text-[#84889c] text-sm">Access your high-performance workspace.</p>
+            <h2 className="text-2xl font-semibold text-white mb-1.5 tracking-tight">Create Organization</h2>
+            <p className="text-[#84889c] text-sm">Setup your multi-tenant workspace.</p>
           </div>
           
           {error && (
@@ -62,13 +73,52 @@ const Login = () => {
             </div>
           )}
 
-          <form onSubmit={handleLogin}>
-          
-            <div className="flex flex-col gap-5">
+          <form onSubmit={handleRegister}>
+            
+            {/* =========================================
+                INPUTS BLOCK
+            ========================================= */}
+            <div className="flex flex-col gap-4">
               
-              {/* Email Input */}
+              {/* Organization Name Input */}
               <div className="block text-left">
-                <label className="block text-xs font-semibold text-[#84889c] mb-2">Work Email</label>
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Organization Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Building2 size={15} className="text-[#606479]" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-[#0c0d12] border border-transparent rounded-lg text-white text-sm placeholder-[#4b4e63] focus:border-[#5a5fe0] focus:ring-1 focus:ring-[#5a5fe0] focus:outline-none transition-all"
+                    placeholder="E.g. MLBench Pvt Ltd"
+                  />
+                </div>
+              </div>
+
+              {/* Admin Name Input */}
+              <div className="block text-left">
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Admin Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <User size={15} className="text-[#606479]" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-[#0c0d12] border border-transparent rounded-lg text-white text-sm placeholder-[#4b4e63] focus:border-[#5a5fe0] focus:ring-1 focus:ring-[#5a5fe0] focus:outline-none transition-all"
+                    placeholder="Anas Bughio"
+                  />
+                </div>
+              </div>
+
+              {/* Admin Email Input */}
+              <div className="block text-left">
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Admin Email</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Mail size={15} className="text-[#606479]" />
@@ -79,17 +129,14 @@ const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     className="w-full pl-10 pr-4 py-3 bg-[#0c0d12] border border-transparent rounded-lg text-white text-sm placeholder-[#4b4e63] focus:border-[#5a5fe0] focus:ring-1 focus:ring-[#5a5fe0] focus:outline-none transition-all"
-                    placeholder="name@company.com"
+                    placeholder="admin@organization.com"
                   />
                 </div>
               </div>
 
               {/* Password Input */}
               <div className="block text-left">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-semibold text-[#84889c]">Password</label>
-                  <Link to="/forgot-password" className="text-xs font-medium text-[#8c8ef2] hover:text-[#b4b5f8] transition">Forgot password?</Link>
-                </div>
+                <label className="block text-xs font-semibold text-[#84889c] mb-2">Password</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Lock size={15} className="text-[#606479]" />
@@ -119,9 +166,9 @@ const Login = () => {
             {/* =========================================
                 BUTTONS BLOCK
             ========================================= */}
-            <div className="flex flex-col gap-5 mt-8">
+            <div className="flex flex-col gap-4 mt-8">
               
-              {/* Primary Sign In Button */}
+              {/* Primary Submit Button */}
               <div className="block">
                 <button 
                   type="submit" 
@@ -130,7 +177,7 @@ const Login = () => {
                     loading ? 'bg-[#4b4d99] cursor-not-allowed shadow-none' : 'bg-[#5a5fe0] hover:bg-[#6c70f0]'
                   }`}
                 >
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? 'Creating workspace...' : 'Register Workspace'}
                   {!loading && <ArrowRight size={15} />}
                 </button>
               </div>
@@ -154,12 +201,12 @@ const Login = () => {
                 </button>
               </div>
 
-              {/* Request Access (Moved inside card as per image) */}
+              {/* Sign In Link */}
               <div className="block text-center mt-2">
                 <p className="text-xs text-[#84889c]">
-                  Don't have an account?{' '}
-                  <Link to="/register" className="text-[#a5a7fa] hover:text-white font-semibold transition">
-                    Request Access
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-[#a5a7fa] hover:text-white font-semibold transition">
+                    Sign in
                   </Link>
                 </p>
               </div>
@@ -180,4 +227,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;

@@ -16,37 +16,56 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
       minlength: 6,
-      select: false, // Default queries mein password return nahi hoga
+      select: false, 
     },
     role: {
       type: String,
-      enum: ['Super Admin', 'Org Admin', 'Project Manager', 'Team Member', 'Client'],
-      default: 'Org Admin',
+      // 1. UPDATED: Roles document ke mutabiq set kar diye gaye hain
+      enum: ['Super Admin', 'Org Admin', 'Project Manager', 'Team Member', 'Client'], 
+      default: 'Team Member',
     },
-    // Yeh field Multi-Tenancy ka core hai
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      required: true,
+      // 2. UPDATED: Isay required kar diya hai isolation ke liye
+      required: true, 
     },
+    refreshToken: {
+      type: String,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationCode: {
+      type: String,
+    },
+    resetPasswordOtp: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
+    profilePicture: {
+  type: String,
+  default: '' // Default empty rakhein, agar pic nahi hogi toh hum UI par user ke naam ke initials dikhayenge
+},
   },
   { timestamps: true }
 );
 
-// Password encrypt karne ke liye pre-save middleware
+// 3. UPDATED: Document ke mutabiq Compound Index add kar diya gaya hai
+userSchema.index({ organizationId: 1, _id: 1 });
+
 userSchema.pre('save', async function () {
-  // Agar password modify nahi hua toh yahin se wapas mud jao
   if (!this.isModified('password')) {
     return;
   }
-  
-  // Naya password hash karo
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
-// User ka password verify karne ka method
+
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
