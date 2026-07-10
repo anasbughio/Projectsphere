@@ -13,10 +13,12 @@ import {
   Plus
 } from 'lucide-react';
 
+import api from '../services/api';
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const backendUrl = 'http://localhost:5000';
 
  const handleLogout = async () => {
     try {
@@ -150,15 +152,40 @@ const DashboardLayout = () => {
             
             <div className="h-6 w-px bg-white/10 mx-1"></div>
 
-            <div className="flex items-center gap-3 cursor-pointer p-1.5 hover:bg-white/5 rounded-lg transition pr-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#7c7fff] to-[#5b5eb8] text-white flex items-center justify-center text-sm font-bold uppercase shadow-sm">
-                {user?.name?.charAt(0) || 'U'}
+          
+          <Link 
+              to="/profile" 
+              className="flex items-center gap-3 p-1.5 pr-3 rounded-full hover:bg-white/[0.04] transition-all duration-200 group cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-transparent group-hover:border-[#7c7fff]/50 transition-all flex items-center justify-center shrink-0 bg-[#1a1c26]">
+                {user?.profilePicture ? (
+                  <img 
+                    src={`${backendUrl}${user.profilePicture}`} 
+                    alt={user?.name} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                
+                <div className={`w-full h-full bg-[#7c7fff]/20 text-[#7c7fff] flex items-center justify-center font-bold text-sm ${user?.profilePicture ? 'hidden' : 'flex'}`}>
+                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </div>
               </div>
-              <span className="text-sm font-medium text-white">{user?.name || 'User Name'}</span>
-            </div>
+
+              <div className="hidden md:flex flex-col items-start">
+                <span className="text-sm font-semibold text-white leading-none group-hover:text-[#7c7fff] transition-colors">
+                  {user?.name || 'User Name'}
+                </span>
+                <span className="text-[10px] text-[#84889c] capitalize mt-1 leading-none">
+                  {user?.role || 'Member'}
+                </span>
+              </div>
+            </Link>
           </div>
         </header>
-        
         {/* Content Outlet */}
         <div className="flex-1 p-8 overflow-y-auto z-10">
           {/* Yahan aapke andar ke pages (Overview widgets, Projects list etc.) render honge */}

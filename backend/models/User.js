@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpires: {
       type: Date,
     },
+    profilePicture: {
+  type: String,
+  default: '' // Default empty rakhein, agar pic nahi hogi toh hum UI par user ke naam ke initials dikhayenge
+},
   },
   { timestamps: true }
 );

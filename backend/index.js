@@ -23,16 +23,14 @@ require('./config/passport');
 
 const app = express();
 const server = http.createServer(app);
-// Middlewares
-// Configure CORS origins from env var(s). Accept comma-separated list.
+
 const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
-
+app.use('/uploads', express.static('uploads'));
 app.use((req, res, next) => {
   console.log('Incoming request:', req.method, req.path, 'Origin:', req.headers.origin || 'n/a');
-  // Log shallow body preview but redact sensitive fields
   if (req.body) {
     const preview = { ...req.body };
     if (preview.password) preview.password = '[REDACTED]';

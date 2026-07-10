@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { registerOrg, login, refreshToken, logout, verifyEmail, forgotPassword, resetPassword } = require('../controllers/authController');
+const { registerOrg, login, refreshToken, logout, verifyEmail, forgotPassword, resetPassword ,uploadProfilePicture} = require('../controllers/authController');
 const generateToken = require('../utils/generateToken');
 const passport = require('passport');
-
+const { protect } = require('../middlewares/authMiddleware');
+const upload = require('../middlewares/uploadMiddleware');
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Google login trigger karega
@@ -51,5 +52,6 @@ router.get('/refresh', refreshToken);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/profile-picture', protect, upload.single('profileImage'), uploadProfilePicture);
 
 module.exports = router;

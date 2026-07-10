@@ -256,3 +256,28 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
+exports.uploadProfilePicture = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Koi image upload nahi hui' });
+    }
+
+    // File ka path banayen jo frontend par accessible ho
+    const imagePath = `/uploads/profiles/${req.file.filename}`;
+
+    // Database mein user ko update karein
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { profilePicture: imagePath },
+      { new: true }
+    ).select('-password');
+
+    res.status(200).json({
+      message: 'Profile picture updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error uploading picture', error: error.message });
+  }
+};

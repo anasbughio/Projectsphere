@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import Profile from './pages/Profile';
 
 // Pages
 import LandingPage from './pages/LandingPage'; // <-- Naya Landing Page Import kiya
@@ -57,6 +58,7 @@ function App() {
           <Route path="/tasks" element={<TaskForm />} />
           <Route element={<AcceptInvite />} path="/accept-invite" />
           <Route path="/activity" element={<AuditLogs />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
 
 
