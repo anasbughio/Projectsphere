@@ -134,7 +134,7 @@ exports.login = async (req, res) => {
       res.json({
         message: 'Login successful',
         token: accessToken, // 15-min token
-        user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId ,profilePicture: user.profilePicture},
+        user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId,profilePicture: user.profilePicture},
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
