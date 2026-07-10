@@ -18,10 +18,7 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  // Yeh API base URL se backend ka main link nikal lega (e.g., https://your-backend.onrender.com)
-const backendUrl = import.meta.env.VITE_API_BASE_URL 
-  ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
-  : 'http://localhost:5000';
+const backendUrl = 'https://aapka-live-backend.onrender.com';
 
  const handleLogout = async () => {
     try {
