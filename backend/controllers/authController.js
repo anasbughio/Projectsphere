@@ -118,7 +118,7 @@ exports.login = async (req, res) => {
       const { accessToken, refreshToken } = generateToken(user._id, user.organizationId, user.role);
       
       await logAudit({
-      organizationId: user.organizationId, // Yahan req.user nahi hoga kyunke user abhi login ho raha hai
+      organizationId: user.organizationId, 
       user: user._id,
       action: 'USER_LOGIN',
       entityType: 'User',
@@ -134,7 +134,7 @@ exports.login = async (req, res) => {
       res.json({
         message: 'Login successful',
         token: accessToken, // 15-min token
-        user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId },
+        user: { _id: user._id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId ,profilePicture: user.profilePicture},
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
