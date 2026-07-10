@@ -15,7 +15,7 @@ const Message = require('./models/Message');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const collaborationRoutes = require('./routes/collaborationRoutes');
-// Import karein
+const reportRoutes = require('./routes/reportRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 
 
@@ -69,6 +69,7 @@ app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/team', teamRoutes);
 app.use('/api/v1/collaboration', collaborationRoutes);
 app.use('/api/v1/auditlogs', auditRoutes);
+app.use('/api/v1/reports', reportRoutes);
 
 let io;
   io = new Server(server, {
