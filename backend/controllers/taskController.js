@@ -272,3 +272,39 @@ exports.getTaskAnalytics = async (req, res) => {
     res.status(500).json({ message: "Analytics fetch karne mein masla hua", error: error.message });
   }
 };
+
+
+exports.uploadTaskAttachment = async (req, res) => {
+  try {
+    // Check karein ke file aayi hai ya nahi
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const { taskId } = req.params;
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Nayi attachment ka object banayen
+    const newAttachment = {
+      fileName: req.file.originalname, // User ke computer par jo naam tha
+      fileUrl: `/uploads/${req.file.filename}` // Server par save hone wala path
+    };
+
+    // Task ke attachments array mein push karein aur save karein
+    task.attachments.push(newAttachment);
+    await task.save();
+
+    res.status(200).json({ 
+      message: 'File attached successfully!', 
+      attachment: newAttachment 
+    });
+
+  } catch (error) {
+    console.error('Attachment Upload Error:', error);
+    res.status(500).json({ message: 'Error uploading file', error: error.message });
+  }
+};

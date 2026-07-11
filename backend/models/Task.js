@@ -56,7 +56,14 @@ const taskSchema = new mongoose.Schema(
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    attachments: [
+    {
+      fileName: String, // Asal file ka naam (e.g., document.pdf)
+      fileUrl: String,  // Upload hone ke baad ka link
+      uploadedAt: { type: Date, default: Date.now }
     }
+  ],
   },
   { timestamps: true }
 );

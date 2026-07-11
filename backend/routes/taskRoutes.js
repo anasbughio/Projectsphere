@@ -8,11 +8,11 @@ const {
   getGlobalTasks,
   updateTask,
   deleteTask ,
-  getTaskAnalytics
+  getTaskAnalytics,
+  uploadTaskAttachment
 } = require('../controllers/taskController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
-
-
+const upload = require('../config/multerConfig');
 // Get all global tasks
 router.route('/global/all').get(protect, getGlobalTasks);
 
@@ -30,4 +30,5 @@ router.route('/:id/status').patch(protect, updateTaskStatus);
 router.route('/:id').delete(protect, deleteTask);
 router.route('/:id').put(protect, updateTask);
 router.route('/analytics/stats').get(protect, getTaskAnalytics);
+router.post('/:taskId/upload', protect, upload.single('file'), uploadTaskAttachment);
 module.exports = router;
