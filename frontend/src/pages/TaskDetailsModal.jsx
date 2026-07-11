@@ -144,48 +144,51 @@ const getFileLink = (fileUrl) => {
             
             {/* --- INLINE CHAT FEED --- */}
             <div className="space-y-4 mb-6 flex-1">
-           {chatFeed.map((item) => {
-  const isOwner = item.senderName === currentUserName; // Yahan check ho raha hai
-  
-  return (
-    <div key={item.id} className={`flex gap-3 ${isOwner ? 'flex-row-reverse' : ''}`}>
-      {/* Avatar */}
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs text-white shrink-0 ${isOwner ? 'bg-[#7c7fff]' : 'bg-[#2a2d3e]'}`}>
-        {item.senderName.charAt(0).toUpperCase()}
-      </div>
-
-      {/* Bubble */}
-      <div className={`p-3 rounded-xl max-w-[85%] ${
-        isOwner 
-          ? 'bg-[#7c7fff] text-white rounded-tr-none' 
-          : 'bg-[#2a2d3e] text-gray-200 rounded-tl-none'
-      }`}>
-        {item.type === 'comment' && (
-           <p className={`text-[10px] mb-1 font-bold ${isOwner ? 'text-indigo-100' : 'text-[#7c7fff]'}`}>
-             {isOwner ? 'You' : item.senderName}
-           </p>
-        )}
-        
-        {/* Item Content (Text ya Attachment) */}
-        {item.type === 'comment' ? (
-          <p className="text-sm break-words whitespace-pre-wrap">{item.text}</p>
-        ) : (
-          <div className="mt-1">
-            {isImage(item.fileName) ? (
-              <a href={getFileLink(item.fileUrl)} target="_blank" rel="noopener noreferrer">
-                <img src={getFileLink(item.fileUrl)} alt="att" className="max-w-full h-auto rounded-lg" />
-              </a>
-            ) : (
-              <a href={getFileLink(item.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-black/20 rounded-lg">
-                <FileText size={16} /> <span className="text-xs truncate">{item.fileName}</span>
-              </a>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-})}
+              {chatFeed.map((item) => (
+                <div key={item.id} className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#2a2d3e] flex items-center justify-center text-xs text-white shrink-0">
+                    {item.type === 'comment' ? item.senderName.charAt(0).toUpperCase() : <Paperclip size={14} />}
+                  </div>
+                  <div className="bg-[#242634] p-3 rounded-xl rounded-tl-none max-w-[85%]">
+                    {item.type === 'comment' && (
+                       <p className="text-xs font-bold text-[#7c7fff] mb-1">{item.senderName}</p>
+                    )}
+                    
+                    {item.type === 'comment' ? (
+                      <p className="text-sm text-gray-300 break-words whitespace-pre-wrap">{item.text}</p>
+                    ) : (
+                      <div className="mt-1">
+                        {/* Agar Image hai toh tasveer dikhayein, warna file ka icon */}
+                        {isImage(item.fileName) ? (
+                          <a href={getFileLink(item.fileUrl)} target="_blank" rel="noopener noreferrer">
+                             <img 
+                               src={getFileLink(item.fileUrl)} 
+                               alt={item.fileName} 
+                               className="max-w-full h-auto max-h-48 rounded-lg border border-white/10 hover:opacity-90 transition-opacity" 
+                             />
+                          </a>
+                        ) : (
+                          <a 
+                            href={getFileLink(item.fileUrl)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-2 rounded-lg bg-[#121218] border border-white/5 hover:border-[#7c7fff] transition-all group"
+                          >
+                            <div className="p-2 bg-[#7c7fff]/20 text-[#7c7fff] rounded-md shrink-0">
+                              <FileText size={18} />
+                            </div>
+                            <div className="overflow-hidden">
+                              <p className="text-sm font-medium text-gray-300 truncate group-hover:text-white transition-colors">
+                                {item.fileName}
+                              </p>
+                            </div>
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
             
           </div>
