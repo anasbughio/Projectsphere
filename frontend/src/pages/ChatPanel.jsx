@@ -139,7 +139,9 @@ const ChatPanel = ({ isOpen, onClose, organizationId, user, projectId }) => {
           const isMyMessage = m.sender === user.name || m.sender === user._id;
           return (
             <div key={i} className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
-              <span className="text-[10px] text-gray-500 mb-1">{isMyMessage ? 'You' : m.sender}</span>
+              <span className="text-[10px] text-gray-500 mb-1">
+   {isMyMessage ? 'You' : (typeof m.sender === 'object' ? m.sender.name : m.sender)}
+</span>
               <div className={`p-2 rounded-xl text-sm max-w-[85%] ${isMyMessage ? 'bg-[#7c7fff] text-white rounded-tr-none' : 'bg-[#2a2d3e] text-gray-200 rounded-tl-none'}`}>
                 {m.fileUrl ? (
                   <div className="mt-1">
