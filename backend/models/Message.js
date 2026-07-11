@@ -6,7 +6,7 @@ const messageSchema = new mongoose.Schema({
     ref: 'User',
     required: true },
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
-  text: { type: String, required: true },
+  text: { type: String, required: false },
   fileUrl: { type: String },
   fileType: { type: String },
   createdAt: { type: Date, default: Date.now },

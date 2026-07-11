@@ -109,11 +109,12 @@ const ChatPanel = ({ isOpen, onClose, organizationId, user, projectId }) => {
 
       if (resp.status === 200 && resp.data.filePath) {
         socketRef.current?.emit('sendMessage', { 
-          text: `📎 ${file.name}`, 
-          fileUrl: resp.data.filePath, 
-          sender: user._id, 
-          projectId 
-        });
+    text: `📎 ${file.name}`, // Text field yahan majood hai
+    fileUrl: resp.data.filePath, 
+    sender: user._id, 
+    projectId
+});
+alert('File uploaded successfully!');
       }
     } catch (err) {
       console.error('Upload error:', err);
