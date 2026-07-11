@@ -12,8 +12,7 @@ const {
   uploadTaskAttachment
 } = require('../controllers/taskController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const upload = require('../config/multerConfig');
 // Get all global tasks
 router.route('/global/all').get(protect, getGlobalTasks);
 

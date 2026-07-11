@@ -2,10 +2,16 @@ const Comment = require('../models/Comment');
 const Attachment = require('../models/Attachment');
 const Task = require('../models/Task');
 const Notification = require('../models/Notification');
+const { getIO } = require('../config/socket');
 
 // Add Comment
 exports.addComment = async (req, res) => {
   try {
+    // Safety check
+    if (!req.user) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
     const { text } = req.body;
     const { taskId } = req.params;
 
@@ -18,12 +24,12 @@ exports.addComment = async (req, res) => {
 
     const populatedComment = await comment.populate('createdBy', 'name');
     
-    // Socket emit for real-time update
-    const io = req.app.get('socketio');
-    io.to(req.user.organizationId.toString()).emit('newComment', { taskId, comment: populatedComment });
+const io = getIO(); // 🔥 Ab hum naye socket file se IO le rahe hain
+io.to(req.user.organizationId.toString()).emit('newComment', { taskId, comment: populatedComment });
 
     res.status(201).json(populatedComment);
   } catch (error) {
+    console.error("AddComment Error:", error); // Console mein error dekhein
     res.status(500).json({ message: error.message });
   }
 };
@@ -43,8 +49,8 @@ exports.getComments = async (req, res) => {
 exports.getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ recipient: req.user._id })
-      .sort({ createdAt: -1 }) // Sab se nayi pehle
-      .limit(30); // Ziada load na ho is liye sirf aakhri 30 bhejein
+      .sort({ createdAt: -1 })
+      .limit(30); 
       
     res.json(notifications);
   } catch (error) {
@@ -52,7 +58,6 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
-// 2. Bell icon par click karte hi sab ko "Read" mark karne ke liye
 exports.markNotificationsAsRead = async (req, res) => {
   try {
     await Notification.updateMany(
