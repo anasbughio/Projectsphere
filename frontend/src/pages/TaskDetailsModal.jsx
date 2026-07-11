@@ -14,14 +14,18 @@ const TaskDetailsModal = ({ task, onClose, organizationId, socket }) => {
   const chatContainerRef = useRef(null);
 
   // Safely get file link
-  const getFileLink = (fileUrl) => {
-    if (!fileUrl) return '#';
-    if (fileUrl.startsWith('http')) return fileUrl;
-    const baseUrl = import.meta.env?.VITE_API_BASE_URL 
-      ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
-      : 'http://localhost:5000';
-    return `${baseUrl}${fileUrl}`;
-  };
+const getFileLink = (fileUrl) => {
+  if (!fileUrl) return '#';
+  if (fileUrl.startsWith('http')) return fileUrl;
+  
+  // Yahan fallback URL ko apne Live Backend URL se change karein
+  const liveBackend = "https://projectsphere-dlvv.onrender.com"; 
+  const baseUrl = import.meta.env?.VITE_API_BASE_URL 
+    ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
+    : liveBackend; 
+    
+  return `${baseUrl}${fileUrl}`;
+};
 
   // Check if file is an image
   const isImage = (fileName) => {
