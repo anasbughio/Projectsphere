@@ -10,8 +10,10 @@ import {
   Settings, 
   HelpCircle, 
   Rocket,
-  Plus
+  Plus,
+  Calendar
 } from 'lucide-react';
+
 
 import api from '../services/api';
 const DashboardLayout = () => {
@@ -89,6 +91,15 @@ const backendUrl = 'https://projectsphere-dlvv.onrender.com';
                 <Users size={18} />
                 <span>Team</span>
               </Link>
+            </li>
+            <li>
+             <Link 
+  to="/calendar" 
+  className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+>
+  <Calendar size={20} />
+  <span className="font-medium">Calendar</span>
+</Link>
             </li>
           </ul>
         </nav>

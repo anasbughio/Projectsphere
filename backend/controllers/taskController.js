@@ -3,6 +3,7 @@ const Project = require('../models/Project');
 const { normalizeRole } = require('../middlewares/authMiddleware');
 const Notification = require('../models/Notification'); 
 const { logAudit } = require('../utils/auditLogger');
+const { getIO } = require('../config/socket');
 
 const isAdmin = (user) => normalizeRole(user?.role) === 'admin';
 
@@ -48,7 +49,7 @@ exports.createTask = async (req, res) => {
 
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
 
-    const io = req.app.get('socketio');
+    const io = getIO();
     
     // 1. Existing Logic: Poori organization ki board screen update karne ke liye
     io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
@@ -94,7 +95,7 @@ exports.createGlobalTask = async (req, res) => {
 
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
 
-    const io = req.app.get('socketio');
+   const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
 
     res.status(201).json(populatedTask);
@@ -176,10 +177,10 @@ exports.updateTaskStatus = async (req, res) => {
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id },
       { status },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('assignedTo', 'name');
 
-    const io = req.app.get('socketio');
+    const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
 
     res.json(updatedTask);
@@ -211,7 +212,7 @@ exports.deleteTask = async (req, res) => {
       { new: true }
     );
 
-    const io = req.app.get('socketio');
+    const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskDeleted', req.params.id);
     res.json({ message: 'Task moved to trash successfully' });
   } catch (error) {
@@ -235,10 +236,10 @@ exports.updateTask = async (req, res) => {
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id },
       { title, description, priority, department },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('assignedTo', 'name');
 
-    const io = req.app.get('socketio');
+    const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
 
     res.json(updatedTask);
