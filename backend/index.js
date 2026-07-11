@@ -17,6 +17,7 @@ const upload = multer({ dest: 'uploads/' });
 const collaborationRoutes = require('./routes/collaborationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const auditRoutes = require('./routes/auditRoutes');
+const path = require('path');
 
 
 require('./config/passport');
@@ -28,7 +29,7 @@ const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use((req, res, next) => {
   console.log('Incoming request:', req.method, req.path, 'Origin:', req.headers.origin || 'n/a');
   if (req.body) {
