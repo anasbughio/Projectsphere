@@ -14,37 +14,7 @@ exports.getTeamMembers = async (req, res) => {
   }
 };
 
-// @desc    Add a new member to the organization
-// @route   POST /api/v1/team
-// exports.addTeamMember = async (req, res) => {
-//   try {
-//     const { name, email, password, role } = req.body;
 
-//     // 1. Check karein ke is email se koi pehle se toh nahi bana hua
-//     const userExists = await User.findOne({ email });
-//     if (userExists) {
-//       return res.status(400).json({ message: 'User already exists with this email' });
-//     }
-
-//     // 2. Naya user create karein (Admin ki organizationId ke sath)
-//     const user = await User.create({
-//       name,
-//       email,
-//       password,
-//       role: role || 'Member', // Default role 'Member' hoga
-//       organizationId: req.user.organizationId,
-//     });
-
-//     res.status(201).json({
-//       _id: user._id,
-//       name: user.name,
-//       email: user.email,
-//       role: user.role,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// };
 
 exports.inviteMember = async (req, res) => {
   try {
@@ -137,5 +107,23 @@ exports.acceptInvitation = async (req, res) => {
   } catch (error) {
     console.error("Accept Invite Error:", error);
     res.status(500).json({ message: "Server error while accepting invitation." });
+  }
+};
+
+
+exports.deleteMember = async (req, res) => {
+  try {
+    const memberId = req.params.id;
+    
+    // Admin ya Org Admin check (middleware handle karega)
+    const member = await User.findByIdAndDelete(memberId);
+    
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+    
+    res.status(200).json({ message: "Member deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

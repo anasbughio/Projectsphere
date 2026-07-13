@@ -35,12 +35,6 @@ const LandingPage = () => {
           </div>
         </div>
         <div className="flex items-center gap-4 text-gray-400">
-          <div className="hidden md:flex items-center bg-[#131620] px-3 py-1.5 rounded-md border border-gray-800">
-            <Search size={16} className="mr-2" />
-            <input type="text" placeholder="Search..." className="bg-transparent text-sm focus:outline-none text-white w-32" />
-          </div>
-          <Bell size={18} className="hover:text-white cursor-pointer" />
-          
           <div className="flex items-center gap-3 border-l border-gray-800 pl-4 ml-2">
          
             <User 
