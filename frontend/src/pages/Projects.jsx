@@ -15,6 +15,7 @@ const Projects = () => {
   const [editingProject, setEditingProject] = useState(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('Active'); // Naya status state
 
   const normalizeRole = (role) => {
     if (!role) return '';
@@ -49,6 +50,7 @@ const Projects = () => {
     setEditingProject(null);
     setName('');
     setDescription('');
+    setStatus('Active'); // Reset status on close
   };
 
   const handleEditClick = (e, project) => {
@@ -56,6 +58,7 @@ const Projects = () => {
     setEditingProject(project);
     setName(project.name);
     setDescription(project.description || '');
+    setStatus(project.status || 'Active'); // Edit karte waqt current status set karein
     setIsModalOpen(true);
   };
 
@@ -64,12 +67,14 @@ const Projects = () => {
     setIsSubmitting(true);
     try {
       if (editingProject) {
-        const response = await api.put(`/projects/${editingProject._id}`, { name, description });
+        // Update Project Payload mein status add kiya gaya
+        const response = await api.put(`/projects/${editingProject._id}`, { name, description, status });
         setProjects((prevProjects) => 
           prevProjects.map((p) => p._id === editingProject._id ? response.data : p)
         );
       } else {
-        const response = await api.post('/projects', { name, description });
+        // Create Project Payload mein status add kiya gaya
+        const response = await api.post('/projects', { name, description, status });
         setProjects((prevProjects) => [response.data, ...prevProjects]);
       }
       handleCloseModal();
@@ -150,7 +155,6 @@ const Projects = () => {
                   <FolderKanban size={20} />
                 </div>
                 {isAdmin && (
-                  // Opacity is 100 on mobile/tablets for touch access, shifts to hover-only on lg screens
                   <div className="flex items-center gap-2 sm:gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => handleEditClick(e, project)}
@@ -182,7 +186,7 @@ const Projects = () => {
                   project.status === 'Completed' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' :
                   'border-amber-500/30 bg-amber-500/10 text-amber-400'
                 }`}>
-                  {project.status}
+                  {project.status || 'Active'}
                 </span>
                 <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#606479]">
                   <Calendar size={12} className="sm:w-3.5 sm:h-3.5" />
@@ -223,6 +227,21 @@ const Projects = () => {
                     placeholder="E.g. E-commerce Redesign"
                   />
                 </div>
+                
+                {/* Status Dropdown added here */}
+                <div>
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Description (Optional)</label>
                   <textarea 
