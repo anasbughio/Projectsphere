@@ -309,3 +309,16 @@ exports.uploadTaskAttachment = async (req, res) => {
     res.status(500).json({ message: 'Error uploading file', error: error.message });
   }
 };
+
+
+exports.getAllOrganizationTasks = async (req, res) => {
+  try {
+    // User jis organization ka hai, uske saare tasks return kardo
+    const tasks = await Task.find({ organizationId: req.user.organizationId ,
+      isDeleted: false
+    });
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching all organization tasks', error: error.message });
+  }
+};
