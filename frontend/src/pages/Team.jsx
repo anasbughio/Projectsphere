@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Mail, Shield, MoreVertical, Loader2, Users } from 'lucide-react';
+import { UserPlus, Mail, Shield, MoreVertical, Loader2, Users ,Trash2} from 'lucide-react';
 import api from '../services/api';
 
 const normalizeRole = (role) => {
   if (!role) return '';
   const normalized = role.toString().trim().toLowerCase();
-  if (['admin', 'org admin', 'organization admin'].includes(normalized)) return 'admin';
+  if (['Admin', 'Org Admin', 'organization admin'].includes(normalized)) return 'Admin';
   if (['member', 'team member'].includes(normalized)) return 'member';
   return normalized;
 };
@@ -25,7 +25,38 @@ const Team = () => {
   const [role, setRole] = useState('Member');
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
-  const isAdmin = normalizeRole(storedUser?.role) === 'admin';
+const isAuthorized = () => {
+  if (!storedUser?.role) return false;
+  
+  // Backend normalizeRole function jo logic use kar raha hai, wahi yahan use karein
+  const role = storedUser.role.toString().trim().toLowerCase();
+  
+  // Backend mein 'Org Admin' normalize ho kar 'admin' ban jata hai
+  // Isliye hum check karenge ke kya user admin, org admin, ya super admin hai
+  return ['admin', 'org admin', 'organization admin', 'super admin'].includes(role);
+};
+const isAdminOrOrgAdmin = isAuthorized();
+  if (!isAdminOrOrgAdmin) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-[#84889c]">
+        <Shield size={48} className="mb-4 opacity-50" />
+        <h2 className="text-xl font-bold">Access Denied</h2>
+        <p>Only Admins can view team members.</p>
+      </div>
+    );
+  }
+
+  const handleDeleteMember = async (memberId) => {
+    if (!window.confirm('Are you sure you want to remove this member?')) return;
+    
+    try {
+      await api.delete(`/team/${memberId}`);
+      setTeam(team.filter(m => m._id !== memberId));
+    } catch (err) {
+      alert('Failed to delete member');
+    }
+  };
+  const isAdmin = normalizeRole(storedUser?.role) === 'Admin';
 
   // Fetch Team Members
   useEffect(() => {
@@ -70,14 +101,12 @@ const Team = () => {
 
   return (
     <div className="h-full flex flex-col font-sans">
-      
-      {/* Header Block */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-2xl font-bold text-white mb-1">Team Workspace</h2>
           <p className="text-[#84889c] text-sm">Manage your team members and roles</p>
         </div>
-        {isAdmin && (
+        {isAdminOrOrgAdmin && (
           <button 
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20"
@@ -103,9 +132,15 @@ const Team = () => {
                 <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#7c7fff] to-[#5b5eb8] flex items-center justify-center text-lg font-bold text-white shadow-lg">
                 {member.name ? member.name.charAt(0).toUpperCase() : 'U'}
                 </div>
-                <button className="text-[#606479] hover:text-white transition opacity-0 group-hover:opacity-100">
-                  <MoreVertical size={18} />
-                </button>
+                
+                {isAdminOrOrgAdmin && (
+  <button
+    onClick={() => handleDeleteMember(member._id)}
+    className="text-[#606479] hover:text-red-400 transition"
+  >
+    <Trash2 size={18} />
+  </button>
+)}
               </div>
               <h3 className="text-lg font-bold text-white mb-1">{member.name}</h3>
               

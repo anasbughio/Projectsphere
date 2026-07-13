@@ -43,6 +43,8 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
+        {/* Invitation flow should remain accessible before login */}
+        <Route path="/accept-invite" element={<AcceptInvite />} />
 
         {/* ================= PROTECTED ROUTES ================= */}
         {/* Sirf logged-in users yahan ja sakte hain */}
@@ -59,7 +61,6 @@ function App() {
           <Route path="/projects/:projectId" element={<KanbanBoard />} />
           <Route path="/team" element={<Team />} />
           <Route path="/tasks" element={<TaskForm />} />
-          <Route element={<AcceptInvite />} path="/accept-invite" />
           <Route path="/activity" element={<AuditLogs />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/calendar" element={<CalendarView /> } />

@@ -18,6 +18,8 @@ import {
   X
 } from 'lucide-react';
 import api from '../services/api';
+import { io } from 'socket.io-client'; // 🔥 Socket.io import kiya
+import NotificationBell from '../components/NotificationBell';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -27,11 +29,28 @@ const DashboardLayout = () => {
 
   // Mobile menu state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [socketInstance, setSocketInstance] = useState(null);
 
-  // Close mobile menu automatically when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    // Agar user logged in hai aur uski organizationId hai, tabhi socket connect karo
+    if (user && user.organizationId) {
+      const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
+      const socket = io(SOCKET_URL, {
+        transports: ['websocket', 'polling']
+      });
+      
+      setSocketInstance(socket);
+      socket.emit('joinOrganization', user.organizationId);
+
+      return () => {
+        socket.disconnect(); // Cleanup on unmount or logout
+      };
+    }
+  }, [user?.organizationId]);
 
   const handleLogout = async () => {
     try {
@@ -117,12 +136,21 @@ const DashboardLayout = () => {
                 <span>Tasks</span>
               </Link>
             </li>
-            <li>
-              <Link to="/team" className="flex items-center gap-3 px-4 py-2.5 text-[#84889c] hover:text-white hover:bg-white/5 rounded-xl transition font-medium text-sm">
-                <Users size={18} />
-                <span>Team</span>
-              </Link>
-            </li>
+            {(user?.role === 'Admin' || user?.role === 'Org Admin' || user?.role === 'Super Admin') && (
+  <li>
+    <Link 
+      to="/team" 
+      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+        isActive('/team') 
+          ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
+          : 'text-[#84889c] hover:text-white hover:bg-white/5'
+      }`}
+    >
+      <Users size={18} />
+      <span>Team</span>
+    </Link>
+  </li>
+)}
             <li>
              <Link 
                 to="/calendar" 
@@ -185,7 +213,7 @@ const DashboardLayout = () => {
       <main className="flex-1 flex flex-col relative bg-[#121218] min-w-0">
         
         {/* Topbar */}
-        <header className="h-[76px] border-b border-white/5 flex items-center justify-between px-4 md:px-8 z-10 bg-[#121218]/95 backdrop-blur-sm sticky top-0">
+        <header className="h-[76px] border-b border-white/5 flex items-center justify-between px-4 md:px-8 z-60 bg-[#121218]/95 backdrop-blur-sm sticky top-0">
           
           <div className="flex items-center gap-4 flex-1">
             {/* Mobile Menu Toggle Button */}
@@ -196,30 +224,17 @@ const DashboardLayout = () => {
               <Menu size={24} />
             </button>
 
-            {/* Search Bar - Hidden on very small screens, responsive on others */}
-            <div className="relative w-full max-w-[400px] hidden sm:block">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Search size={16} className="text-[#606479]" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search projects, tasks..."
-                className="w-full pl-10 pr-4 py-2 bg-[#1a1c26] border border-white/5 rounded-lg text-sm text-white placeholder-[#606479] focus:outline-none focus:border-[#7c7fff]/50 focus:ring-1 focus:ring-[#7c7fff]/50 transition"
-              />
-            </div>
+      
           </div>
 
           {/* Right Actions & Profile */}
           <div className="flex items-center gap-2 sm:gap-5 shrink-0">
-            {/* Search icon for mobile only */}
+            
             <button className="sm:hidden text-[#606479] hover:text-white transition p-1.5 hover:bg-white/5 rounded-lg">
               <Search size={20} />
             </button>
 
-            <button className="text-[#606479] hover:text-white transition relative p-1.5 hover:bg-white/5 rounded-lg">
-              <Bell size={20} className="sm:w-[18px] sm:h-[18px]" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#7c7fff] rounded-full border-2 border-[#121218]"></span>
-            </button>
+            <NotificationBell user={user} socket={socketInstance}/>
 
             <Link to="/settings">
               <button className="text-[#606479] hover:text-white transition p-1.5 hover:bg-white/5 rounded-lg">

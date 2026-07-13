@@ -45,8 +45,8 @@ const NotificationBell = ({ user, socket }) => {
   };
 
   return (
-    <div className="relative">
-      {/* Bell Icon Button */}
+    <div className="relative z-[100]">
+    
       <button 
         onClick={() => { setIsOpen(!isOpen); if(unreadCount > 0) markAllAsRead(); }} 
         className="relative p-2 bg-[#1a1c26] border border-white/5 rounded-lg text-gray-400 hover:text-white transition"
@@ -61,7 +61,7 @@ const NotificationBell = ({ user, socket }) => {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-[#1a1c26] border border-white/10 rounded-xl shadow-2xl z-50 max-h-96 overflow-y-auto">
+        <div className="absolute right-0 mt-2 w-80 bg-[#1a1c26] border border-white/10 rounded-xl shadow-2xl z-[100] max-h-96 overflow-y-auto">
           <div className="p-4 border-b border-white/5 flex justify-between items-center">
             <h5 className="text-sm font-bold text-white">Notifications</h5>
           </div>

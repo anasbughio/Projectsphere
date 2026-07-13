@@ -5,7 +5,6 @@ import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
 import TaskDetailsModal from './TaskDetailsModal';
-import NotificationBell from '../components/NotificationBell';
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
@@ -78,7 +77,7 @@ const KanbanBoard = () => {
     fetchBoardData();
   }, [projectId]);
 
-  // 2. --- REAL-TIME SOCKET.IO LOGIC ---
+  // Real-time updates for Kanban tasks
   useEffect(() => {
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
     const socket = io(SOCKET_URL, {
@@ -119,7 +118,6 @@ const KanbanBoard = () => {
     };
   }, [projectId]);
 
-  // --- FILTERING LOGIC ---
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -241,7 +239,7 @@ const KanbanBoard = () => {
   }
 
   return (
-    <div className="min-h-full flex flex-col font-sans w-full box-border">
+    <div className="min-h-full flex flex-col font-sans w-full box-border ">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
@@ -259,8 +257,6 @@ const KanbanBoard = () => {
         </div>
         
         <div className="flex items-center flex-wrap gap-2 sm:gap-4"> 
-          <NotificationBell user={storedUser} socket={socketInstance} />
-
           <button 
             onClick={openCreateModal} 
             className="flex items-center gap-1.5 sm:gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition shadow-lg shadow-[#7c7fff]/20"
@@ -316,7 +312,7 @@ const KanbanBoard = () => {
         </div>
       </div>
 
-      {/* KANBAN BOARD COLUMNS (Flex-1 for Full Width on Desktop, Stacking on Mobile) */}
+      {/* KANBAN BOARD COLUMNS */}
       <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
         
         {/* Column: To Do */}
@@ -377,7 +373,6 @@ const KanbanBoard = () => {
         </div>
       </div>
 
-      {/* Create/Edit Task Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div 
@@ -491,7 +486,6 @@ const KanbanBoard = () => {
         projectId={projectId}
       />
 
-      {/* Global Custom Scrollbar Styles for the board */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
