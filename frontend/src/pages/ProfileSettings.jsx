@@ -50,7 +50,7 @@ const ProfileSettings = () => {
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    setPasswordFieldMsg({ type: '', text: '' });
+    setPasswordMsg({ type: '', text: '' });
 
     if (!passwords.currentPassword || !passwords.newPassword) {
       setPasswordMsg({ type: 'error', text: 'Please fill all password fields' });
