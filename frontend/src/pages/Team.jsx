@@ -58,21 +58,21 @@ const isAdminOrOrgAdmin = isAuthorized();
   };
   const isAdmin = normalizeRole(storedUser?.role) === 'Admin';
 
-  // Fetch Team Members
-  useEffect(() => {
-    const fetchTeam = async () => {
-      try {
-        const response = await api.get('/team');
-        setTeam(response.data);
-      } catch (error) {
-        console.error('Failed to load team', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTeam();
-  }, []);
-
+// Team.jsx -> useEffect
+useEffect(() => {
+  const fetchTeam = async () => {
+    try {
+      // Backend ke us route ko hit karein jo humne upar banaya hai
+      const response = await api.get('/team/members'); // Naya route name jo controller se map ho
+      setTeam(response.data);
+    } catch (error) {
+      console.error('Failed to load team', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchTeam();
+}, []);
   // Add New Member
   const handleAddMember = async (e) => {
     e.preventDefault();
@@ -133,7 +133,7 @@ const isAdminOrOrgAdmin = isAuthorized();
                 {member.name ? member.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 
-                {isAdminOrOrgAdmin && (
+             { (isAdminOrOrgAdmin || storedUser?.role === 'Super Admin') && (
   <button
     onClick={() => handleDeleteMember(member._id)}
     className="text-[#606479] hover:text-red-400 transition"

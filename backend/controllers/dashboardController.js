@@ -1,7 +1,7 @@
 const Project = require('../models/Project');
 const Task = require('../models/Task');
 const User = require('../models/User');
-
+const Organization = require('../models/Organization');
 exports.getDashboardMetrics = async (req, res) => {
   try {
     const orgId = req.user.organizationId; // Auth middleware se user ki organization mil jayegi
@@ -42,5 +42,25 @@ exports.getDashboardMetrics = async (req, res) => {
   } catch (error) {
     console.error("Dashboard Metrics Error:", error);
     res.status(500).json({ message: "Server error in fetching dashboard metrics" });
+  }
+};
+
+// backend/controllers/dashboardController.js
+exports.getSuperAdminMetrics = async (req, res) => {
+  try {
+    // Super Admin: Sirf platform wide stats count karein
+    const totalOrgs = await Organization.countDocuments();
+    const totalUsers = await User.countDocuments();
+    const totalProjects = await Project.countDocuments();
+    const totalTasks = await Task.countDocuments();
+
+    res.status(200).json({
+      totalOrgs,
+      totalUsers,
+      totalProjects,
+      totalTasks
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching platform stats" });
   }
 };

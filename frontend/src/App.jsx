@@ -22,7 +22,8 @@ import AuditLogs from './pages/AuditLogs';
 import CalendarView from './components/CalendarView';
 import ClientPortal from './pages/ClientPortal';
 import ProfileSettings from './pages/ProfileSettings';
-
+import AdminPanel from './pages/AdminPanel';
+import SuperAdminRoute from './components/SuperAdminRoute';
 function App() {
   return (
     <BrowserRouter>
@@ -66,6 +67,7 @@ function App() {
           <Route path="/calendar" element={<CalendarView /> } />
           <Route path="/client-portal" element={<ClientPortal />} />
           <Route path="/settings" element={<ProfileSettings />} />
+          <Route path="/admin" element={<SuperAdminRoute><AdminPanel />  </SuperAdminRoute>  } />
         </Route>
 
 

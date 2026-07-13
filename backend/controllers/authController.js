@@ -334,3 +334,68 @@ exports.updatePassword = async (req, res) => {
     res.status(500).json({ message: "Error updating password", error: error.message });
   }
 };
+
+exports.getAllUsersForSuperAdmin = async (req, res) => {
+  try {
+    // Super Admin ke liye koi tenant filtering nahi hogi
+    const users = await User.find({}).populate('organizationId', 'name'); 
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching users' });
+  }
+};
+
+// backend/controllers/userController.js
+
+exports.getTeamMembers = async (req, res) => {
+  try {
+    const { role, organizationId } = req.user;
+
+    // 1. Super Admin: Sirf Org Admin/Admin roles walay users lao
+    if (role === 'Super Admin') {
+      const orgAdmins = await User.find({ 
+        role: { $in: ['Org Admin', 'Admin', 'organization admin'] } 
+      }).populate('organizationId', 'name');
+      return res.status(200).json(orgAdmins);
+    }
+
+    // 2. Org Admin: Sirf apni organization ke users
+    const teamMembers = await User.find({ organizationId });
+    return res.status(200).json(teamMembers);
+    
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching team', error: error.message });
+  }
+};
+
+exports.deleteMember = async (req, res) => {
+  try {
+    const memberToDelete = await User.findById(req.params.id);
+    if (!memberToDelete) return res.status(404).json({ message: 'User not found' });
+
+    // Ensure IDs exist before comparing
+    const memberOrgId = memberToDelete.organizationId ? memberToDelete.organizationId.toString() : null;
+    const reqUserOrgId = req.user.organizationId ? req.user.organizationId.toString() : null;
+
+    console.log("Member Org ID:", memberOrgId);
+    console.log("Requesting User Org ID:", reqUserOrgId);
+    console.log("Requesting User Role:", req.user.role);
+
+    // 1. Super Admin access
+    if (req.user.role === 'Super Admin') {
+      await User.findByIdAndDelete(req.params.id);
+      return res.status(200).json({ message: 'User deleted by Super Admin' });
+    }
+
+    // 2. Org Admin access: Check IDs using .toString()
+    if (memberOrgId && reqUserOrgId && memberOrgId === reqUserOrgId) {
+      await User.findByIdAndDelete(req.params.id);
+      return res.status(200).json({ message: 'Member removed' });
+    }
+
+    return res.status(403).json({ message: 'Unauthorized: Access Denied' });
+  } catch (error) {
+    console.error("Delete Error:", error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
