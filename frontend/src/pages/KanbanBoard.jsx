@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import ChatPanel from './ChatPanel';
 import TaskDetailsModal from './TaskDetailsModal';
 import NotificationBell from '../components/NotificationBell';
+
 const KanbanBoard = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -66,7 +67,11 @@ const KanbanBoard = () => {
       });
       setTasks(normalizedTasks);
       setTeam(teamRes.data);
-    } catch (error) { console.error('Failed to load board data', error); } finally { setLoading(false); }
+    } catch (error) { 
+      console.error('Failed to load board data', error); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => {
@@ -75,16 +80,17 @@ const KanbanBoard = () => {
 
   // 2. --- REAL-TIME SOCKET.IO LOGIC ---
   useEffect(() => {
-   const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
-  const socket = io(SOCKET_URL, {
-    transports: ['websocket', 'polling']
-  });
-  
-  setSocketInstance(socket); // 🔥 Socket ko state mein save kiya
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling']
+    });
+    
+    setSocketInstance(socket);
 
-  if (storedUser?.organizationId) {
-    socket.emit('joinOrganization', storedUser.organizationId);
-  }
+    if (storedUser?.organizationId) {
+      socket.emit('joinOrganization', storedUser.organizationId);
+    }
+    
     const handleCreated = (newTask) => {
       if (newTask.projectId === projectId) {
         setTasks((prev) => prev.find(t => t._id === newTask._id) ? prev : [newTask, ...prev]);
@@ -111,7 +117,7 @@ const KanbanBoard = () => {
       socket.off('taskDeleted', handleDeleted);
       socket.disconnect();
     };
-  }, [projectId]);// Dependancy mein projectId add kiya taake project change hone par update ho
+  }, [projectId]);
 
   // --- FILTERING LOGIC ---
   const filteredTasks = tasks.filter(task => {
@@ -157,7 +163,7 @@ const KanbanBoard = () => {
       alert('You do not have permission to edit this task.');
       return;
     }
-   
+    
     setIsSaving(true);
 
     try {
@@ -174,8 +180,6 @@ const KanbanBoard = () => {
       await fetchBoardData();
       setIsModalOpen(false);
       setEditingTask(null);
-
-
       resetTaskForm();
     } catch (err) {
       console.error('Task save error:', err.response?.data || err);
@@ -195,7 +199,6 @@ const KanbanBoard = () => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
 
     try {
-      // Optimistic delete
       setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
       await api.delete(`/tasks/${taskId}`);
     } catch (error) {
@@ -234,120 +237,142 @@ const KanbanBoard = () => {
   const getTasksByStatus = (colStatus) => filteredTasks.filter(t => t.status === colStatus);
 
   if (loading) {
-    return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-[#7c7fff]" size={40} /></div>;
+    return <div className="h-full flex items-center justify-center w-full"><Loader2 className="animate-spin text-[#7c7fff]" size={40} /></div>;
   }
 
   return (
-    <div className="h-full flex flex-col font-sans">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/projects')} className="p-2 hover:bg-white/5 rounded-lg text-[#606479] hover:text-white transition">
+    <div className="min-h-full flex flex-col font-sans w-full box-border">
+      
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button 
+            onClick={() => navigate('/projects')} 
+            className="p-2 bg-[#1a1c26] sm:bg-transparent hover:bg-white/5 rounded-lg text-[#606479] hover:text-white transition shadow-sm sm:shadow-none shrink-0"
+          >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Project Board</h2>
-            <p className="text-[#84889c] text-sm">Manage tasks and tickets</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-0.5 sm:mb-1">Project Board</h2>
+            <p className="text-[#84889c] text-xs sm:text-sm">Manage tasks and tickets</p>
           </div>
         </div>
         
-       <div className="flex items-center gap-4"> {/* <-- Main ne in sab ko ek gap-4 wale div mein daal diya hai */}
-          
-          {/* 🔥 YAHAN BELL ICON LAGA DIYA */}
+        <div className="flex items-center flex-wrap gap-2 sm:gap-4"> 
           <NotificationBell user={storedUser} socket={socketInstance} />
 
-          <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20">
+          <button 
+            onClick={openCreateModal} 
+            className="flex items-center gap-1.5 sm:gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition shadow-lg shadow-[#7c7fff]/20"
+          >
             <Plus size={18} /> New Task
           </button>
         
           <button 
             onClick={() => setIsChatOpen(!isChatOpen)} 
-            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg font-semibold transition"
+            className="bg-[#1a1c26] border border-white/5 hover:bg-white/5 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
           >
             {isChatOpen ? 'Close Chat' : 'Open Chat'}
           </button>
-
         </div>
       </div>
 
       {/* --- ADVANCED FILTER BAR --- */}
-      <div className="bg-[#1a1c26] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-4 shadow-sm">
-        <div className="relative flex-1">
+      <div className="bg-[#1a1c26] p-3 sm:p-4 rounded-xl border border-white/5 mb-6 flex flex-col lg:flex-row gap-3 sm:gap-4 shadow-sm w-full">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-2.5 text-[#606479]" size={18} />
           <input 
             type="text" 
             placeholder="Search project tasks..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#121218] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-white focus:outline-none focus:border-[#7c7fff] transition"
+            className="w-full bg-[#121218] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition"
           />
         </div>
-        <select 
-          value={priorityFilter} 
-          onChange={(e) => setPriorityFilter(e.target.value)} 
-          className="bg-[#121218] border border-white/5 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
-        >
-          <option value="All">All Priorities</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-          <option value="Urgent">Urgent</option>
-        </select>
-        <select 
-          value={departmentFilter} 
-          onChange={(e) => setDepartmentFilter(e.target.value)} 
-          className="bg-[#121218] border border-white/5 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
-        >
-          <option value="All">All Departments</option>
-          <option value="General">General</option>
-          <option value="Design">Design</option>
-          <option value="Frontend">Frontend</option>
-          <option value="Backend">Backend</option>
-          <option value="DevOps">DevOps</option>
-        </select>
+        <div className="flex gap-3 w-full lg:w-auto">
+          <select 
+            value={priorityFilter} 
+            onChange={(e) => setPriorityFilter(e.target.value)} 
+            className="w-1/2 lg:w-auto bg-[#121218] border border-white/5 rounded-lg px-3 sm:px-4 py-2 text-white text-xs sm:text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+          >
+            <option value="All">All Priorities</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Urgent">Urgent</option>
+          </select>
+          <select 
+            value={departmentFilter} 
+            onChange={(e) => setDepartmentFilter(e.target.value)} 
+            className="w-1/2 lg:w-auto bg-[#121218] border border-white/5 rounded-lg px-3 sm:px-4 py-2 text-white text-xs sm:text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+          >
+            <option value="All">All Departments</option>
+            <option value="General">General</option>
+            <option value="Design">Design</option>
+            <option value="Frontend">Frontend</option>
+            <option value="Backend">Backend</option>
+            <option value="DevOps">DevOps</option>
+          </select>
+        </div>
       </div>
 
-      <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
+      {/* KANBAN BOARD COLUMNS (Flex-1 for Full Width on Desktop, Stacking on Mobile) */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
+        
         {/* Column: To Do */}
-        <div className="w-[320px] min-w-[320px] flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-4 transition-colors hover:bg-[#1f222e]" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-[#606479]"></span> TO DO <span className="ml-1 text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('To Do').length}</span></h3>
+        <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
+          <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+            <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#606479]"></span> TO DO 
+              <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('To Do').length}</span>
+            </h3>
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-           {getTasksByStatus('To Do').map(task => (
-  <TaskCard 
-    key={task._id} 
-    task={task} 
-    onDragStart={handleDragStart} 
-    onEdit={openEditModal} 
-    onDelete={handleDeleteTask} 
-    canModifyTask={canModifyTask} 
-    canManageBoard={canManageBoard}
-    onClick={() => setSelectedTask(task)} // <--- Naya prop
-  />
-))}
+          <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+            {getTasksByStatus('To Do').map(task => (
+              <TaskCard 
+                key={task._id} 
+                task={task} 
+                onDragStart={handleDragStart} 
+                onEdit={openEditModal} 
+                onDelete={handleDeleteTask} 
+                canModifyTask={canModifyTask} 
+                canManageBoard={canManageBoard}
+                onClick={() => setSelectedTask(task)} 
+              />
+            ))}
           </div>
         </div>
 
         {/* Column: In Progress */}
-        <div className="w-[320px] min-w-[320px] flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-4 transition-colors hover:bg-[#1f222e]" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'In Progress')}>
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> IN PROGRESS <span className="ml-1 text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('In Progress').length}</span></h3>
+        <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'In Progress')}>
+          <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+            <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-amber-500"></span> IN PROGRESS 
+              <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('In Progress').length}</span>
+            </h3>
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('In Progress').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>)}
+          <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+            {getTasksByStatus('In Progress').map(task => (
+              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+            ))}
           </div>
         </div>
 
         {/* Column: Done */}
-        <div className="w-[320px] min-w-[320px] flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-4 transition-colors hover:bg-[#1f222e]" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'Done')}>
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> DONE <span className="ml-1 text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('Done').length}</span></h3>
+        <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'Done')}>
+          <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+            <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500"></span> DONE 
+              <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('Done').length}</span>
+            </h3>
             <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
           </div>
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
-            {getTasksByStatus('Done').map(task => <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>)}
+          <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+            {getTasksByStatus('Done').map(task => (
+              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+            ))}
           </div>
         </div>
       </div>
@@ -355,34 +380,37 @@ const KanbanBoard = () => {
       {/* Create/Edit Task Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#2a2d3e] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-white/5">
-              <h3 className="text-xl font-bold text-white">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
+          <div 
+            className="bg-[#2a2d3e] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-white/5 shrink-0">
+              <h3 className="text-lg sm:text-xl font-bold text-white">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
             </div>
          
-            <form onSubmit={handleSubmitTask} className="p-6">
-              <div className="flex flex-col gap-5 mb-8">
+            <form onSubmit={handleSubmitTask} className="p-5 sm:p-6 overflow-y-auto custom-scrollbar">
+              <div className="flex flex-col gap-4 sm:gap-5 mb-6 sm:mb-8">
                 <div>
-                  <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Task Title</label>
-                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition" />
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Task Title</label>
+                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Description</label>
-                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition resize-none h-20" />
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Description</label>
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition resize-none h-20" />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Status</label>
-                    <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Status</label>
+                    <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
                       <option value="To Do">To Do</option>
                       <option value="In Progress">In Progress</option>
                       <option value="Done">Done</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Priority</label>
-                    <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Priority</label>
+                    <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
@@ -391,14 +419,14 @@ const KanbanBoard = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Due Date</label>
-                    <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition" />
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Due Date</label>
+                    <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Department</label>
-                    <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Department</label>
+                    <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
                       <option value="General">General</option>
                       <option value="Design">Design</option>
                       <option value="Frontend">Frontend</option>
@@ -409,11 +437,11 @@ const KanbanBoard = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Assign To</label>
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Assign To</label>
                   <select 
                     value={assignedTo} 
                     onChange={(e) => setAssignedTo(e.target.value)} 
-                    className="w-full px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
                   >
                     <option value="">Unassigned</option>
                     {team.map(member => (
@@ -425,9 +453,19 @@ const KanbanBoard = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-                <button type="button" onClick={() => { setIsModalOpen(false); setEditingTask(null); resetTaskForm(); }} className="px-4 py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white transition">Cancel</button>
-                <button type="submit" disabled={isSaving} className="px-6 py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex justify-center shadow-lg shadow-[#7c7fff]/20">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-white/5 shrink-0">
+                <button 
+                  type="button" 
+                  onClick={() => { setIsModalOpen(false); setEditingTask(null); resetTaskForm(); }} 
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white hover:bg-white/5 transition text-center"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSaving} 
+                  className="w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-lg text-sm font-semibold text-white bg-[#7c7fff] hover:bg-[#6b6de0] transition min-w-[120px] flex items-center justify-center shadow-md shadow-[#7c7fff]/20"
+                >
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : editingTask ? 'Save Changes' : 'Add Task'}
                 </button>
               </div>
@@ -435,81 +473,93 @@ const KanbanBoard = () => {
           </div>
         </div>
       )}
-         {selectedTask && (
-  <TaskDetailsModal 
-    task={selectedTask} 
-    onClose={() => setSelectedTask(null)} 
-    organizationId={storedUser?.organizationId}
-    socket={socketInstance}
-  />
-)}
+
+      {selectedTask && (
+        <TaskDetailsModal 
+          task={selectedTask} 
+          onClose={() => setSelectedTask(null)} 
+          organizationId={storedUser?.organizationId}
+          socket={socketInstance}
+        />
+      )}
+      
       <ChatPanel 
-  isOpen={isChatOpen} 
-  onClose={() => setIsChatOpen(false)} 
-  organizationId={storedUser?.organizationId} 
-  user={storedUser} 
-  projectId={projectId}
-/>
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+        organizationId={storedUser?.organizationId} 
+        user={storedUser} 
+        projectId={projectId}
+      />
+
+      {/* Global Custom Scrollbar Styles for the board */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+      `}} />
     </div>
   );
 };
 
-const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard, onClick }) => { // <--- onClick add kiya
+const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard, onClick }) => { 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
   const canInteract = canManageBoard || canModifyTask(task);
 
   return (
     <div 
-      onClick={onClick} // <--- Click event yahan bind hoga
+      onClick={onClick} 
       draggable={canInteract}
       onDragStart={(e) => onDragStart(e, task._id, task)}
-      className={`bg-[#242634] p-4 rounded-xl border border-white/5 hover:border-white/20 transition ${canInteract ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} group shadow-sm`}
+      className={`bg-[#242634] p-3 sm:p-4 rounded-xl border border-white/5 hover:border-white/20 transition ${canInteract ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} group shadow-sm`}
     >
       <div className="flex justify-between items-start mb-2">
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 sm:gap-2">
           {(canManageBoard || canModifyTask(task)) && (
             <>
               <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
-                <Edit3 size={14} />
+                <Edit3 size={14} className="sm:w-[16px] sm:h-[16px]" />
               </button>
               <button onClick={(e) => { e.stopPropagation(); onDelete(task._id); }} className="p-1 rounded text-[#606479] hover:text-red-400 transition" title="Delete task">
-                <Trash2 size={14} />
+                <Trash2 size={14} className="sm:w-[16px] sm:h-[16px]" />
               </button>
             </>
           )}
         </div>
-        <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${
-          task.priority === 'Urgent' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
-          task.priority === 'High' ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
-          task.priority === 'Medium' ? 'border-[#7c7fff]/30 text-[#7c7fff] bg-[#7c7fff]/10' :
-          'border-[#84889c]/30 text-[#84889c] bg-[#84889c]/10'
-        }`}>
-          {task.priority}
-        </span>
-        <span className="text-[9px] text-[#606479] font-bold uppercase">{task.department}</span>
+        <div className="flex items-center gap-2 text-right">
+          <span className={`px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded border ${
+            task.priority === 'Urgent' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
+            task.priority === 'High' ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
+            task.priority === 'Medium' ? 'border-[#7c7fff]/30 text-[#7c7fff] bg-[#7c7fff]/10' :
+            'border-[#84889c]/30 text-[#84889c] bg-[#84889c]/10'
+          }`}>
+            {task.priority}
+          </span>
+          <span className="text-[8px] sm:text-[9px] text-[#606479] font-bold uppercase hidden sm:inline-block">{task.department}</span>
+        </div>
       </div>
-      <h4 className="text-sm font-bold text-white mb-2 leading-snug">{task.title}</h4>
+      <h4 className="text-xs sm:text-sm font-bold text-white mb-2 leading-snug">{task.title}</h4>
       {task.description && (
-        <div className="flex items-center gap-1.5 text-xs text-[#606479] mb-4">
-          <AlignLeft size={12} />
+        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#606479] mb-3 sm:mb-4">
+          <AlignLeft size={12} className="shrink-0" />
           <span className="truncate">{task.description}</span>
         </div>
       )}
-      <div className="flex justify-between items-center pt-3 border-t border-white/5">
-        <div className={`flex items-center gap-1 text-[10px] font-medium ${isOverdue ? 'text-red-400' : 'text-[#606479]'}`}>
+      <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-white/5">
+        <div className={`flex items-center gap-1 text-[9px] sm:text-[10px] font-medium ${isOverdue ? 'text-red-400' : 'text-[#606479]'}`}>
           <Calendar size={12} />
           {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
         </div>
         
         {task.assignedTo ? (
           <div 
-            className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#7c7fff] to-[#5b5eb8] border border-[#242634] flex items-center justify-center text-[10px] text-white font-bold"
+            className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-[#7c7fff] to-[#5b5eb8] border border-[#242634] flex items-center justify-center text-[9px] sm:text-[10px] text-white font-bold"
             title={task.assignedTo.name}
           >
             {task.assignedTo.name.charAt(0).toUpperCase()}
           </div>
         ) : (
-          <div className="w-6 h-6 rounded-full bg-[#121218] border border-white/10 flex items-center justify-center text-[#606479] text-xs">
+          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#121218] border border-white/10 flex items-center justify-center text-[#606479] text-xs">
             <User size={12} />
           </div>
         )}

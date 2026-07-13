@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-// Naye ES Module Imports:
 import format from 'date-fns/format';
 import parse from 'date-fns/parse';
 import startOfWeek from 'date-fns/startOfWeek';
 import getDay from 'date-fns/getDay';
-import enUS from 'date-fns/locale/en-US'; // require() ki jagah yeh import use karein
-
+import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import api from '../services/api';
 import { Loader2 } from 'lucide-react';
 
 const locales = {
-  'en-US': enUS, // require() yahan se hata diya gaya hai
+  'en-US': enUS,
 };
 
 const localizer = dateFnsLocalizer({
@@ -23,46 +21,79 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-// ... baqi aapka CalendarView ka component same rahega
-const CalendarView = ({ projectId }) => {
+const CalendarView = () => {
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  // 1. Sab se pehle user ke projects fetch karein
   useEffect(() => {
-    fetchTasks();
-  }, [projectId]);
+    fetchProjects();
+  }, []);
 
-  const fetchTasks = async () => {
+  // 2. Jab bhi selected project change ho, uske tasks fetch karein
+  useEffect(() => {
+    if (selectedProjectId) {
+      fetchTasks(selectedProjectId);
+    }
+  }, [selectedProjectId]);
+
+  const fetchProjects = async () => {
+    try {
+      const res = await api.get('/projects');
+      // Backend se aane wale data format ko handle karna
+      const projectList = Array.isArray(res.data) ? res.data : (res.data.data || res.data.projects || []);
+      setProjects(projectList);
+      
+      // Agar projects hain, toh pehle project ko default select kar lein
+      if (projectList.length > 0) {
+        setSelectedProjectId(projectList[0]._id);
+      } else {
+        setIsLoading(false); // Agar koi project nahi hai toh loader hata dein
+      }
+    } catch (error) {
+      console.error("Error fetching projects", error);
+      setIsLoading(false);
+    }
+  };
+
+  const fetchTasks = async (projectId) => {
     try {
       setIsLoading(true);
-      // Agar projectId pass hua hai toh specific project ke tasks, warna sabhi
-      const endpoint = projectId ? `/tasks/project/${projectId}` : `/tasks/global/all`;
-      const res = await api.get(endpoint);
+      // Ab specifically project ke tasks hit honge
+      const res = await api.get(`/tasks/project/${projectId}`);
       
-      // Tasks ko calendar ke event format mein map karein
-      const formattedEvents = res.data.map(task => ({
-        id: task._id,
-        title: task.title,
-        start: new Date(task.createdAt), // Start date
-        end: task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt), // End date
-        status: task.status,
-        allDay: true,
-      }));
+      const rawTasks = Array.isArray(res.data) ? res.data : (res.data.tasks || res.data.data || []);
+
+      const formattedEvents = rawTasks.map(task => {
+        // Project tasks ki due dates ab proper map hongi
+        const startDate = task.createdAt ? new Date(task.createdAt) : new Date();
+        const endDate = task.dueDate ? new Date(task.dueDate) : startDate;
+
+        return {
+          id: task._id,
+          title: task.title || 'Untitled Task',
+          start: startDate,
+          end: endDate,
+          status: task.status || 'To Do',
+          allDay: true,
+        };
+      });
       
       setTasks(formattedEvents);
     } catch (error) {
-      console.error("Error fetching tasks for calendar", error);
+      console.error("Error fetching tasks for calendar:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Custom styling based on task status
   const eventStyleGetter = (event) => {
-    let backgroundColor = '#3174ad'; // Default blue
-    if (event.status === 'Completed' || event.status === 'Done') backgroundColor = '#10b981'; // Green
-    if (event.status === 'In Progress') backgroundColor = '#f59e0b'; // Yellow
-    if (event.status === 'To Do') backgroundColor = '#6b7280'; // Gray
+    let backgroundColor = '#3174ad';
+    if (event.status === 'Completed' || event.status === 'Done') backgroundColor = '#10b981';
+    if (event.status === 'In Progress') backgroundColor = '#f59e0b';
+    if (event.status === 'To Do') backgroundColor = '#6b7280';
 
     return {
       style: {
@@ -76,23 +107,43 @@ const CalendarView = ({ projectId }) => {
     };
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center p-10">
-        <Loader2 className="animate-spin text-[#7c7fff]" size={40} />
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 bg-[#121218] min-h-screen text-white">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Project Calendar</h1>
-        <p className="text-gray-400 text-sm">Track your task deadlines and schedules</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Project Calendar</h1>
+          <p className="text-gray-400 text-sm">Track your task deadlines and schedules</p>
+        </div>
+        
+        {/* Project Selector Dropdown */}
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-gray-400 font-medium">Select Project:</label>
+          <select 
+            className="bg-[#1a1c26] border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-[#7c7fff] transition-all"
+            value={selectedProjectId}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+            disabled={isLoading || projects.length === 0}
+          >
+            {projects.length === 0 ? (
+              <option value="">No Projects Found</option>
+            ) : (
+              projects.map(project => (
+                <option key={project._id} value={project._id}>
+                  {project.name || project.title}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
       </div>
       
-      <div className="bg-[#1a1c26] p-4 rounded-xl border border-white/5 shadow-lg">
-        {/* React Big Calendar Container */}
+      <div className="bg-[#1a1c26] p-4 rounded-xl border border-white/5 shadow-lg relative">
+        {isLoading && (
+          <div className="absolute inset-0 z-10 bg-[#1a1c26]/80 flex items-center justify-center rounded-xl">
+            <Loader2 className="animate-spin text-[#7c7fff]" size={40} />
+          </div>
+        )}
+        
         <Calendar
           localizer={localizer}
           events={tasks}
@@ -105,7 +156,6 @@ const CalendarView = ({ projectId }) => {
         />
       </div>
 
-      {/* Custom CSS for Calendar Dark Mode adjustments */}
       <style dangerouslySetInnerHTML={{__html: `
         .rbc-calendar { font-family: inherit; }
         .rbc-header { padding: 10px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }

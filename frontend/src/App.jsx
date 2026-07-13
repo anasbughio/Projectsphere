@@ -20,6 +20,8 @@ import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite'; 
 import AuditLogs from './pages/AuditLogs';
 import CalendarView from './components/CalendarView';
+import ClientPortal from './pages/ClientPortal';
+import ProfileSettings from './pages/ProfileSettings';
 
 function App() {
   return (
@@ -60,14 +62,9 @@ function App() {
           <Route element={<AcceptInvite />} path="/accept-invite" />
           <Route path="/activity" element={<AuditLogs />} />
           <Route path="/profile" element={<Profile />} />
-          <Route 
-  path="/calendar" 
-  element={
-    <ProtectedRoute> {/* Agar aapne ProtectedRoute banaya hua hai */}
-      <CalendarView />
-    </ProtectedRoute>
-  } 
-/>
+          <Route path="/calendar" element={<CalendarView /> } />
+          <Route path="/client-portal" element={<ClientPortal />} />
+          <Route path="/settings" element={<ProfileSettings />} />
         </Route>
 
 
