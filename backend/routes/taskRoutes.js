@@ -9,14 +9,18 @@ const {
   updateTask,
   deleteTask ,
   getTaskAnalytics,
-  uploadTaskAttachment
+  uploadTaskAttachment,
+  getAllOrganizationTasks
 } = require('../controllers/taskController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 const upload = require('../config/multerConfig');
 // Get all global tasks
+
+
+router.route('/all').get(protect, getAllOrganizationTasks);
 router.route('/global/all').get(protect, getGlobalTasks);
 
-// Create a global task (Strictly for Org Admin)
+
 router.route('/global').post(protect, authorizeRoles('Org Admin'), createGlobalTask);
 
 // Create a new project-specific task

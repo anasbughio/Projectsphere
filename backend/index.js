@@ -18,6 +18,7 @@ const collaborationRoutes = require('./routes/collaborationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const Message = require('./models/Message');
 require('./config/passport');
@@ -62,6 +63,7 @@ app.use('/api/v1/collaboration', collaborationRoutes);
 app.use('/api/v1/auditlogs', auditRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 // Messaging REST API
 app.get('/api/v1/messages/:projectId', async (req, res) => {
