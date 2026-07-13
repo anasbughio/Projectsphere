@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { registerOrg, login, refreshToken, logout, verifyEmail, forgotPassword, resetPassword ,uploadProfilePicture} = require('../controllers/authController');
+const { registerOrg, login, refreshToken, logout, verifyEmail, forgotPassword,
+   resetPassword ,uploadProfilePicture,updateProfile,updatePassword} = require('../controllers/authController');
 const generateToken = require('../utils/generateToken');
 const passport = require('passport');
 const { protect } = require('../middlewares/authMiddleware');
@@ -53,5 +54,7 @@ router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.post('/profile-picture', protect, upload.single('profileImage'), uploadProfilePicture);
+router.put('/profile', protect, updateProfile);
+router.put('/update-password', protect, updatePassword);
 
 module.exports = router;

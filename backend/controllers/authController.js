@@ -166,7 +166,6 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
-// 👉 NAYA: Logout Controller (Revocation)
 exports.logout = async (req, res) => {
   try {
     const token = req.cookies.jwt_refresh;
@@ -279,5 +278,59 @@ exports.uploadProfilePicture = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Error uploading picture', error: error.message });
+  }
+};
+
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name } = req.body; // Hum sirf name le rahe hain
+    
+    // Agar name empty bheja hai toh return kar dein
+    if (!name) {
+      return res.status(400).json({ message: "Name cannot be empty" });
+    }
+
+    // $set use karein taake sirf name update ho, baqi cheezein (email, password) safe rahein
+    const user = await User.findByIdAndUpdate(
+      req.user._id, 
+      { $set: { name: name } }, 
+      { returnDocument: 'after', runValidators: true } 
+    );
+
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    console.error("Update Profile Error:", error);
+    res.status(500).json({ message: "Error updating profile", error: error.message });
+  }
+};
+
+
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // 1. Current user dhoondein aur uska password DB se select karein
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 2. Current password match karein
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect current password" });
+    }
+
+    // 3. 🚨 Yahan se manual hashing hata di hai! 
+    // Sirf naya password assign karein, User model ka pre('save') hook isay khud hash kar lega.
+    user.password = newPassword; 
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Update Password Error:", error);
+    res.status(500).json({ message: "Error updating password", error: error.message });
   }
 };
