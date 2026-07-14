@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Edit2, Trash2, Shield, Loader2 } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../components/ToastProvider';
 
 const AdminPanel = () => {
   const [organizations, setOrganizations] = useState([]);
@@ -16,6 +17,8 @@ const AdminPanel = () => {
   useEffect(() => {
     fetchOrganizations();
   }, []);
+
+  const toast = useToast();
 
   const fetchOrganizations = async () => {
     try {
@@ -34,10 +37,12 @@ const AdminPanel = () => {
     try {
       const response = await api.post('/organizations', formData);
       setOrganizations([response.data, ...organizations]);
+        try { window.dispatchEvent(new Event('platformStatsUpdated')); } catch (e) { /* noop */ }
+      toast.push('Organization created successfully.', { type: 'info' });
       setIsModalOpen(false);
       setFormData({ name: '', domain: '', subscriptionPlan: 'Enterprise' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create organization');
+      toast.push(err.response?.data?.message || 'Failed to create organization', { type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -48,8 +53,10 @@ const AdminPanel = () => {
     try {
       await api.delete(`/organizations/${orgId}`);
       setOrganizations(organizations.filter(org => org._id !== orgId));
+      try { window.dispatchEvent(new Event('platformStatsUpdated')); } catch (e) { /* noop */ }
+      toast.push('Organization suspended.', { type: 'info' });
     } catch (err) {
-      alert('Failed to delete organization');
+      toast.push('Failed to delete organization', { type: 'error' });
     }
   };
 

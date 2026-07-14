@@ -45,18 +45,20 @@ exports.getDashboardMetrics = async (req, res) => {
   }
 };
 
-// backend/controllers/dashboardController.js
 exports.getSuperAdminMetrics = async (req, res) => {
   try {
-    // Super Admin: Sirf platform wide stats count karein
-    const totalOrgs = await Organization.countDocuments();
-    const totalUsers = await User.countDocuments();
-    const totalProjects = await Project.countDocuments();
-    const totalTasks = await Task.countDocuments();
+
+    const totalOrgs = await Organization.countDocuments({ isDeleted: { $ne: true } }); 
+    const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } }); 
+    // Count only users with the role 'Org Admin'
+    const totalOrgAdmins = await User.countDocuments({ role: 'Org Admin', isDeleted: { $ne: true } });
+    const totalProjects = await Project.countDocuments({ isDeleted: { $ne: true } });
+    const totalTasks = await Task.countDocuments({ isDeleted: { $ne: true } });
 
     res.status(200).json({
       totalOrgs,
       totalUsers,
+      totalOrgAdmins,
       totalProjects,
       totalTasks
     });

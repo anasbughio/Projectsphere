@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema(
   type: String,
   default: '' // Default empty rakhein, agar pic nahi hogi toh hum UI par user ke naam ke initials dikhayenge
 },
+isDeleted: {
+  type: Boolean,
+  default: false
+}
   },
   { timestamps: true }
 );

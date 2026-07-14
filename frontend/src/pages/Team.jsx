@@ -64,7 +64,9 @@ useEffect(() => {
     try {
       // Backend ke us route ko hit karein jo humne upar banaya hai
       const response = await api.get('/team/members'); // Naya route name jo controller se map ho
-      setTeam(response.data);
+      // Only show users with the explicit role 'Org Admin' in the Platform Users view
+      const orgAdmins = (response.data || []).filter(u => (u.role || '').toString().trim() === 'Org Admin');
+      setTeam(orgAdmins);
     } catch (error) {
       console.error('Failed to load team', error);
     } finally {

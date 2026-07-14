@@ -29,7 +29,9 @@ const isSuperAdmin = user?.role === 'Super Admin';
     setReportStatus(null);
     try {
       const res = await api.post('/reports/weekly');
-      setReportStatus({ type: 'success', text: res.data.message || 'Report generated successfully!' });
+      // Be explicit about what happens next for the user
+      const userEmail = user?.email || 'your email';
+      setReportStatus({ type: 'success', text: `Report requested — it will be sent to ${userEmail} shortly.` });
       setTimeout(() => setReportStatus(null), 3000);
     } catch (error) {
       console.error('Report generation error:', error);

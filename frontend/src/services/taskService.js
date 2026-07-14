@@ -24,6 +24,12 @@ export const getGlobalTasks = async () => {
   return response.data;
 };
 
+// 6. Get all tasks across the organization (including project-specific tasks)
+export const getAllOrganizationTasks = async () => {
+  const response = await api.get('/tasks/all');
+  return response.data;
+};
+
 // 5. Drag and Drop ke liye status update karein
 export const updateTaskStatus = async (taskId, status) => {
   const response = await api.patch(`/tasks/${taskId}/status`, { status });

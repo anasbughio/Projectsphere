@@ -10,8 +10,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  const handleLogin = async (e) => {
+const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -22,14 +21,20 @@ const Login = () => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       
-      navigate('/board');
+      // 🔥 Redirect by normalized role so case differences don't break Super Admin routing
+      const role = response.data.user.role?.toString().trim().toLowerCase();
+      if (role === 'super admin') {
+        navigate('/admin');
+      } else {
+        navigate('/board');
+      }
+      
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
   return (
     /* Outer container with flex-col and justify-between for Top, Center, and Bottom layout */
     <div className="min-h-screen w-full flex flex-col justify-between items-center bg-[#09090b] relative overflow-hidden font-sans">
