@@ -18,6 +18,16 @@ const organizationSchema = new mongoose.Schema(
       enum: ['free', 'pro', 'enterprise'],
       default: 'free',
     },
+
+    status: {
+      type: String,
+      enum: ['Active', 'Suspended'],
+      default: 'Active'
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false
+    }
   },
   { timestamps: true }
 );

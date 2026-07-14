@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
-import { getGlobalTasks, createGlobalTask, updateTaskStatus, deleteTask, updateTaskDetails } from '../services/taskService';
+import { getAllOrganizationTasks, createGlobalTask, updateTaskStatus, deleteTask, updateTaskDetails } from '../services/taskService';
 import { io } from 'socket.io-client';
 import ExampleUpload from '../components/ExampleUpload';
+import { useToast } from '../components/ToastProvider';
 
 const TaskForm = () => {
   const [tasks, setTasks] = useState([]);
@@ -23,6 +24,8 @@ const TaskForm = () => {
   useEffect(() => {
     fetchGlobalTasks();
   }, []);
+
+  const toast = useToast();
 
   // 2. --- REAL-TIME SOCKET.IO LOGIC ---
   useEffect(() => {
@@ -69,7 +72,8 @@ const socket = io(SOCKET_URL, {
   const fetchGlobalTasks = async () => {
     try {
       setLoading(true);
-      const data = await getGlobalTasks();
+      // Fetch all tasks across the organization so users see project tasks too
+      const data = await getAllOrganizationTasks();
       setTasks(data);
     } catch (error) {
       console.error("Global tasks fetch error:", error);
@@ -130,7 +134,7 @@ const socket = io(SOCKET_URL, {
       setFormData({ title: '', description: '', priority: 'Medium', department: 'General' });
     } catch (error) {
       console.error("Task creation/update failed", error);
-      alert(error.response?.data?.message || "Task creation/update failed");
+      toast.push(error.response?.data?.message || "Task creation/update failed", { type: 'error' });
     }
   };
 

@@ -12,20 +12,26 @@ import api from '../services/api';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
+  // 1. Pehle data localStorage se nikalen
+  const storedUser = localStorage.getItem('user');
+  const user = storedUser ? JSON.parse(storedUser) : null;
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [teamCount, setTeamCount] = useState(0); // Naya state Team members ke liye
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ totalOrgs: 0, totalUsers: 0, totalProjects: 0 }); // 🔥 Yeh line add karein
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
-
+const isSuperAdmin = user?.role === 'Super Admin';
   const handleGenerateReport = async () => {
     setIsGenerating(true);
     setReportStatus(null);
     try {
       const res = await api.post('/reports/weekly');
-      setReportStatus({ type: 'success', text: res.data.message || 'Report generated successfully!' });
+      // Be explicit about what happens next for the user
+      const userEmail = user?.email || 'your email';
+      setReportStatus({ type: 'success', text: `Report requested — it will be sent to ${userEmail} shortly.` });
       setTimeout(() => setReportStatus(null), 3000);
     } catch (error) {
       console.error('Report generation error:', error);
@@ -37,18 +43,27 @@ const Dashboard = () => {
   };
 
   // 🔥 1. Ek hi useEffect mein saara data fetch karein taake charts aur cards dono dynamic ho jayein
-  useEffect(() => {
+ useEffect(() => {
     const fetchDashboardData = async () => {
+      setLoading(true);
       try {
-        const [projectRes, taskRes, teamRes] = await Promise.all([
-          api.get('/projects'),
-          api.get('/tasks/all'), // Ya jo bhi aapka tasks ka route hai
-          api.get('/team')              // Team members fetch karne ke liye
-        ]);
-        
-        setProjects(projectRes.data);
-        setTasks(taskRes.data);
-        setTeamCount(teamRes.data.length); // Team count set kiya
+        if (isSuperAdmin) {
+          // Super Admin ke liye sirf Platform Stats call karein (jo humne controller mein banaya tha)
+          const res = await api.get('/dashboard/platform-stats'); 
+          setProjects(res.data.projects || []); // Fake data ya platform count
+          setTasks(res.data.tasks || []);
+          setTeamCount(res.data.usersCount || 0);
+        } else {
+          // Normal Admin/Member ke liye purana code
+          const [projectRes, taskRes, teamRes] = await Promise.all([
+            api.get('/projects'),
+            api.get('/tasks/all'),
+            api.get('/team')
+          ]);
+          setProjects(projectRes.data);
+          setTasks(taskRes.data);
+          setTeamCount(teamRes.data.length);
+        }
       } catch (error) {
         console.error('Dashboard error:', error);
       } finally {
@@ -56,8 +71,7 @@ const Dashboard = () => {
       }
     };
     fetchDashboardData();
-  }, []);
-
+  }, [isSuperAdmin]);
   if (loading) {
     return (
       <div className="h-full min-h-screen flex items-center justify-center">
@@ -157,6 +171,20 @@ const Dashboard = () => {
       </div>
 
       {/* KPI CARDS BLOCK */}
+   {isSuperAdmin && stats ? (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="bg-[#1a1c26] p-6 rounded-xl border border-white/5">
+      <h3 className="text-[#84889c] uppercase text-xs">Total Organizations</h3>
+      <div className="text-3xl font-bold text-white mt-2">{stats.totalOrgs || 0}</div>
+    </div>
+  </div>
+) : isSuperAdmin ? (
+  <div className="text-white">Loading stats...</div>
+) : (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+     {/* Normal user view */}
+  </div>
+)}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         
         {/* REPLACED REVENUE WITH TEAM MEMBERS */}

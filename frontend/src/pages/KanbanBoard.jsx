@@ -5,6 +5,7 @@ import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
 import TaskDetailsModal from './TaskDetailsModal';
+import { useToast } from '../components/ToastProvider';
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
@@ -53,6 +54,7 @@ const KanbanBoard = () => {
     const taskAssignee = task?.assignedTo?._id?.toString?.() || task?.assignedTo;
     return taskCreator === currentUserId || taskAssignee === currentUserId;
   };
+  const toast = useToast();
 
   const fetchBoardData = async () => {
     try {
@@ -158,7 +160,7 @@ const KanbanBoard = () => {
   const handleSubmitTask = async (e) => {
     e.preventDefault();
     if (!canManageBoard && editingTask && !canModifyTask(editingTask)) {
-      alert('You do not have permission to edit this task.');
+      toast.push('You do not have permission to edit this task.', { type: 'error' });
       return;
     }
     
@@ -181,7 +183,7 @@ const KanbanBoard = () => {
       resetTaskForm();
     } catch (err) {
       console.error('Task save error:', err.response?.data || err);
-      alert(err.response?.data?.message || 'Failed to save task');
+      toast.push(err.response?.data?.message || 'Failed to save task', { type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -190,8 +192,8 @@ const KanbanBoard = () => {
   const handleDeleteTask = async (taskId) => {
     const taskToDelete = tasks.find((task) => task._id === taskId);
     if (!taskToDelete) return;
-    if (!canModifyTask(taskToDelete)) {
-      alert('You do not have permission to delete this task.');
+      if (!canModifyTask(taskToDelete)) {
+      toast.push('You do not have permission to delete this task.', { type: 'error' });
       return;
     }
     if (!window.confirm('Are you sure you want to delete this task?')) return;
@@ -201,7 +203,7 @@ const KanbanBoard = () => {
       await api.delete(`/tasks/${taskId}`);
     } catch (error) {
       console.error('Delete task error:', error);
-      alert('Failed to delete task');
+      toast.push('Failed to delete task', { type: 'error' });
     }
   };
 
@@ -216,8 +218,8 @@ const KanbanBoard = () => {
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId) return;
     const taskToUpdate = tasks.find((task) => task._id === taskId);
-    if (!taskToUpdate || !canModifyTask(taskToUpdate)) {
-      alert('You do not have permission to move this task.');
+      if (!taskToUpdate || !canModifyTask(taskToUpdate)) {
+      toast.push('You do not have permission to move this task.', { type: 'error' });
       return;
     }
 
@@ -228,7 +230,7 @@ const KanbanBoard = () => {
       await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
     } catch (error) {
       setTasks(previousTasks); 
-      alert('Failed to move task.');
+      toast.push('Failed to move task.', { type: 'error' });
     }
   };
 

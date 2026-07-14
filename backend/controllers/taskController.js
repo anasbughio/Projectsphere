@@ -222,7 +222,7 @@ exports.deleteTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
-    const { title, description, priority, department } = req.body;
+    const { title, description, priority, department, assignedTo } = req.body;
     
     const task = await Task.findOne({ 
       _id: req.params.id, 
@@ -235,9 +235,28 @@ exports.updateTask = async (req, res) => {
 
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id },
-      { title, description, priority, department },
+      { title, description, priority, department, assignedTo: assignedTo || null },
       { returnDocument: 'after' }
     ).populate('assignedTo', 'name');
+
+    // If assignee changed, send notification to the new assignee
+    try {
+      const io = getIO();
+      const prevAssignee = task.assignedTo ? String(task.assignedTo) : null;
+      if (assignedTo && String(assignedTo) !== prevAssignee) {
+        const notification = await Notification.create({
+          recipient: assignedTo,
+          sender: req.user._id,
+          type: 'TASK_ASSIGNED',
+          title: 'Task Assigned',
+          message: `You have been assigned to task: "${updatedTask.title}"`,
+          relatedId: updatedTask._id
+        });
+        io.to(String(assignedTo)).emit('newNotification', notification);
+      }
+    } catch (e) {
+      console.warn('Failed to notify assignee on task update', e.message);
+    }
 
     const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);

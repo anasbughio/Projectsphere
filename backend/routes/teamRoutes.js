@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { getTeamMembers,inviteMember ,acceptInvitation,deleteMember} = require('../controllers/teamController');
+const {inviteMember ,acceptInvitation} = require('../controllers/teamController');
+const { getTeamMembers ,deleteMember} = require('../controllers/authController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 
 // GET request list layegi, aur POST request naya member add karegi
@@ -9,5 +10,6 @@ router.route('/')
 
 router.post('/invite', protect, authorizeRoles('Admin'), inviteMember);
 router.post('/accept-invite', acceptInvitation);
-router.delete('/:id', protect, authorizeRoles('Admin', 'Org Admin'), deleteMember);
+router.get('/members', protect, getTeamMembers);
+router.delete('/:id', protect, authorizeRoles('Super Admin', 'Org Admin', 'Admin'), deleteMember);
 module.exports = router;

@@ -26,9 +26,12 @@ const AuthSuccess = () => {
         console.log("3. LocalStorage mein save ho gaya:", parsedUser);
         setStatus("Login Successful! Redirecting in 3 seconds...");
 
-        // 3 second ka wait taake aap console check kar sakein
+        // Normalize role before redirecting
+        const normalizedRole = parsedUser.role?.toString().trim().toLowerCase();
+        const targetRoute = normalizedRole === 'super admin' ? '/admin' : '/board';
+
         setTimeout(() => {
-          navigate('/board');
+          navigate(targetRoute);
         }, 3000);
 
       } catch (error) {
