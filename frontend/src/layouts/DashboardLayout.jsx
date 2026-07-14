@@ -151,6 +151,9 @@ const DashboardLayout = () => {
           <button className="lg:hidden text-[#606479] hover:text-white p-1.5" onClick={() => setIsMobileMenuOpen(true)}><Menu size={24} /></button>
           <div className="flex items-center gap-5 ml-auto">
             <NotificationBell user={user} socket={socketInstance}/>
+            <Link to="/settings" className="text-[#84889c] hover:text-white transition p-2 rounded-full hover:bg-white/[0.04]">
+              <Settings size={20} />
+            </Link>
             <Link to="/profile" className="flex items-center gap-3 hover:bg-white/[0.04] p-1.5 pr-3 rounded-full transition">
                <div className="w-8 h-8 rounded-full bg-[#7c7fff]/20 text-[#7c7fff] flex items-center justify-center font-bold text-xs">
                  {user?.name?.charAt(0).toUpperCase()}
