@@ -299,18 +299,7 @@ const KanbanBoard = () => {
             <option value="High">High</option>
             <option value="Urgent">Urgent</option>
           </select>
-          <select 
-            value={departmentFilter} 
-            onChange={(e) => setDepartmentFilter(e.target.value)} 
-            className="w-1/2 lg:w-auto bg-[#121218] border border-white/5 rounded-lg px-3 sm:px-4 py-2 text-white text-xs sm:text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
-          >
-            <option value="All">All Departments</option>
-            <option value="General">General</option>
-            <option value="Design">Design</option>
-            <option value="Frontend">Frontend</option>
-            <option value="Backend">Backend</option>
-            <option value="DevOps">DevOps</option>
-          </select>
+         
         </div>
       </div>
 
