@@ -14,6 +14,9 @@ const SuperAdminDashboard = () => {
   });
   const [organizations, setOrganizations] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+const [currentPage, setCurrentPage] = useState(1);
+const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [auditLoading, setAuditLoading] = useState(true);
   const [orgLoading, setOrgLoading] = useState(true);
@@ -49,16 +52,21 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  const fetchAuditLogs = async () => {
-    try {
-      const res = await api.get('/dashboard/audit-logs');
-      setAuditLogs(res.data || []);
-    } catch (error) {
-      console.error('Failed to fetch audit logs:', error);
-    } finally {
-      setAuditLoading(false);
-    }
-  };
+ const fetchAuditLogs = async (page = 1, search = '') => {
+  setAuditLoading(true);
+  try {
+    const res = await api.get(`/dashboard/audit-logs?page=${page}&limit=10&search=${search}`);
+    setAuditLogs(res.data.logs);
+    setTotalPages(res.data.totalPages);
+    setCurrentPage(res.data.currentPage);
+  } catch (error) {
+    console.error('Failed to fetch audit logs:', error);
+  } finally {
+    setAuditLoading(false);
+  }
+};
+
+
 useEffect(() => {
     fetchPlatformStats();
     fetchOrganizations();
@@ -226,6 +234,15 @@ const formatDate = (dateString) => {
         <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
           <ShieldCheck className="text-[#7c7fff]" size={20} />
           <h2 className="text-lg font-bold text-white">Recent Platform Activity</h2>
+          <input 
+    type="text"
+    placeholder="Search logs..."
+    className="bg-[#2a2d3e] text-white text-sm px-3 py-1.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#7c7fff]"
+    onChange={(e) => {
+      setSearchTerm(e.target.value);
+      fetchAuditLogs(1, e.target.value); // Search karte hi page 1 se fetch
+    }}
+  />
         </div>
         
         <div className="p-0">
@@ -267,6 +284,19 @@ const formatDate = (dateString) => {
             </div>
           )}
         </div>
+        <div className="px-6 py-4 border-t border-white/5 flex justify-center gap-2">
+  <button 
+    disabled={currentPage === 1}
+    onClick={() => fetchAuditLogs(currentPage - 1, searchTerm)}
+    className="px-3 py-1 rounded bg-[#2a2d3e] text-white disabled:opacity-50"
+  >Prev</button>
+  <span className="text-[#84889c] py-1">{currentPage} / {totalPages}</span>
+  <button 
+    disabled={currentPage === totalPages}
+    onClick={() => fetchAuditLogs(currentPage + 1, searchTerm)}
+    className="px-3 py-1 rounded bg-[#2a2d3e] text-white disabled:opacity-50"
+  >Next</button>
+</div>
       </div>
     </div>
   );
