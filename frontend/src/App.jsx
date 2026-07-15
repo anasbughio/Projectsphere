@@ -29,20 +29,35 @@ function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
   
-  const normalizeRole = (role) => role?.toString().trim().toLowerCase();
-  const isSuperAdmin = normalizeRole(user?.role) === 'super admin';
+  const normalizeRole = (role) => {
+    const value = role?.toString().trim().toLowerCase();
+    if (!value) return '';
+    if (['org admin', 'organization admin', 'admin'].includes(value)) return 'admin';
+    if (['project manager', 'project-manager'].includes(value)) return 'project manager';
+    if (['team member', 'member'].includes(value)) return 'team member';
+    if (value === 'client') return 'client';
+    return value;
+  };
+
+  const role = normalizeRole(user?.role);
+  const isSuperAdmin = role === 'super admin';
+  const isOrgAdmin = role === 'admin';
+  const isProjectManager = role === 'project manager';
+  const isTeamMember = role === 'team member';
+  const isClient = role === 'client';
+  const roleHomePath = isSuperAdmin ? '/admin' : isClient ? '/client-portal' : '/board';
 
   return (
     <BrowserRouter>
       <Routes>
         
         {/* 🔥 BUG FIX 2: SMART ROOT ROUTE */}
-        {/* Agar user logged in hai, toh seedha dashboard par bhej do, warna LandingPage dikhao */}
+        {/* Agar user logged in hai, toh role ke mutabiq dashboard par bhej do, warna LandingPage dikhao */}
         <Route 
           path="/" 
           element={
             user ? (
-              <Navigate to={isSuperAdmin ? "/admin" : "/board"} replace />
+              <Navigate to={roleHomePath} replace />
             ) : (
               <LandingPage />
             )
@@ -65,14 +80,46 @@ function App() {
         {/* 🔥 BUG FIX 3: DashboardLayout ko bina "path" ke layout wrapper banaya */}
         <Route element={<DashboardLayout />}>
           
-          {/* Super Admin Routes */}
+          {/* Role-specific routes */}
           {isSuperAdmin ? (
             <>
               <Route path="/admin" element={<SuperAdminDashboard />} />
-              <Route path="/team" element={<Team />} /> 
+              <Route path="/team" element={<Team />} />
+              <Route path="/activity" element={<AuditLogs />} />
+            </>
+          ) : isOrgAdmin ? (
+            <>
+              <Route path="/board" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<KanbanBoard />} />
+              <Route path="/tasks" element={<TaskForm />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/activity" element={<AuditLogs />} />
+            </>
+          ) : isProjectManager ? (
+            <>
+              <Route path="/board" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<KanbanBoard />} />
+              <Route path="/tasks" element={<TaskForm />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/activity" element={<AuditLogs />} />
+            </>
+          ) : isTeamMember ? (
+            <>
+              <Route path="/board" element={<Dashboard />} />
+              <Route path="/projects/:projectId" element={<KanbanBoard />} />
+              <Route path="/tasks" element={<TaskForm />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/team" element={<Team />} />
+            </>
+          ) : isClient ? (
+            <>
+              <Route path="/client-portal" element={<ClientPortal />} />
             </>
           ) : (
-            // Normal User Routes
             <>
               <Route path="/board" element={<Dashboard />} />
               <Route path="/projects" element={<Projects />} />
@@ -80,7 +127,7 @@ function App() {
               <Route path="/tasks" element={<TaskForm />} />
               <Route path="/calendar" element={<CalendarView />} />
               <Route path="/client-portal" element={<ClientPortal />} />
-              <Route path="/team" element={<Team />} /> 
+              <Route path="/team" element={<Team />} />
               <Route path="/activity" element={<AuditLogs />} />
             </>
           )}
@@ -91,7 +138,7 @@ function App() {
         </Route>
 
         {/* ================= CATCH-ALL ROUTE ================= */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={user ? roleHomePath : '/'} replace />} />
         
       </Routes>
     </BrowserRouter>

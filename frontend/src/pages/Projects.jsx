@@ -29,6 +29,7 @@ const Projects = () => {
   const userRole = normalizeRole(storedUser?.role);
   const isAdmin = userRole === 'admin';
   const canCreateProject = isAdmin || userRole === 'project manager';
+  const canEditProject = isAdmin || userRole === 'project manager';
 
   // Fetch Projects from API
   const fetchProjects = async () => {
@@ -156,7 +157,7 @@ const Projects = () => {
                 <div className="w-10 h-10 rounded-lg bg-[#7c7fff]/10 flex items-center justify-center text-[#7c7fff] shrink-0">
                   <FolderKanban size={20} />
                 </div>
-                {isAdmin && (
+                {canEditProject && (
                   <div className="flex items-center gap-2 sm:gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => handleEditClick(e, project)}

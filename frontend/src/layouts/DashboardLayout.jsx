@@ -12,8 +12,21 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const normalizeRole = (role) => role?.toString().trim().toLowerCase();
-  const isSuperAdmin = normalizeRole(user?.role) === 'super admin';
+  const normalizeRole = (role) => {
+    const value = role?.toString().trim().toLowerCase();
+    if (!value) return '';
+    if (['org admin', 'organization admin', 'admin'].includes(value)) return 'admin';
+    if (['project manager', 'project-manager'].includes(value)) return 'project manager';
+    if (['team member', 'member'].includes(value)) return 'team member';
+    if (value === 'client') return 'client';
+    return value;
+  };
+  const role = normalizeRole(user?.role);
+  const isSuperAdmin = role === 'super admin';
+  const isOrgAdmin = role === 'admin';
+  const isProjectManager = role === 'project manager';
+  const isTeamMember = role === 'team member';
+  const isClient = role === 'client';
   const backendUrl = 'https://projectsphere-dlvv.onrender.com';
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -87,8 +100,8 @@ const DashboardLayout = () => {
               </Link>
             </li>
 
-            {/* 2. Standard Workspace Links (Only for non-Super Admins) */}
-            {!isSuperAdmin && (
+            {/* 2. Role-aware workspace links */}
+            {(isOrgAdmin || isProjectManager || isTeamMember) && (
               <>
                 <li>
                   <Link to="/projects" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/projects') ? 'bg-[#7c7fff] text-white' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
@@ -103,40 +116,44 @@ const DashboardLayout = () => {
               </>
             )}
 
-            {/* 3. Team/Users Link (Common) */}
-            <li>
-              <Link to={isSuperAdmin ? "/team" : "/team"} // Aap yahan path change kar sakte hain
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
-                  isActive('/team') 
-                  ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
-                  : 'text-[#84889c] hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Users size={18} /> 
-                <span>{isSuperAdmin ? 'Platform Users' : 'Team'}</span>
-              </Link>
-            </li>
+            {/* 3. Team/Users Link (Common for non-client roles) */}
+            {!isClient && (
+              <li>
+                <Link to="/team"
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+                    isActive('/team') 
+                    ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
+                    : 'text-[#84889c] hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Users size={18} /> 
+                  <span>{isSuperAdmin ? 'Platform Users' : 'Team'}</span>
+                </Link>
+              </li>
+            )}
 
-            {/* 4. Calendar & Client Portal (Only for non-Super Admins) */}
-            {!isSuperAdmin && (
+            {/* 4. Calendar & Client Portal */}
+            {(isOrgAdmin || isTeamMember) && (
               <>
                 <li>
                   <Link to="/calendar" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/calendar') ? 'bg-[#7c7fff] text-white' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
                     <Calendar size={18} /> <span>Calendar</span>
                   </Link>
                 </li>
-                <li>
-                  <Link to="/client-portal" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-portal') ? 'bg-[#7c7fff] text-white' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
-                    <Briefcase size={18} /> <span>Client Portal</span>
-                  </Link>
-                </li>
               </>
+            )}
+            {isClient && (
+              <li>
+                <Link to="/client-portal" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-portal') ? 'bg-[#7c7fff] text-white' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                  <Briefcase size={18} /> <span>Client Portal</span>
+                </Link>
+              </li>
             )}
           </ul>
         </nav>
 
         <div className="p-5 mt-auto">
-          {!isSuperAdmin && (
+          {(isOrgAdmin || isProjectManager) && (
             <button className="w-full flex items-center justify-center gap-2 bg-[#7c7fff]/10 hover:bg-[#7c7fff] text-[#7c7fff] hover:text-white border border-[#7c7fff]/20 py-2.5 rounded-xl font-medium text-sm transition mb-6">
               <Plus size={18} /> New Project
             </button>
