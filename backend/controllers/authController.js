@@ -350,8 +350,6 @@ exports.getAllUsersForSuperAdmin = async (req, res) => {
   }
 };
 
-// backend/controllers/userController.js
-
 exports.getTeamMembers = async (req, res) => {
   try {
     const { role, organizationId } = req.user;

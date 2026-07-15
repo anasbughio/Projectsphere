@@ -89,7 +89,7 @@ const ChatPanel = ({ isOpen, onClose, organizationId, user, projectId }) => {
     setText('');
   };
 
-  const handleFileUpload = async (e) => {
+const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -107,14 +107,34 @@ const ChatPanel = ({ isOpen, onClose, organizationId, user, projectId }) => {
         },
       });
 
+      // If the file uploaded to your server successfully
       if (resp.status === 200 && resp.data.filePath) {
-        socketRef.current?.emit('sendMessage', { 
-    text: `📎 ${file.name}`, // Text field yahan majood hai
-    fileUrl: resp.data.filePath, 
-    sender: user._id, 
-    projectId
-});
-alert('File uploaded successfully!');
+        
+        // 1. Prepare the exact same message payload as text messages, but include fileUrl
+        const fileMsgData = { 
+          text: `📎 ${file.name}`, 
+          fileUrl: resp.data.filePath, 
+          sender: user._id, 
+          projectId
+        };
+
+        // 2. Use the SAME logic as your sendMessage() function!
+        if (!IS_PROD && socketRef.current) {
+          socketRef.current.emit('sendMessage', fileMsgData);
+        } else {
+          try {
+            // Hit your backend POST endpoint so it saves to the DB and broadcasts
+            await fetch(`${API_URL}/messages/${projectId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(fileMsgData),
+            });
+            fetchMessages(); // Refresh the chat to show the new image
+          } catch (err) {
+            console.error("Failed to send image message", err);
+          }
+        }
+        
       }
     } catch (err) {
       console.error('Upload error:', err);
@@ -122,7 +142,7 @@ alert('File uploaded successfully!');
     } finally {
       setUploadProgress(0);
       setIsUploading(false);
-      e.target.value = ''; 
+      e.target.value = ''; // Reset input
     }
   };
 
@@ -136,13 +156,19 @@ alert('File uploaded successfully!');
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((m, i) => {
-          const isMyMessage = m.sender === user.name || m.sender === user._id;
+    {messages.map((m, i) => {
+          // 🔥 THE FIX: Pehle check karein ke sender object hai ya string, phir uski ID extract karein
+          const senderId = typeof m.sender === 'object' ? m.sender._id : m.sender;
+          
+          // Dono ko String mein convert kar ke compare karein taake koi mismatch na ho
+          const isMyMessage = String(senderId) === String(user._id);
+
           return (
             <div key={i} className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
               <span className="text-[10px] text-gray-500 mb-1">
-   {isMyMessage ? 'You' : (typeof m.sender === 'object' ? m.sender.name : m.sender)}
-</span>
+                {isMyMessage ? 'You' : (m.sender?.name || 'Team Member')}
+              </span>
+              
               <div className={`p-2 rounded-xl text-sm max-w-[85%] ${isMyMessage ? 'bg-[#7c7fff] text-white rounded-tr-none' : 'bg-[#2a2d3e] text-gray-200 rounded-tl-none'}`}>
                 {m.fileUrl ? (
                   <div className="mt-1">
@@ -151,8 +177,8 @@ alert('File uploaded successfully!');
                         <img src={getFileLink(m.fileUrl)} alt="att" className="max-w-full h-auto rounded-lg" />
                       </a>
                     ) : (
-                      <a href={getFileLink(m.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-white/10 rounded-lg">
-                        <FileText size={16} /> <span className="truncate">{m.text.replace('📎 ', '')}</span>
+                      <a href={getFileLink(m.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-white/10 rounded-lg text-white">
+                        <FileText size={16} /> <span className="truncate">{m.text ? m.text.replace('📎 ', '') : 'Document'}</span>
                       </a>
                     )}
                   </div>

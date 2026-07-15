@@ -67,7 +67,6 @@ app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/organizations', organizationRoutes);
 
-// Messaging REST API
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })
