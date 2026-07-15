@@ -69,16 +69,31 @@ exports.getSuperAdminMetrics = async (req, res) => {
   }
 };
 
-
 exports.getAuditLogs = async (req, res) => {
   try {
-    // Fetch the 10 most recent logs, populate the user who did the action
-    const logs = await AuditLog.find()
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate('user', 'name email role'); 
+    const { search, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    let query = {};
+    
+    // Agar search term di hai, toh action ya org name mein search karein
+    if (search) {
+      query = { action: { $regex: search, $options: 'i' } };
+    }
 
-    res.status(200).json(logs);
+    const logs = await AuditLog.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('user', 'name email role');
+
+    const totalLogs = await AuditLog.countDocuments(query);
+
+    res.status(200).json({
+      logs,
+      totalPages: Math.ceil(totalLogs / limit),
+      currentPage: parseInt(page)
+    });
   } catch (error) {
     console.error("Error fetching audit logs:", error);
     res.status(500).json({ message: "Error fetching audit logs" });
