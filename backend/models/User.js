@@ -28,7 +28,6 @@ const userSchema = new mongoose.Schema(
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      // 2. UPDATED: Isay required kar diya hai isolation ke liye
       required: true, 
     },
     refreshToken: {

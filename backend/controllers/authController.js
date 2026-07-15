@@ -115,6 +115,11 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
+      const organization = await Organization.findById(user.organizationId);
+      if (organization?.status === 'Suspended') {
+        return res.status(403).json({ message: 'This organization has been blocked by the super admin.' });
+      }
+
       const { accessToken, refreshToken } = generateToken(user._id, user.organizationId, user.role);
       
       await logAudit({
@@ -373,22 +378,35 @@ exports.deleteMember = async (req, res) => {
     const memberToDelete = await User.findById(req.params.id);
     if (!memberToDelete) return res.status(404).json({ message: 'User not found' });
 
-    // Ensure IDs exist before comparing
     const memberOrgId = memberToDelete.organizationId ? memberToDelete.organizationId.toString() : null;
     const reqUserOrgId = req.user.organizationId ? req.user.organizationId.toString() : null;
 
-    console.log("Member Org ID:", memberOrgId);
-    console.log("Requesting User Org ID:", reqUserOrgId);
-    console.log("Requesting User Role:", req.user.role);
+    const isOrgAdmin = memberToDelete.role === 'Org Admin';
 
     // 1. Super Admin access
     if (req.user.role === 'Super Admin') {
+      if (isOrgAdmin && memberOrgId) {
+        await Organization.findByIdAndUpdate(memberOrgId, { isDeleted: true, status: 'Suspended' });
+        await User.updateMany(
+          { organizationId: memberOrgId, _id: { $ne: req.params.id } },
+          { $set: { isDeleted: true } }
+        );
+      }
+
       await User.findByIdAndDelete(req.params.id);
       return res.status(200).json({ message: 'User deleted by Super Admin' });
     }
 
     // 2. Org Admin access: Check IDs using .toString()
     if (memberOrgId && reqUserOrgId && memberOrgId === reqUserOrgId) {
+      if (isOrgAdmin) {
+        await Organization.findByIdAndUpdate(memberOrgId, { isDeleted: true, status: 'Suspended' });
+        await User.updateMany(
+          { organizationId: memberOrgId, _id: { $ne: req.params.id } },
+          { $set: { isDeleted: true } }
+        );
+      }
+
       await User.findByIdAndDelete(req.params.id);
       return res.status(200).json({ message: 'Member removed' });
     }

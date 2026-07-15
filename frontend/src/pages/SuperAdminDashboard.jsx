@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Users, AlertCircle, Activity, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Building2, Users, AlertCircle, Activity, Loader2, RefreshCw, ShieldCheck, Ban, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client';
+import { useToast } from '../components/ToastProvider';
 
 const SuperAdminDashboard = () => {
   const [stats, setStats] = useState({ 
@@ -11,7 +12,11 @@ const SuperAdminDashboard = () => {
     activeOrgs: 0, 
     suspendedOrgs: 0 
   });
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [orgLoading, setOrgLoading] = useState(true);
+  const [orgError, setOrgError] = useState('');
+  const toast = useToast();
 
   const fetchPlatformStats = async () => {
     try {
@@ -30,20 +35,37 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const fetchOrganizations = async () => {
+    try {
+      const res = await api.get('/organizations');
+      setOrganizations(res.data || []);
+      setOrgError('');
+    } catch (error) {
+      setOrgError('Failed to load organizations.');
+    } finally {
+      setOrgLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPlatformStats();
+    fetchOrganizations();
 
-    const handler = () => fetchPlatformStats();
+    const handler = () => {
+      fetchPlatformStats();
+      fetchOrganizations();
+    };
     window.addEventListener('platformStatsUpdated', handler);
 
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
     const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     
-    // Real-time tenant updates listener
     socket.on('organizationUpdated', handler);
 
-    // Polling fallback
-    const pollId = setInterval(fetchPlatformStats, 30000);
+    const pollId = setInterval(() => {
+      fetchPlatformStats();
+      fetchOrganizations();
+    }, 30000);
 
     return () => {
       window.removeEventListener('platformStatsUpdated', handler);
@@ -56,6 +78,23 @@ const SuperAdminDashboard = () => {
   const handleManualRefresh = () => {
     setLoading(true);
     fetchPlatformStats();
+    fetchOrganizations();
+  };
+
+  const handleToggleOrganizationStatus = async (org) => {
+    const nextStatus = org.status === 'Active' ? 'Suspended' : 'Active';
+    const actionLabel = nextStatus === 'Active' ? 'unblock' : 'block';
+
+    if (!window.confirm(`Are you sure you want to ${actionLabel} this organization?`)) return;
+
+    try {
+      const response = await api.patch(`/organizations/${org._id}/status`, { status: nextStatus });
+      setOrganizations((prev) => prev.map((item) => item._id === org._id ? response.data : item));
+      window.dispatchEvent(new Event('platformStatsUpdated'));
+      toast.push(`Organization ${actionLabel}ed successfully.`, { type: 'info' });
+    } catch (error) {
+      toast.push(error.response?.data?.message || `Failed to ${actionLabel} organization`, { type: 'error' });
+    }
   };
 
   if (loading) {
@@ -102,10 +141,71 @@ const SuperAdminDashboard = () => {
         ))}
       </div>
 
+      {/* Organization Management Section */}
+      <div className="bg-[#1a1c26] rounded-xl border border-white/5 overflow-hidden shadow-sm flex flex-col mb-8">
+        <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Activity className="text-[#7c7fff]" size={20} />
+            <h2 className="text-lg font-bold text-white">Tenant Management</h2>
+          </div>
+          <span className="text-[11px] uppercase tracking-[0.2em] text-[#84889c]">
+            {organizations.filter((org) => org.status === 'Active').length} Active / {organizations.filter((org) => org.status === 'Suspended').length} Suspended
+          </span>
+        </div>
+
+        <div className="p-6">
+          {orgLoading ? (
+            <div className="flex items-center justify-center py-8 text-[#84889c]">
+              <Loader2 className="animate-spin mr-2" size={18} />
+              Loading organizations...
+            </div>
+          ) : orgError ? (
+            <div className="text-red-400 text-sm">{orgError}</div>
+          ) : organizations.length === 0 ? (
+            <div className="text-[#84889c] text-sm">No organizations available.</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {organizations.map((org) => (
+                <div key={org._id} className="bg-[#16171d] border border-white/5 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-white font-semibold">{org.name}</h3>
+                      <p className="text-sm text-[#84889c] mt-1">{org.domain || 'No custom domain'}</p>
+                    </div>
+                    <span className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                      org.status === 'Active' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-red-500/30 bg-red-500/10 text-red-400'
+                    }`}>
+                      {org.status || 'Active'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                    <span className="text-xs uppercase tracking-[0.2em] text-[#606479]">
+                      {org.subscriptionPlan || 'Free'}
+                    </span>
+                    <button
+                      onClick={() => handleToggleOrganizationStatus(org)}
+                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                        org.status === 'Active'
+                          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                          : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                      }`}
+                    >
+                      {org.status === 'Active' ? <Ban size={16} /> : <CheckCircle2 size={16} />}
+                      {org.status === 'Active' ? 'Block' : 'Unblock'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Platform Activity Feed Module */}
       <div className="bg-[#1a1c26] rounded-xl border border-white/5 overflow-hidden shadow-sm flex flex-col">
         <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
-          <Activity className="text-[#7c7fff]" size={20} />
+          <ShieldCheck className="text-[#7c7fff]" size={20} />
           <h2 className="text-lg font-bold text-white">Recent Platform Activity</h2>
         </div>
         

@@ -5,6 +5,7 @@ const {
   createOrganization, 
   getAllOrganizations, 
   updateOrganization, 
+  toggleOrganizationStatus,
   deleteOrganization 
 } = require('../controllers/organizationController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
@@ -20,5 +21,7 @@ router.route('/')
 router.route('/:id')
   .put(updateOrganization)
   .delete(deleteOrganization);
+
+router.route('/:id/status').patch(toggleOrganizationStatus);
 
 module.exports = router;

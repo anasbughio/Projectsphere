@@ -21,13 +21,9 @@ const handleLogin = async (e) => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       
-      // 🔥 Redirect by normalized role so case differences don't break Super Admin routing
       const role = response.data.user.role?.toString().trim().toLowerCase();
-      if (role === 'super admin') {
-        navigate('/admin');
-      } else {
-        navigate('/board');
-      }
+      const targetRoute = role === 'super admin' ? '/admin' : '/board';
+      navigate(targetRoute, { replace: true });
       
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');

@@ -51,40 +51,57 @@ exports.updateOrganization = async (req, res) => {
   }
 };
 
+exports.toggleOrganizationStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowedStatuses = ['Active', 'Suspended'];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
+
+    const organization = await Organization.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!organization) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    res.status(200).json({
+      ...organization.toObject(),
+      message: status === 'Suspended' ? 'Organization blocked successfully' : 'Organization unblocked successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating organization status', error: error.message });
+  }
+};
 
 exports.deleteOrganization = async (req, res) => {
   try {
     const orgId = req.params.id;
-    console.log("\n➡️ [DEBUG] DELETE REQUEST RECEIVED FOR ORG:", orgId);
 
-    // 1. Soft delete the Organization
-    const organization = await Organization.findByIdAndUpdate(
-      orgId,
-      { isDeleted: true, status: 'Suspended' },
-      { new: true } // Returns the updated document from DB
-    );
-
+    const organization = await Organization.findById(orgId);
     if (!organization) {
-      console.log("❌ [DEBUG] Organization Not Found in DB!");
       return res.status(404).json({ message: 'Organization not found' });
     }
 
-    console.log("✅ [DEBUG] DATABASE UPDATED SUCCESSFULLY.");
-    console.log("   - isDeleted status:", organization.isDeleted);
-    console.log("   - Current status:", organization.status);
+    const ownerAdmin = await User.findOne({ organizationId: orgId, role: 'Org Admin' });
 
-    // 2. Cascade Delete: Suspend all Users
-    const userUpdateResult = await User.updateMany(
-      { organizationId: orgId }, 
-      { isDeleted: true }
-    );
-    console.log(`✅ [DEBUG] Cascade Delete: ${userUpdateResult.modifiedCount} Users suspended.`);
+    await Organization.findByIdAndDelete(orgId);
+    await User.deleteMany({ organizationId: orgId });
+
+    if (ownerAdmin) {
+      await User.findByIdAndDelete(ownerAdmin._id);
+    }
 
     try { getIO().emit('organizationUpdated', { orgId, action: 'deleted' }); } catch (e) { console.warn('Socket emit failed', e.message); }
 
-    res.status(200).json({ message: 'Organization successfully deactivated' });
+    res.status(200).json({ message: 'Organization permanently deleted' });
   } catch (error) {
-    console.error("❌ [DEBUG] ERROR IN DELETE API:", error);
+    console.error('Delete Error:', error);
     res.status(500).json({ message: 'Error deleting organization', error: error.message });
   }
 };
