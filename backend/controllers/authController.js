@@ -356,23 +356,23 @@ exports.getTeamMembers = async (req, res) => {
   try {
     const { role, organizationId } = req.user;
 
-    // 1. Super Admin: Sirf Org Admin/Admin roles walay users lao
+    // 🔥 Super Admin ke liye separate logic
     if (role === 'Super Admin') {
-      const orgAdmins = await User.find({ 
-        role: { $in: ['Org Admin', 'Admin', 'organization admin'] } 
+      const allOrgAdmins = await User.find({ 
+        role: 'Org Admin' 
       }).populate('organizationId', 'name');
-      return res.status(200).json(orgAdmins);
+      
+      return res.status(200).json(allOrgAdmins);
     }
 
-    // 2. Org Admin: Sirf apni organization ke users
+    // Org Admin ke liye sirf unki organization ka data
     const teamMembers = await User.find({ organizationId });
     return res.status(200).json(teamMembers);
     
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching team', error: error.message });
+    res.status(500).json({ message: 'Error', error: error.message });
   }
 };
-
 exports.deleteMember = async (req, res) => {
   try {
     const memberToDelete = await User.findById(req.params.id);

@@ -3,19 +3,37 @@ const Invitation = require('../models/Invitation');
 const crypto = require('crypto');
 const axios = require('axios');
 
-// @desc    Get all team members in the user's organization
-// @route   GET /api/v1/team
+
 exports.getTeamMembers = async (req, res) => {
+  console.log("🔥 TEAM CONTROLLER REACHED!");
   try {
-    const team = await User.find({ organizationId: req.user.organizationId }).select('-password');
-    res.json(team);
+    let members;
+    
+    // DEBUG: Sab se pehle check karte hain user kaun hai aur role kya hai
+    console.log("👤 REQUEST BY:", req.user.role, "| ORG ID:", req.user.organizationId);
+
+    if (req.user.role === 'Super Admin') {
+      // 1. Saare Org Admins nikalein
+      const allAdmins = await User.find({ role: { $in: ['Org Admin', 'Admin', 'organization admin'] } });
+      console.log("🔍 TOTAL ADMINS IN DB:", allAdmins.length);
+      
+      // 2. Query run karein
+      members = await User.find({ 
+        role: { $in: ['Org Admin', 'Admin', 'organization admin'] },
+        organizationId: { $ne: null } 
+      }).populate('organizationId', 'name');
+      
+      console.log("✅ MEMBERS SENT TO FRONTEND:", members.length);
+    } else {
+      members = await User.find({ organizationId: req.user.organizationId });
+    }
+
+    res.status(200).json(members);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ ERROR FETCHING TEAM:", error);
+    res.status(500).json({ message: 'Error fetching team members', error: error.message });
   }
 };
-
-
-
 exports.inviteMember = async (req, res) => {
   try {
     const { email, role } = req.body;
@@ -34,7 +52,7 @@ exports.inviteMember = async (req, res) => {
     const inviteToken = crypto.randomBytes(32).toString('hex');
 
     // 4. Save to Database
-    await Invitation.create({
+    const invitation = await Invitation.create({
       email,
       role,
       organizationId: inviter.organizationId,
@@ -72,7 +90,7 @@ exports.inviteMember = async (req, res) => {
       }
     );
 
-    res.status(200).json({ message: "Invitation sent successfully!" });
+    res.status(200).json({ message: "Invitation sent successfully!", invitation });
 
   } catch (error) {
     console.error("Invite Error:", error);
@@ -109,8 +127,14 @@ exports.acceptInvitation = async (req, res) => {
     res.status(500).json({ message: "Server error while accepting invitation." });
   }
 };
-
-
+exports.getPendingInvitations = async (req, res) => {
+  try {
+    const invitations = await Invitation.find({ organizationId: req.user.organizationId }).sort('-createdAt');
+    res.status(200).json(invitations);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 exports.deleteMember = async (req, res) => {
   try {
     const memberId = req.params.id;
