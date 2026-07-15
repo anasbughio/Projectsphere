@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Users, AlertCircle, Activity, Loader2, RefreshCw, ShieldCheck, Ban, CheckCircle2 } from 'lucide-react';
+import { Building2, Users, AlertCircle, Activity, Loader2, RefreshCw, ShieldCheck, Ban, CheckCircle2, Clock } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 import { useToast } from '../components/ToastProvider';
@@ -13,7 +13,9 @@ const SuperAdminDashboard = () => {
     suspendedOrgs: 0 
   });
   const [organizations, setOrganizations] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [auditLoading, setAuditLoading] = useState(true);
   const [orgLoading, setOrgLoading] = useState(true);
   const [orgError, setOrgError] = useState('');
   const toast = useToast();
@@ -47,13 +49,25 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  useEffect(() => {
+  const fetchAuditLogs = async () => {
+    try {
+      const res = await api.get('/dashboard/audit-logs');
+      setAuditLogs(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch audit logs:', error);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+useEffect(() => {
     fetchPlatformStats();
     fetchOrganizations();
+    fetchAuditLogs(); // 🔥 ADDED: This will actually run the fetch when the page loads!
 
     const handler = () => {
       fetchPlatformStats();
       fetchOrganizations();
+      fetchAuditLogs(); // 🔥 ADDED: This keeps the logs updated on background refresh
     };
     window.addEventListener('platformStatsUpdated', handler);
 
@@ -65,6 +79,7 @@ const SuperAdminDashboard = () => {
     const pollId = setInterval(() => {
       fetchPlatformStats();
       fetchOrganizations();
+      fetchAuditLogs(); // 🔥 ADDED: Update logs during polling fallback
     }, 30000);
 
     return () => {
@@ -91,6 +106,7 @@ const SuperAdminDashboard = () => {
       const response = await api.patch(`/organizations/${org._id}/status`, { status: nextStatus });
       setOrganizations((prev) => prev.map((item) => item._id === org._id ? response.data : item));
       window.dispatchEvent(new Event('platformStatsUpdated'));
+      fetchAuditLogs();
       toast.push(`Organization ${actionLabel}ed successfully.`, { type: 'info' });
     } catch (error) {
       toast.push(error.response?.data?.message || `Failed to ${actionLabel} organization`, { type: 'error' });
@@ -112,7 +128,10 @@ const SuperAdminDashboard = () => {
     { title: 'Active Tenants', value: stats.activeOrgs, icon: ShieldCheck, color: 'text-blue-400' },
     { title: 'Suspended Tenants', value: stats.suspendedOrgs, icon: AlertCircle, color: 'text-red-400' },
   ];
-
+const formatDate = (dateString) => {
+    const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
   return (
     <div className="p-6 font-sans">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
@@ -203,18 +222,50 @@ const SuperAdminDashboard = () => {
       </div>
 
       {/* Platform Activity Feed Module */}
-      <div className="bg-[#1a1c26] rounded-xl border border-white/5 overflow-hidden shadow-sm flex flex-col">
+     <div className="bg-[#1a1c26] rounded-xl border border-white/5 overflow-hidden shadow-sm flex flex-col">
         <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
           <ShieldCheck className="text-[#7c7fff]" size={20} />
           <h2 className="text-lg font-bold text-white">Recent Platform Activity</h2>
         </div>
         
-        <div className="p-6">
-          <div className="flex flex-col items-center justify-center py-10 text-[#606479]">
-            <ShieldCheck size={48} className="mb-4 opacity-30" />
-            <p className="text-sm font-medium">Audit logging system is pending backend integration.</p>
-            <p className="text-xs mt-1 opacity-70">Soon you will see tenant creation, suspension, and super admin login events here.</p>
-          </div>
+        <div className="p-0">
+          {auditLoading ? (
+            <div className="flex items-center justify-center py-10 text-[#84889c]">
+              <Loader2 className="animate-spin mr-2" size={18} /> Loading activity logs...
+            </div>
+          ) : auditLogs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-[#606479]">
+              <ShieldCheck size={48} className="mb-4 opacity-30" />
+              <p className="text-sm font-medium">No recent activity found.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
+              {auditLogs.map((log) => (
+                <div key={log._id} className="p-4 hover:bg-white/[0.02] transition-colors flex items-start gap-4">
+                  <div className={`p-2 rounded-lg shrink-0 mt-1 ${
+                    log.action.includes('Blocked') || log.action.includes('Suspended') 
+                      ? 'bg-red-500/10 text-red-400' 
+                      : log.action.includes('Created') || log.action.includes('Active')
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-[#7c7fff]/10 text-[#7c7fff]'
+                  }`}>
+                    {log.action.includes('Blocked') ? <Ban size={16} /> : <Activity size={16} />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">{log.action}</p>
+                    <div className="flex items-center gap-4 mt-1.5 text-xs text-[#606479]">
+                      <span className="flex items-center gap-1">
+                        <Users size={12} /> {log.user?.name || 'System User'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} /> {formatDate(log.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

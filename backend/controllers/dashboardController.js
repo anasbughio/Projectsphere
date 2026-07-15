@@ -3,6 +3,7 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 const Organization = require('../models/Organization');
 const mongoose = require('mongoose');
+const AuditLog = require('../models/AuditLog');
 exports.getDashboardMetrics = async (req, res) => {
   try {
     const orgId = req.user.organizationId; // Auth middleware se user ki organization mil jayegi
@@ -65,5 +66,21 @@ exports.getSuperAdminMetrics = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching platform stats" });
+  }
+};
+
+
+exports.getAuditLogs = async (req, res) => {
+  try {
+    // Fetch the 10 most recent logs, populate the user who did the action
+    const logs = await AuditLog.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('user', 'name email role'); 
+
+    res.status(200).json(logs);
+  } catch (error) {
+    console.error("Error fetching audit logs:", error);
+    res.status(500).json({ message: "Error fetching audit logs" });
   }
 };
