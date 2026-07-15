@@ -26,7 +26,9 @@ const Projects = () => {
   };
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
-  const isAdmin = normalizeRole(storedUser?.role) === 'admin';
+  const userRole = normalizeRole(storedUser?.role);
+  const isAdmin = userRole === 'admin';
+  const canCreateProject = isAdmin || userRole === 'project manager';
 
   // Fetch Projects from API
   const fetchProjects = async () => {
@@ -105,7 +107,7 @@ const Projects = () => {
           <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Projects</h2>
           <p className="text-[#84889c] text-xs sm:text-sm">Manage your workspace projects</p>
         </div>
-        {isAdmin && (
+        {canCreateProject && (
           <button 
             onClick={() => {
               handleCloseModal();
@@ -133,7 +135,7 @@ const Projects = () => {
           <FolderKanban size={48} className="text-[#606479] mb-4" />
           <h3 className="text-base sm:text-lg font-medium text-white mb-2">No projects found</h3>
           <p className="text-[#84889c] text-sm mb-6">Get started by creating your first project.</p>
-          {isAdmin && (
+          {canCreateProject && (
             <button 
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 bg-[#1a1c26] border border-white/10 hover:bg-[#222533] text-white px-5 py-2.5 rounded-lg font-medium transition-all"

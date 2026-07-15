@@ -12,7 +12,8 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isSuperAdmin = user?.role === 'Super Admin';
+  const normalizeRole = (role) => role?.toString().trim().toLowerCase();
+  const isSuperAdmin = normalizeRole(user?.role) === 'super admin';
   const backendUrl = 'https://projectsphere-dlvv.onrender.com';
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

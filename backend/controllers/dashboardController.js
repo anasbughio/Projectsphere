@@ -2,6 +2,8 @@ const Project = require('../models/Project');
 const Task = require('../models/Task');
 const User = require('../models/User');
 const Organization = require('../models/Organization');
+const mongoose = require('mongoose');
+const AuditLog = require('../models/AuditLog');
 exports.getDashboardMetrics = async (req, res) => {
   try {
     const orgId = req.user.organizationId; // Auth middleware se user ki organization mil jayegi
@@ -25,8 +27,6 @@ exports.getDashboardMetrics = async (req, res) => {
     const now = new Date();
     const overdueTasks = tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'Done');
 
-    // 5. Revenue Calculation (Agar aapke project mein 'budget' ka field hai)
-    // Agar nahi hai, toh ise remove kar dein ya '0' rehne dein
     const totalRevenue = projects.reduce((acc, p) => acc + (p.budget || 0), 0);
 
     res.status(200).json({
@@ -47,22 +47,40 @@ exports.getDashboardMetrics = async (req, res) => {
 
 exports.getSuperAdminMetrics = async (req, res) => {
   try {
-
-    const totalOrgs = await Organization.countDocuments({ isDeleted: { $ne: true } }); 
-    const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } }); 
-    // Count only users with the role 'Org Admin'
-    const totalOrgAdmins = await User.countDocuments({ role: 'Org Admin', isDeleted: { $ne: true } });
-    const totalProjects = await Project.countDocuments({ isDeleted: { $ne: true } });
-    const totalTasks = await Task.countDocuments({ isDeleted: { $ne: true } });
+    const totalOrgs = await Organization.countDocuments({});
+    const totalUsers = await User.countDocuments({});
+    const totalOrgAdmins = await User.countDocuments({ role: 'Org Admin' });
+    const activeOrgs = await Organization.countDocuments({ status: 'Active' });
+    const suspendedOrgs = await Organization.countDocuments({ status: 'Suspended' });
+    const totalProjects = await Project.countDocuments({});
+    const totalTasks = await Task.countDocuments({});
 
     res.status(200).json({
       totalOrgs,
       totalUsers,
       totalOrgAdmins,
+      activeOrgs,
+      suspendedOrgs,
       totalProjects,
       totalTasks
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching platform stats" });
+  }
+};
+
+
+exports.getAuditLogs = async (req, res) => {
+  try {
+    // Fetch the 10 most recent logs, populate the user who did the action
+    const logs = await AuditLog.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('user', 'name email role'); 
+
+    res.status(200).json(logs);
+  } catch (error) {
+    console.error("Error fetching audit logs:", error);
+    res.status(500).json({ message: "Error fetching audit logs" });
   }
 };

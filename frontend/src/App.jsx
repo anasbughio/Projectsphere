@@ -29,8 +29,8 @@ function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
   
-  // 🔥 BUG FIX 1: Safe case-insensitive check lagaya hai
-  const isSuperAdmin = user?.role?.toLowerCase() === 'super admin';
+  const normalizeRole = (role) => role?.toString().trim().toLowerCase();
+  const isSuperAdmin = normalizeRole(user?.role) === 'super admin';
 
   return (
     <BrowserRouter>

@@ -1,6 +1,6 @@
 // frontend/src/pages/AdminPanel.jsx
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Edit2, Trash2, Shield, Loader2 } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, Shield, Loader2, Ban, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../components/ToastProvider';
 
@@ -49,14 +49,30 @@ const AdminPanel = () => {
   };
 
   const handleDelete = async (orgId) => {
-    if (!window.confirm('Suspend this organization? This will block access for all its users.')) return;
+    if (!window.confirm('Delete this organization permanently? This will remove the organization and its related users from the database.')) return;
     try {
       await api.delete(`/organizations/${orgId}`);
-      setOrganizations(organizations.filter(org => org._id !== orgId));
+      setOrganizations((prev) => prev.filter((org) => org._id !== orgId));
       try { window.dispatchEvent(new Event('platformStatsUpdated')); } catch (e) { /* noop */ }
-      toast.push('Organization suspended.', { type: 'info' });
+      toast.push('Organization deleted permanently.', { type: 'success' });
     } catch (err) {
-      toast.push('Failed to delete organization', { type: 'error' });
+      toast.push(err.response?.data?.message || 'Failed to delete organization', { type: 'error' });
+    }
+  };
+
+  const handleToggleStatus = async (org) => {
+    const nextStatus = org.status === 'Active' ? 'Suspended' : 'Active';
+    const actionLabel = nextStatus === 'Active' ? 'unblock' : 'block';
+
+    if (!window.confirm(`Are you sure you want to ${actionLabel} this organization?`)) return;
+
+    try {
+      const response = await api.patch(`/organizations/${org._id}/status`, { status: nextStatus });
+      setOrganizations((prev) => prev.map((item) => item._id === org._id ? response.data : item));
+      try { window.dispatchEvent(new Event('platformStatsUpdated')); } catch (e) { /* noop */ }
+      toast.push(`Organization ${actionLabel}ed successfully.`, { type: 'info' });
+    } catch (err) {
+      toast.push(err.response?.data?.message || `Failed to ${actionLabel} organization`, { type: 'error' });
     }
   };
 
@@ -102,7 +118,10 @@ const AdminPanel = () => {
                 <Building2 size={20} />
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleDelete(org._id)} className="text-[#606479] hover:text-red-400 transition" title="Suspend Organization">
+                <button onClick={() => handleToggleStatus(org)} className="text-[#606479] hover:text-amber-400 transition" title={org.status === 'Active' ? 'Block Organization' : 'Unblock Organization'}>
+                  {org.status === 'Active' ? <Ban size={18} /> : <CheckCircle2 size={18} />}
+                </button>
+                <button onClick={() => handleDelete(org._id)} className="text-[#606479] hover:text-red-400 transition" title="Delete Organization">
                   <Trash2 size={18} />
                 </button>
               </div>
