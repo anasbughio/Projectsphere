@@ -7,6 +7,7 @@ const passport = require('passport');
 const { protect,authorizeRoles } = require('../middlewares/authMiddleware');
 const upload = require('../middlewares/uploadMiddleware');
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const { authLimiter } = require('../middlewares/rateLimiter');
 
 // Google login trigger karega
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -46,9 +47,9 @@ router.get('/google/callback',
   }
 );
 
-router.post('/register', registerOrg);
+router.post('/register', authLimiter,registerOrg);
 router.post('/verify-email', verifyEmail);
-router.post('/login', login);
+router.post('/login', authLimiter,login);
 router.get('/refresh', refreshToken); 
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
