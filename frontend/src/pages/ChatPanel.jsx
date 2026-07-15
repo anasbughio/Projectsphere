@@ -17,15 +17,22 @@ const ChatPanel = ({ isOpen, onClose, organizationId, user, projectId }) => {
   const chatEndRef = useRef(null);
 
   // FIXED: Dynamic URL helper to fix localhost connection error
-  const getFileLink = (fileUrl) => {
-    if (!fileUrl) return '#';
-    if (fileUrl.startsWith('http')) return fileUrl;
+const getFileLink = (fileUrl) => {
+  if (!fileUrl) return '#';
+  if (fileUrl.startsWith('http')) return fileUrl;
+  
+  // Hardcoded fallback for production to ensure it never hits localhost
+  const liveBackend = "https://projectsphere-dlvv.onrender.com"; 
+  
+  const baseUrl = import.meta.env?.VITE_API_BASE_URL 
+    ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
+    : liveBackend; 
     
-    const baseUrl = import.meta.env?.VITE_API_BASE_URL 
-      ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
-      : API_URL;
-    return `${baseUrl}${fileUrl}`;
-  };
+  // Ensure we don't miss a slash between base URL and file path
+  const formattedPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+  
+  return `${baseUrl}${formattedPath}`;
+};
 
   const isImage = (fileName) => fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 
