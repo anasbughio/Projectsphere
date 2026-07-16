@@ -37,21 +37,16 @@ const getProfileImage = () => {
     let imgUrl = user?.profilePicture || user?.avatar; 
     if (!imgUrl) return null;
 
-    // 1. Windows path slash fix
     imgUrl = imgUrl.replace(/\\/g, '/');
 
     if (imgUrl.startsWith('http')) return imgUrl;
 
-    // 🔥 SMART ENVIRONMENT DETECTION (No .env needed)
-    // Yeh khud check karega ke aap localhost par hain ya live server par
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
-    // Agar local hai toh port 5000 use karega, warna Render ka link
     const baseUrl = isLocal ? 'http://localhost:5000' : 'https://projectsphere-dlvv.onrender.com';
 
     const formattedPath = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
-    
-    // Console log for debugging
+
     console.log("FINAL IMAGE URL:", `${baseUrl}${formattedPath}`);
     
     return `${baseUrl}${formattedPath}`;
@@ -112,7 +107,6 @@ const getProfileImage = () => {
         
       <nav className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar">
           <ul className="space-y-1.5">
-            {/* 1. Dashboard / Platform Overview Link */}
             <li>
               <Link to={isSuperAdmin ? "/admin" : "/board"} 
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
@@ -126,7 +120,6 @@ const getProfileImage = () => {
               </Link>
             </li>
 
-            {/* 2. Role-aware workspace links */}
             {(isOrgAdmin || isProjectManager || isTeamMember) && (
               <>
                 <li>
@@ -141,8 +134,6 @@ const getProfileImage = () => {
                 </li>
               </>
             )}
-
-            {/* 3. Team/Users Link (Common for non-client roles) */}
             {!isClient && (
               <li>
                 <Link to="/team"
@@ -158,7 +149,6 @@ const getProfileImage = () => {
               </li>
             )}
 
-            {/* 4. Calendar & Client Portal */}
             {(isOrgAdmin || isTeamMember) && (
               <>
                 <li>
@@ -201,14 +191,12 @@ const getProfileImage = () => {
            <Link to="/profile" className="flex items-center gap-3 hover:bg-white/[0.04] p-1.5 pr-3 rounded-full transition">
      <div className="w-8 h-8 rounded-full bg-[#7c7fff]/20 text-[#7c7fff] flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 border border-[#7c7fff]/30">
        
-       {/* 🔥 NEW: Agar image hai toh <img> tag dikhao, warna pehla letter dikhao */}
        {profileImgUrl ? (
          <img 
            src={profileImgUrl} 
            alt="Profile" 
            className="w-full h-full object-cover" 
-           onError={(e) => {
-             // Agar image load na ho sakay toh usay hide kar ke letter dikha do
+           onError={(e) => {        
              e.target.style.display = 'none';
              e.target.parentNode.innerHTML = user?.name?.charAt(0).toUpperCase() || 'U';
            }}
@@ -242,7 +230,5 @@ const getProfileImage = () => {
     </div>
   );
 };
-
-// Logout confirmation modal markup appended to the file's exports via a small inline component
 
 export default DashboardLayout;
