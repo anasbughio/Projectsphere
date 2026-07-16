@@ -9,24 +9,21 @@ const upload = require('../middlewares/uploadMiddleware');
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const { authLimiter } = require('../middlewares/rateLimiter');
 
-// Google login trigger karega
+
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-// Google callback route
+
 router.get('/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/login' }),
   async (req, res) => {
     try {
-      // 1. Token generate karein (await isiliye hai agar function promise return kare)
       const result = await generateToken(req.user._id, req.user.organizationId, req.user.role);
-      
-      // 2. Safely token string extract karein
+    
       let actualToken = result;
       if (result && typeof result === 'object') {
         actualToken = result.token || result.accessToken;
       }
 
-      // 3. User data banayen
       const userObj = {
         _id: req.user._id,
         name: req.user.name,
@@ -36,8 +33,6 @@ router.get('/google/callback',
       };
       
       const userDataStr = encodeURIComponent(JSON.stringify(userObj));
-      
-      // 4. Vercel par redirect karein
       res.redirect(`${FRONTEND_URL}/auth-success?token=${actualToken}&userData=${userDataStr}`);
 
     } catch (error) {
@@ -58,8 +53,6 @@ router.post('/profile-picture', protect, upload.single('profileImage'), uploadPr
 router.put('/profile', protect, updateProfile);
 router.put('/update-password', protect, updatePassword);
 router.get('/all-platform-users', protect, authorizeRoles('Super Admin'), getAllUsersForSuperAdmin);
-
-
 
 
 module.exports = router;
