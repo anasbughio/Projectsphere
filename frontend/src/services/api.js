@@ -2,7 +2,6 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
-  // 👉 NAYA: Cookies ko backend tak bhejne ke liye laazmi hai
   withCredentials: true, 
   // Fail fast in production when backend is unreachable
   timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000,
@@ -20,21 +19,19 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 👉 NAYA: Response Interceptor (Token expire hone par Refresh handle karne ke liye)
 api.interceptors.response.use(
   (response) => {
     return response; // Agar request theek hai toh response wapas bhej do
   },
   async (error) => {
     const originalRequest = error.config;
-
-    // Agar 401 error aaya hai aur humne pehle retry nahi kiya
-    // (Aur make sure karein ke error khud /refresh route ka nahi hai warna infinite loop ban jayega)
+const isAuthRoute = originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/register');
     if (
       error.response && 
       error.response.status === 401 && 
       !originalRequest._retry &&
-      originalRequest.url !== '/auth/refresh'
+      originalRequest.url !== '/auth/refresh' &&
+      !isAuthRoute
     ) {
       originalRequest._retry = true; // Retry flag true kar dein
 

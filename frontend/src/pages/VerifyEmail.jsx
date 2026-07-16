@@ -4,6 +4,7 @@ import api from '../services/api';
 
 const VerifyEmail = () => {
   const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const email = location.state?.email; // Register se email yahan mil gayi
@@ -36,7 +37,15 @@ const VerifyEmail = () => {
           onChange={(e) => setCode(e.target.value)}
           className="w-full p-3 mb-4 bg-[#1a1c26] rounded-lg border border-white/10"
         />
-        <button className="w-full bg-[#7c7fff] py-2.5 rounded-lg font-semibold">Verify</button>
+      <button 
+          type="submit" 
+          disabled={loading} // 🔥 FIX: Loading ke dauran button disable karein
+          className={`w-full py-2.5 rounded-lg font-semibold transition ${
+            loading ? 'bg-[#4b4d99] cursor-not-allowed text-white/70' : 'bg-[#7c7fff] hover:bg-[#6b6de0]'
+          }`}
+        >
+          {loading ? 'Verifying...' : 'Verify'}
+        </button>
       </form>
     </div>
   );
