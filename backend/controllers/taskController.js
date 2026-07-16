@@ -22,7 +22,8 @@ const canModifyTask = (user, task) => {
 
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, status, priority, dueDate, department, projectId, assignedTo } = req.body;
+    // 🔥 Yahan milestoneId add kiya
+    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId } = req.body;
 
     const project = await Project.findOne({ 
       _id: projectId, 
@@ -34,13 +35,15 @@ exports.createTask = async (req, res) => {
 
     const task = await Task.create({
       title, description, status, priority, dueDate, department, projectId, assignedTo,
+      milestoneId: milestoneId || null, // 🔥 Yahan save karwaya
       isGlobal: false,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
     });
+    
     await logAudit({
       organizationId: req.user.organizationId, 
-      user: req.user._id, // Jis user ne task banaya
+      user: req.user._id,
       action: 'TASK_CREATED',
       entityType: 'Task',
       entityId: task._id,
@@ -48,15 +51,10 @@ exports.createTask = async (req, res) => {
     });
 
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
-
     const io = getIO();
-    
-    // 1. Existing Logic: Poori organization ki board screen update karne ke liye
     io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
 
-    // 2. 🔥 NEW LOGIC: Sirf Assigned User ko live Bell Notification bhejne ke liye
     if (assignedTo && String(assignedTo) !== String(req.user._id)) {
-      // Step A: Database mein save karein
       const notification = await Notification.create({
         recipient: assignedTo,
         sender: req.user._id,
@@ -65,8 +63,6 @@ exports.createTask = async (req, res) => {
         message: `You have been assigned a new task: "${title}"`,
         relatedId: task._id
       });
-
-      // Step B: Us user ke personal socket room mein push karein
       io.to(String(assignedTo)).emit('newNotification', notification);
     }
 
@@ -83,10 +79,12 @@ exports.createGlobalTask = async (req, res) => {
       return res.status(403).json({ message: 'Only admins can create global tasks' });
     }
 
-    const { title, description, status, priority, dueDate, department, assignedTo } = req.body;
+    // 🔥 Yahan milestoneId add kiya
+    const { title, description, status, priority, dueDate, department, assignedTo, milestoneId } = req.body;
 
     const task = await Task.create({
       title, description, status, priority, dueDate, department, assignedTo,
+      milestoneId: milestoneId || null, // 🔥 Yahan save karwaya
       isGlobal: true,
       projectId: null,
       createdBy: req.user._id,
@@ -95,7 +93,7 @@ exports.createGlobalTask = async (req, res) => {
 
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
 
-   const io = getIO();
+    const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
 
     res.status(201).json(populatedTask);
@@ -103,7 +101,6 @@ exports.createGlobalTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 // @desc    Get tasks for a specific project (Strict User Isolation)
 // @route   GET /api/v1/tasks/project/:projectId
 exports.getTasksByProject = async (req, res) => {
@@ -164,6 +161,8 @@ exports.getGlobalTasks = async (req, res) => {
 exports.updateTaskStatus = async (req, res) => {
   try {
     const { status } = req.body;
+    console.log(`\n🚦 --- UPDATE TASK STATUS HIT ---`);
+    console.log(`Naya Status jo frontend se aaya: "${status}"`);
     
     const task = await Task.findOne({ 
       _id: req.params.id, 
@@ -180,11 +179,23 @@ exports.updateTaskStatus = async (req, res) => {
       { returnDocument: 'after' }
     ).populate('assignedTo', 'name');
 
+    console.log(`Task ka apna _id: ${updatedTask._id}`);
+    console.log(`Task ke andar Milestone ID hai? : ${updatedTask.milestoneId || 'NAHI HAI ❌'}`);
+
+    // Calculation call
+    if (updatedTask && updatedTask.milestoneId) {
+      console.log(`Milestone ID mil gayi, ab calculation function call ho raha hai...`);
+      await Task.calculateMilestoneProgress(updatedTask.milestoneId);
+    } else {
+      console.log(`❌ Milestone ID nahi mili, isliye calculation skip ho gayi!`);
+    }
+
     const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
 
     res.json(updatedTask);
   } catch (error) {
+    console.error("Update Status Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -222,7 +233,8 @@ exports.deleteTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
-    const { title, description, priority, department, assignedTo } = req.body;
+    // 🔥 Yahan milestoneId add kiya
+    const { title, description, priority, department, assignedTo, milestoneId, dueDate } = req.body;
     
     const task = await Task.findOne({ 
       _id: req.params.id, 
@@ -235,11 +247,11 @@ exports.updateTask = async (req, res) => {
 
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id },
-      { title, description, priority, department, assignedTo: assignedTo || null },
+      // 🔥 Yahan milestoneId aur dueDate dono add kiye update hone ke liye
+      { title, description, priority, department, dueDate, assignedTo: assignedTo || null, milestoneId: milestoneId || null },
       { returnDocument: 'after' }
     ).populate('assignedTo', 'name');
 
-    // If assignee changed, send notification to the new assignee
     try {
       const io = getIO();
       const prevAssignee = task.assignedTo ? String(task.assignedTo) : null;

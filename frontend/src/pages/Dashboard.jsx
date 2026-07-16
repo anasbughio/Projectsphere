@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import api from '../services/api';
 import { Link } from 'react-router-dom';
+import MilestoneProgressCard from '../components/MilestoneProgressCard';
 
 const Dashboard = () => {
   // 1. Pehle data localStorage se nikalen
@@ -23,7 +24,8 @@ const Dashboard = () => {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
-const isSuperAdmin = user?.role === 'Super Admin';
+  const [projectMilestones, setProjectMilestones] = useState([]);
+  const isSuperAdmin = user?.role === 'Super Admin';
   const handleGenerateReport = async () => {
     setIsGenerating(true);
     setReportStatus(null);
@@ -41,7 +43,10 @@ const isSuperAdmin = user?.role === 'Super Admin';
       setIsGenerating(false);
     }
   };
-
+const fetchMilestones = async (projectId) => {
+  const res = await api.get(`/milestones/project/${projectId}`);
+  setProjectMilestones(res.data);
+};
   // 🔥 1. Ek hi useEffect mein saara data fetch karein taake charts aur cards dono dynamic ho jayein
  useEffect(() => {
     const fetchDashboardData = async () => {
@@ -296,7 +301,9 @@ const isSuperAdmin = user?.role === 'Super Admin';
           </div>
         </div>
       </div>
-
+<div className="mt-8">
+   <MilestoneProgressCard />
+</div>
       {/* MAIN CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
