@@ -1,7 +1,7 @@
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const User = require('../models/User');
-const sendEmail = require('../utils/sendEmail'); // Aapka email wala function
+const sendEmail = require('../utils/sendEmail');
 
 exports.generateWeeklyReport = async (req, res) => {
   try {
@@ -11,57 +11,116 @@ exports.generateWeeklyReport = async (req, res) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // 1. Database Se Metrics Fetch Karein
-    const completedTasks = await Task.countDocuments({ 
+    // ==========================================
+    // 1. WEEKLY METRICS (Pichle 7 din ka data)
+    // ==========================================
+    const completedTasksThisWeek = await Task.countDocuments({ 
       organizationId: orgId, 
       status: 'Done',
-      updatedAt: { $gte: sevenDaysAgo } 
+      updatedAt: { $gte: sevenDaysAgo },
+      isDeleted: false // Soft-deleted tasks ko ignore karein
     });
 
-    const newTasks = await Task.countDocuments({
+    const newTasksThisWeek = await Task.countDocuments({
       organizationId: orgId,
-      createdAt: { $gte: sevenDaysAgo }
-    });
-
-    const overdueTasks = await Task.countDocuments({
-      organizationId: orgId,
-      status: { $ne: 'Done' },
-      dueDate: { $lt: new Date() }
+      createdAt: { $gte: sevenDaysAgo },
+      isDeleted: false
     });
 
     const activeProjects = await Project.countDocuments({
       organizationId: orgId,
-      status: { $in: ['Active', 'Planning'] } // Planning ya Active projects
+      status: { $in: ['Active', 'Planning'] },
+      isDeleted: false
     });
 
-    // 2. Email ke liye HTML Template Banayen
+    // ==========================================
+    // 2. OVERALL METRICS (Health & Velocity ke liye)
+    // ==========================================
+    const totalTasks = await Task.countDocuments({
+      organizationId: orgId,
+      isDeleted: false
+    });
+
+    const totalCompleted = await Task.countDocuments({
+      organizationId: orgId,
+      status: 'Done',
+      isDeleted: false
+    });
+
+    const totalOverdue = await Task.countDocuments({
+      organizationId: orgId,
+      status: { $ne: 'Done' },
+      dueDate: { $lt: new Date() },
+      isDeleted: false
+    });
+
+    // 🔥 DYNAMIC CALCULATIONS (Matching Frontend Logic)
+    // Velocity = (Completed / Total) * 100
+    const teamVelocity = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+    
+    // Health = 100 - (Overdue / Total) * 100
+    const workspaceHealth = totalTasks === 0 ? 100 : Math.max(0, Math.round(100 - ((totalOverdue / totalTasks) * 100)));
+
+    // Health Score ka color logic (Green, Orange, Red)
+    const healthColor = workspaceHealth > 80 ? '#10b981' : workspaceHealth > 50 ? '#f59e0b' : '#ef4444';
+
+    // ==========================================
+    // 3. ENHANCED EMAIL HTML TEMPLATE
+    // ==========================================
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
-        <div style="background-color: #7c7fff; padding: 20px; text-align: center; color: white;">
-          <h2 style="margin: 0;">Weekly ProjectSphere Report 🚀</h2>
-          <p style="margin: 5px 0 0;">Here is your team's performance for the last 7 days.</p>
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+        <div style="background-color: #5a5fe0; padding: 20px; text-align: center; color: white;">
+          <h2 style="margin: 0;">Workspace Performance Report 🚀</h2>
+          <p style="margin: 5px 0 0; font-size: 14px; opacity: 0.9;">ProjectSphere Enterprise Analytics</p>
         </div>
-        <div style="padding: 20px;">
-          <h3 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">📊 7-Day Snapshot</h3>
-          <ul style="list-style-type: none; padding: 0; font-size: 16px;">
-            <li style="margin-bottom: 10px;">✅ <strong>Tasks Completed:</strong> ${completedTasks}</li>
-            <li style="margin-bottom: 10px;">🆕 <strong>New Tasks Added:</strong> ${newTasks}</li>
-            <li style="margin-bottom: 10px;">⚠️ <strong>Overdue Tasks:</strong> <span style="color: red;">${overdueTasks}</span></li>
-            <li style="margin-bottom: 10px;">📁 <strong>Active Projects:</strong> ${activeProjects}</li>
+        
+        <div style="padding: 25px;">
+          
+          <!-- HEALTH & VELOCITY SECTION -->
+          <h3 style="border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; color: #1a1c26; margin-top: 0;">🌟 Overall Workspace Health</h3>
+          <table style="width: 100%; margin-bottom: 25px; font-size: 16px;">
+            <tr>
+              <td style="padding: 10px 0;">❤️ <strong>Health Score:</strong></td>
+              <td style="text-align: right; color: ${healthColor}; font-weight: bold; font-size: 18px;">${workspaceHealth}%</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0;">⚡ <strong>Team Velocity:</strong></td>
+              <td style="text-align: right; color: #7c7fff; font-weight: bold; font-size: 18px;">${teamVelocity}%</td>
+            </tr>
+          </table>
+
+          <!-- WEEKLY ACTIVITY SECTION -->
+          <h3 style="border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; color: #1a1c26;">📊 Last 7-Days Activity</h3>
+          <ul style="list-style-type: none; padding: 0; font-size: 15px; color: #4b4e63;">
+            <li style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+              <span>✅ Tasks Completed This Week</span> <strong>${completedTasksThisWeek}</strong>
+            </li>
+            <li style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+              <span>🆕 New Tasks Added</span> <strong>${newTasksThisWeek}</strong>
+            </li>
+            <li style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+              <span>⚠️ Pending Overdue Tasks</span> <strong style="color: #ef4444;">${totalOverdue}</strong>
+            </li>
+            <li style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+              <span>📁 Active Projects</span> <strong>${activeProjects}</strong>
+            </li>
           </ul>
-          <p style="margin-top: 20px; font-size: 14px; color: #666;">Keep up the great work! Login to your dashboard for real-time updates.</p>
+          
+          <div style="margin-top: 35px; padding-top: 20px; border-top: 1px solid #f0f0f0; text-align: center;">
+            <p style="margin: 0; font-size: 13px; color: #84889c;">Keep up the great work! Login to your ProjectSphere dashboard for real-time task allocations and project tracking.</p>
+          </div>
         </div>
       </div>
     `;
 
-    // 3. Email Send Karein (Abhi test ke liye jo user login hai usay bhej rahe hain)
+    // 4. Email Send Karein
     await sendEmail({
       email: req.user.email,
-      subject: 'ProjectSphere - Your Weekly Performance Report',
+      subject: 'ProjectSphere - Workspace Health & Velocity Report',
       html: emailHtml
     });
 
-    res.status(200).json({ message: 'Weekly report sent successfully to your email!' });
+    res.status(200).json({ message: 'Detailed report sent successfully to your email!' });
 
   } catch (error) {
     console.error("Report Error:", error);
