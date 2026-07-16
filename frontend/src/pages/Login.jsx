@@ -23,7 +23,7 @@ const handleLogin = async (e) => {
       
       const role = response.data.user.role?.toString().trim().toLowerCase();
       const targetRoute = role === 'super admin' ? '/admin' : '/board';
-      navigate(targetRoute, { replace: true });
+      window.location.href = targetRoute;
       
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');

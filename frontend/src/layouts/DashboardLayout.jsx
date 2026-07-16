@@ -33,6 +33,32 @@ const DashboardLayout = () => {
   const [socketInstance, setSocketInstance] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+const getProfileImage = () => {
+    let imgUrl = user?.profilePicture || user?.avatar; 
+    if (!imgUrl) return null;
+
+    // 1. Windows path slash fix
+    imgUrl = imgUrl.replace(/\\/g, '/');
+
+    if (imgUrl.startsWith('http')) return imgUrl;
+
+    // 🔥 SMART ENVIRONMENT DETECTION (No .env needed)
+    // Yeh khud check karega ke aap localhost par hain ya live server par
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // Agar local hai toh port 5000 use karega, warna Render ka link
+    const baseUrl = isLocal ? 'http://localhost:5000' : 'https://projectsphere-dlvv.onrender.com';
+
+    const formattedPath = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
+    
+    // Console log for debugging
+    console.log("FINAL IMAGE URL:", `${baseUrl}${formattedPath}`);
+    
+    return `${baseUrl}${formattedPath}`;
+  };
+
+  const profileImgUrl = getProfileImage();
+
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
@@ -172,12 +198,31 @@ const DashboardLayout = () => {
             <Link to="/settings" className="text-[#84889c] hover:text-white transition p-2 rounded-full hover:bg-white/[0.04]">
               <Settings size={20} />
             </Link>
-            <Link to="/profile" className="flex items-center gap-3 hover:bg-white/[0.04] p-1.5 pr-3 rounded-full transition">
-               <div className="w-8 h-8 rounded-full bg-[#7c7fff]/20 text-[#7c7fff] flex items-center justify-center font-bold text-xs">
-                 {user?.name?.charAt(0).toUpperCase()}
-               </div>
-               <div className="hidden md:block"><span className="text-sm font-semibold block">{user?.name}</span><span className="text-[10px] text-[#84889c] capitalize">{user?.role}</span></div>
-            </Link>
+           <Link to="/profile" className="flex items-center gap-3 hover:bg-white/[0.04] p-1.5 pr-3 rounded-full transition">
+     <div className="w-8 h-8 rounded-full bg-[#7c7fff]/20 text-[#7c7fff] flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 border border-[#7c7fff]/30">
+       
+       {/* 🔥 NEW: Agar image hai toh <img> tag dikhao, warna pehla letter dikhao */}
+       {profileImgUrl ? (
+         <img 
+           src={profileImgUrl} 
+           alt="Profile" 
+           className="w-full h-full object-cover" 
+           onError={(e) => {
+             // Agar image load na ho sakay toh usay hide kar ke letter dikha do
+             e.target.style.display = 'none';
+             e.target.parentNode.innerHTML = user?.name?.charAt(0).toUpperCase() || 'U';
+           }}
+         />
+       ) : (
+         user?.name?.charAt(0).toUpperCase() || 'U'
+       )}
+
+     </div>
+     <div className="hidden md:block">
+       <span className="text-sm font-semibold block">{user?.name}</span>
+       <span className="text-[10px] text-[#84889c] capitalize">{user?.role}</span>
+     </div>
+  </Link>
           </div>
         </header>
         <div className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar"><Outlet /></div>

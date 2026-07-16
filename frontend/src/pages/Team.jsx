@@ -138,7 +138,7 @@ console.log("FRONTEND TEAM STATE:", team);
         <div className="flex flex-col gap-6">
           {team.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {team.filter((member) => member.organizationId)
+              {team
               .map((member) => (
                 <div key={member._id} className="bg-[#1a1c26] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group">
                   <div className="flex justify-between items-start mb-4">
@@ -158,11 +158,7 @@ console.log("FRONTEND TEAM STATE:", team);
                   <h3 className="text-lg font-bold text-white mb-1">{member.name}</h3>
                   
                   <div className="flex flex-col gap-2 mt-4">
-                    {storedUser?.role === 'Super Admin' && (
-        <div className="text-sm text-[#7c7fff]">
-          Org: {member.organizationId?.name || 'N/A'}
-        </div>
-      )}
+          
                     <div className="flex items-center gap-2 text-sm text-[#84889c]">
                       <Mail size={14} className="text-[#606479]" />
                       <span className="truncate">{member.email}</span>

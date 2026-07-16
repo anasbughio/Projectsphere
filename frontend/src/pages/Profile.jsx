@@ -48,8 +48,14 @@ const Profile = () => {
       
       // Optionally: LocalStorage mein user data update kar dein taake Navbar mein nayi pic nazar aaye
       const userData = JSON.parse(localStorage.getItem('user'));
-      userData.profilePicture = response.data.user.profilePicture;
-      localStorage.setItem('user', JSON.stringify(userData));
+      const newPicUrl = response.data.user?.profilePicture || response.data.data?.profilePicture;
+      if (newPicUrl) {
+        userData.profilePicture = newPicUrl;
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        console.error("Backend response mein profilePicture nahi mili:", response.data);
+      }
+     
 
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to upload image.');
