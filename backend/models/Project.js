@@ -37,5 +37,13 @@ const projectSchema = new mongoose.Schema(
 
 // ADDED: Compound index according to document
 projectSchema.index({ organizationId: 1, _id: 1 });
+projectSchema.virtual('milestones', {
+  ref: 'Milestone',
+  localField: '_id',
+  foreignField: 'projectId'
+});
 
+// JSON mein virtuals allow karne ke liye:
+projectSchema.set('toObject', { virtuals: true });
+projectSchema.set('toJSON', { virtuals: true });
 module.exports = mongoose.model('Project', projectSchema);

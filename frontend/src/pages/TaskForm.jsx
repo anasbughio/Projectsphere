@@ -4,6 +4,9 @@ import { getAllOrganizationTasks, createGlobalTask, updateTaskStatus, deleteTask
 import { io } from 'socket.io-client';
 import { useToast } from '../components/ToastProvider';
 import TaskDetailsModal from './TaskDetailsModal'; 
+import api from '../services/api';
+// 🔥 IMPORT ADD KIYA HAI
+import AddMilestoneModal from '../components/AddMilestoneModal'; 
 
 const TaskForm = () => {
   const [tasks, setTasks] = useState([]);
@@ -18,13 +21,35 @@ const TaskForm = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [departmentFilter, setDepartmentFilter] = useState('All');
-
-  // 🔥 NEW: Added dueDate to initial state
+  const [milestones, setMilestones] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [projects, setProjects] = useState([]);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const [formData, setFormData] = useState({
-    title: '', description: '', priority: 'Medium', department: 'General', status: 'To Do', dueDate: ''
+    title: '', description: '', priority: 'Medium', department: 'General', status: 'To Do', dueDate: '', milestoneId: ''
   });
 
   const toast = useToast();
+
+  useEffect(() => {
+    api.get('/projects').then(res => setProjects(res.data));
+  }, []);
+
+  // 🔥 FUNCTION BANA DIYA HAI TAAKE MODAL SE BHI CALL HO SAKE
+  const fetchProjectMilestones = () => {
+    if (selectedProjectId) {
+      api.get(`/milestones/project/${selectedProjectId}`)
+        .then(res => setMilestones(res.data))
+        .catch(err => console.error("Milestones load nahi hue"));
+    } else {
+      setMilestones([]);
+    }
+  };
+
+  // 🔥 USEEFFECT MEIN AB FUNCTION CALL HO RAHA HAI
+  useEffect(() => {
+    fetchProjectMilestones();
+  }, [selectedProjectId]);
 
   useEffect(() => {
     fetchGlobalTasks();
@@ -110,8 +135,8 @@ const TaskForm = () => {
       priority: task.priority, 
       department: task.department,
       status: task.status || 'To Do',
-      // 🔥 Extract YYYY-MM-DD for the date input if date exists
-      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+      milestoneId: task.milestoneId || ''
     });
     setShowForm(true);
   };
@@ -120,6 +145,7 @@ const TaskForm = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
+    // 🔥 FIX: Ab direct formData bhej rahe hain kyunke milestoneId usme majood hai
     try {
       if (editingTask) {
         await updateTaskDetails(editingTask._id, formData);
@@ -131,8 +157,7 @@ const TaskForm = () => {
       setEditingTask(null);
       await fetchGlobalTasks();
       setShowForm(false);
-      // 🔥 Reset Form including dueDate
-      setFormData({ title: '', description: '', priority: 'Medium', department: 'General', status: 'To Do', dueDate: '' });
+      setFormData({ title: '', description: '', priority: 'Medium', department: 'General', status: 'To Do', dueDate: '', milestoneId: '' });
     } catch (error) {
       toast.push(error.response?.data?.message || "Task action failed", { type: 'error' });
     } finally {
@@ -153,16 +178,13 @@ const TaskForm = () => {
 
   const columns = ['To Do', 'In Progress', 'Done'];
 
-  // 🔥 Helper function for formatting date on UI
   const formatDisplayDate = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  // 🔥 Helper function to check if task is overdue
   const isOverdue = (dateString, status) => {
     if (!dateString || status === 'Done') return false;
-    // Set both to midnight for accurate comparison
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dueDate = new Date(dateString);
@@ -177,6 +199,12 @@ const TaskForm = () => {
           <h1 className="text-2xl font-bold text-gray-100">Organization Global Tasks</h1>
           <p className="text-sm text-gray-400">Manage and track cross-department tasks</p>
         </div>
+        <button 
+          onClick={() => setShowMilestoneModal(true)}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          + Add Milestone
+        </button>
         <button 
           onClick={() => { setShowForm(!showForm); setEditingTask(null); }}
           className="bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 shadow-lg shadow-[#7c7fff]/20"
@@ -197,6 +225,25 @@ const TaskForm = () => {
           <form onSubmit={handleSubmit} className="relative z-10">
             <div className="bg-[#1a1c26] p-5 rounded-lg mb-6 border border-white/5 shadow-inner">
               
+              <select 
+                className="w-full p-3 mb-4 bg-[#121218] border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#7c7fff]"
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+              >
+                <option value="">Select Project to load Milestones</option>
+                {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+              </select>
+
+              <select 
+                value={formData.milestoneId} 
+                onChange={(e) => setFormData({...formData, milestoneId: e.target.value})}
+                className="w-full p-3 mb-4 bg-[#121218] border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#7c7fff]"
+              >
+                <option value="">Select Milestone</option>
+                {milestones.map(m => (
+                  <option key={m._id} value={m._id}>{m.title}</option>
+                ))}
+              </select>
+
               <input 
                 autoFocus
                 type="text" 
@@ -214,8 +261,7 @@ const TaskForm = () => {
                 className="w-full bg-[#121218] border border-white/10 rounded-lg p-3 mb-4 focus:border-[#7c7fff] text-white focus:outline-none focus:ring-1 focus:ring-[#7c7fff] transition-all resize-none" 
                 placeholder="Provide task details or context..." 
               />
-              
-              {/* 🔥 NEW: 4-column grid (added Deadline) */}
+     
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block uppercase font-semibold tracking-wider">Status</label>
@@ -237,7 +283,6 @@ const TaskForm = () => {
                     <option>General</option><option>Frontend</option><option>Backend</option><option>Design</option>
                   </select>
                 </div>
-                {/* 🔥 NEW: Deadline Date Picker */}
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block uppercase font-semibold tracking-wider">Deadline</label>
                   <input 
@@ -310,7 +355,6 @@ const TaskForm = () => {
                     </div>
                   ) : (
                     colTasks.map(task => {
-                      // 🔥 Check if overdue
                       const taskOverdue = isOverdue(task.dueDate, task.status);
                       
                       return (
@@ -337,7 +381,6 @@ const TaskForm = () => {
                             }`}>{task.priority}</span>
                             
                             <div className="flex gap-2 items-center">
-                              {/* 🔥 NEW: Deadline Indicator */}
                               {task.dueDate && (
                                 <div className={`flex items-center gap-1 px-2 py-1 rounded border font-medium ${
                                   taskOverdue 
@@ -364,6 +407,19 @@ const TaskForm = () => {
             );
           })}
         </div>
+      )}
+      
+      {/* 🔥 MODAL CALL YAHAN UPDATE HUI HAI */}
+      {showMilestoneModal && (
+        <AddMilestoneModal 
+          projectId={selectedProjectId} 
+          projects={projects}
+          onClose={() => setShowMilestoneModal(false)} 
+          onAdded={() => {
+              setShowMilestoneModal(false);
+              fetchProjectMilestones(); // Ye function ab list ko refresh karega
+          }} 
+        />
       )}
 
       {selectedTask && (

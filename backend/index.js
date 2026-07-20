@@ -21,6 +21,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const organizationRoutes = require('./routes/organizationRoutes');
 const { uploadLimiter } = require('./middlewares/rateLimiter');
+const milestoneRoutes = require('./routes/milestoneRoutes');
 
 const Message = require('./models/Message');
 require('./config/passport');
@@ -67,7 +68,7 @@ app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/upload',uploadRoutes);
 app.use('/api/v1/dashboard',dashboardRoutes);
 app.use('/api/v1/organizations', organizationRoutes);
-
+app.use('/api/v1/milestones', milestoneRoutes);
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })
