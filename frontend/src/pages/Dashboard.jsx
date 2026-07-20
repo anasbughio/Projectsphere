@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, CheckSquare, Activity, 
   MoreVertical, Calendar, Clock, AlertCircle, 
-  ArrowUpRight, AlertTriangle, Loader2, FolderKanban, Mail, CheckCircle, Users
+  ArrowUpRight, AlertTriangle, Loader2, FolderKanban, Mail, CheckCircle, Users,Download
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, 
@@ -12,6 +12,7 @@ import api from '../services/api';
 import { Link } from 'react-router-dom';
 import MilestoneProgressCard from '../components/MilestoneProgressCard';
 import BurndownChartCard from '../components/BurndownChartCard';
+import { downloadCSV } from '../utils/exportUtils';
 
 const Dashboard = () => {
   // 1. Pehle data localStorage se nikalen
@@ -86,9 +87,21 @@ const fetchMilestones = async (projectId) => {
     );
   }
 
-  // ==========================================
-  // 🔥 DYNAMIC CALCULATIONS START HERE
-  // ==========================================
+
+  const handleExportReport = () => {
+    // Data ko thora clean aur format karte hain export ke liye
+    const formattedData = tasks.map(task => ({
+      Task_Title: task.title,
+      Status: task.status,
+      Priority: task.priority,
+      Department: task.department,
+      Created_Date: new Date(task.createdAt).toLocaleDateString(),
+      Due_Date: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No Due Date',
+    }));
+
+    // CSV download trigger karein
+    downloadCSV(formattedData, 'Workspace_Tasks_Report');
+  };
 
   // Projects Calculations
   const activeProjectsCount = projects.filter(p => p.status === 'Active' || p.status === 'Planning').length;
@@ -174,6 +187,18 @@ const fetchMilestones = async (projectId) => {
           <Activity size={18} />
           <span>View Activity History</span>
         </Link>
+
+        <div className="flex justify-between items-center mb-6">
+        
+        {/* 🔥 EXPORT BUTTON */}
+        <button 
+          onClick={handleExportReport}
+          className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6a6dec] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-lg"
+        >
+          <Download size={18} />
+          Export Report (CSV)
+        </button>
+      </div>
       </div>
 
       {/* KPI CARDS BLOCK */}
