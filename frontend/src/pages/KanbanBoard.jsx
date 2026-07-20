@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search,TrendingDown } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
 import TaskDetailsModal from './TaskDetailsModal';
 import { useToast } from '../components/ToastProvider';
+import BurndownChartCard from '../components/BurndownChartCard';
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
@@ -33,6 +34,7 @@ const KanbanBoard = () => {
   const [department, setDepartment] = useState('General');
   const [assignedTo, setAssignedTo] = useState(''); 
   const [socketInstance, setSocketInstance] = useState(null);
+  const [showChart, setShowChart] = useState(false);
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -303,9 +305,27 @@ const KanbanBoard = () => {
         </div>
       </div>
 
-      {/* KANBAN BOARD COLUMNS */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
+      <div className="flex justify-between items-center mb-6">
         
+        {/* Toggle Button */}
+        <button 
+          onClick={() => setShowChart(!showChart)}
+          className="flex items-center gap-2 bg-[#1a1c26] hover:bg-[#2a2d3e] text-gray-300 px-4 py-2 rounded-lg border border-white/10 transition-colors"
+        >
+          <TrendingDown size={18} className={showChart ? "text-emerald-400" : "text-[#7c7fff]"} />
+          {showChart ? 'Hide Analytics' : 'View Burndown Chart'}
+        </button>
+      </div>
+
+      {/* 3. Conditional Rendering (Jab showChart true hoga tabhi graph dikhega) */}
+      {showChart && (
+        <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+          <BurndownChartCard projectId={projectId} />
+        </div>
+      )}
+     
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
+
         {/* Column: To Do */}
         <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
           <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
@@ -548,7 +568,9 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManag
             <User size={12} />
           </div>
         )}
+        
       </div>
+      
     </div>
   );
 };

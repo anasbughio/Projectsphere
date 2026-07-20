@@ -353,3 +353,52 @@ exports.getAllOrganizationTasks = async (req, res) => {
     res.status(500).json({ message: 'Error fetching all organization tasks', error: error.message });
   }
 };
+
+
+exports.getBurndownData = async (req, res) => {
+  try {
+    const orgId = req.user.organizationId;
+    const { projectId } = req.query; // Agar kisi specific project ka dekhna ho
+
+    let query = { organizationId: orgId, isDeleted: false };
+    if (projectId) query.projectId = projectId;
+
+    // Tamam tasks fetch karein
+    const tasks = await Task.find(query).sort({ createdAt: 1 });
+    if (tasks.length === 0) return res.json([]);
+
+    const totalTasks = tasks.length;
+    const chartData = [];
+    const today = new Date();
+
+    // Pichle 14 din ka loop chalayen
+    for (let i = 13; i >= 0; i--) {
+      const targetDate = new Date();
+      targetDate.setDate(today.getDate() - i);
+      targetDate.setHours(23, 59, 59, 999); // Din ka aakhir
+
+      // Us din tak kitne tasks create ho chuke thay?
+      const createdUpToDate = tasks.filter(t => new Date(t.createdAt) <= targetDate).length;
+      
+      // Us din tak kitne tasks 'Done' ho chuke thay?
+      // Note: Hum updatedAt use kar rahe hain as completion date
+      const doneUpToDate = tasks.filter(t => t.status === 'Done' && new Date(t.updatedAt) <= targetDate).length;
+
+      // Actual Remaining Tasks
+      const actualRemaining = createdUpToDate - doneUpToDate;
+
+      // Ideal Remaining (Formula: Total se ahista ahista 0 tak jana)
+      const idealRemaining = Math.max(0, Math.round(totalTasks - (totalTasks / 13) * (13 - i)));
+
+      chartData.push({
+        date: targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        Actual: actualRemaining,
+        Ideal: idealRemaining
+      });
+    }
+
+    res.status(200).json(chartData);
+  } catch (error) {
+    res.status(500).json({ message: 'Burndown calculate karne mein masla hua', error: error.message });
+  }
+};

@@ -11,6 +11,7 @@ import {
 import api from '../services/api';
 import { Link } from 'react-router-dom';
 import MilestoneProgressCard from '../components/MilestoneProgressCard';
+import BurndownChartCard from '../components/BurndownChartCard';
 
 const Dashboard = () => {
   // 1. Pehle data localStorage se nikalen
@@ -300,6 +301,9 @@ const fetchMilestones = async (projectId) => {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+      <div className="mt-8">
+        <BurndownChartCard />
       </div>
 <div className="mt-8">
    <MilestoneProgressCard />
