@@ -19,7 +19,7 @@ const ForgotPassword = () => {
     try {
       const response = await api.post('/auth/forgot-password', { email });
       setMessage(response.data.message);
-      // Success ke baad user ko reset screen par bhej dein, sath email bhi pass kar dein
+     
       setTimeout(() => {
         navigate('/reset-password', { state: { email } });
       }, 2000);

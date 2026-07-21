@@ -4,7 +4,7 @@ const { inviteMember, acceptInvitation, getPendingInvitations } = require('../co
 const { getTeamMembers, deleteMember } = require('../controllers/authController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 
-// GET request list layegi, aur POST request naya member add karegi
+// GET request list , and POST request add new member
 router.route('/')
   .get(protect, getTeamMembers);
 

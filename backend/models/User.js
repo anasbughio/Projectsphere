@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      // 1. UPDATED: Roles document ke mutabiq set kar diye gaye hain
+      // set according to roles
       enum: ['Super Admin', 'Org Admin', 'Project Manager', 'Team Member', 'Client'], 
       default: 'Team Member',
     },
@@ -48,7 +48,7 @@ const userSchema = new mongoose.Schema(
     },
     profilePicture: {
   type: String,
-  default: '' // Default empty rakhein, agar pic nahi hogi toh hum UI par user ke naam ke initials dikhayenge
+  default: '' 
 },
 isDeleted: {
   type: Boolean,
@@ -58,7 +58,7 @@ isDeleted: {
   { timestamps: true }
 );
 
-// 3. UPDATED: Document ke mutabiq Compound Index add kar diya gaya hai
+
 userSchema.index({ organizationId: 1, _id: 1 });
 
 userSchema.pre('save', async function () {

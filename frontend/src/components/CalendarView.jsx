@@ -27,12 +27,12 @@ const CalendarView = () => {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Sab se pehle user ke projects fetch karein
+  // fetch user projects
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  // 2. Jab bhi selected project change ho, uske tasks fetch karein
+  // when project select the fetch that projects tasks
   useEffect(() => {
     if (selectedProjectId) {
       fetchTasks(selectedProjectId);
@@ -42,15 +42,15 @@ const CalendarView = () => {
   const fetchProjects = async () => {
     try {
       const res = await api.get('/projects');
-      // Backend se aane wale data format ko handle karna
+      // handle data format that comes from backend
       const projectList = Array.isArray(res.data) ? res.data : (res.data.data || res.data.projects || []);
       setProjects(projectList);
       
-      // Agar projects hain, toh pehle project ko default select kar lein
+      // if projects ,then set as default
       if (projectList.length > 0) {
         setSelectedProjectId(projectList[0]._id);
       } else {
-        setIsLoading(false); // Agar koi project nahi hai toh loader hata dein
+        setIsLoading(false); // if projects are not then remove loader
       }
     } catch (error) {
       console.error("Error fetching projects", error);
@@ -61,13 +61,13 @@ const CalendarView = () => {
   const fetchTasks = async (projectId) => {
     try {
       setIsLoading(true);
-      // Ab specifically project ke tasks hit honge
+      // hit specific project task
       const res = await api.get(`/tasks/project/${projectId}`);
       
       const rawTasks = Array.isArray(res.data) ? res.data : (res.data.tasks || res.data.data || []);
 
       const formattedEvents = rawTasks.map(task => {
-        // Project tasks ki due dates ab proper map hongi
+        // Project tasks due date map
         const startDate = task.createdAt ? new Date(task.createdAt) : new Date();
         const endDate = task.dueDate ? new Date(task.dueDate) : startDate;
 

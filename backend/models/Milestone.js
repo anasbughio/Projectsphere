@@ -27,7 +27,7 @@ const milestoneSchema = new mongoose.Schema(
       ref: 'Organization',
       required: true,
     },
-    // Yeh field humein burndown mein madad degi
+    // this field help in burndown
     progress: {
       type: Number,
       default: 0, // 0 to 100%

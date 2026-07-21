@@ -4,7 +4,7 @@ import api from '../services/api';
 import { useToast } from '../components/ToastProvider';
 
 const AddMilestoneModal = ({ projectId, projects, onClose, onAdded }) => {
-  // Local state taake user modal ke andar project select kar sake
+  
   const [localProjectId, setLocalProjectId] = useState(projectId || '');
   const [formData, setFormData] = useState({
     title: '',
@@ -24,7 +24,7 @@ const AddMilestoneModal = ({ projectId, projects, onClose, onAdded }) => {
 
     setIsSubmitting(true);
     try {
-      // Backend ko data aur selected project ID bhej rahe hain
+      // send data to backend and send id to projects
       await api.post('/milestones', { ...formData, projectId: localProjectId });
       toast.push("Milestone added successfully", { type: 'success' });
       onAdded(); 

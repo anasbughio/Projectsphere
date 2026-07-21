@@ -15,7 +15,7 @@ exports.createOrganization = async (req, res) => {
       status: 'Active'
     });
 
-    // 🔥 MINOR TWEAK: Isay bhi try-catch mein daal diya taake app safe rahay
+    
     try {
       const userId = req.user ? (req.user._id || req.user.id) : null; 
       await AuditLog.create({
@@ -94,7 +94,7 @@ exports.toggleOrganizationStatus = async (req, res) => {
         user: userId,
         action: `Organization '${organization.name}' was ${actionText} by Super Admin.`,
         entityType: 'Organization',
-        entityId: organization._id // 🔥 MINOR TWEAK: Yeh missing tha, add kar diya
+        entityId: organization._id 
       });
       
       // Socket emit for real-time feed update
@@ -126,7 +126,7 @@ exports.deleteOrganization = async (req, res) => {
 
     const ownerAdmin = await User.findOne({ organizationId: orgId, role: 'Org Admin' });
 
-    // 🔥 MINOR TWEAK: Try-Catch add kar diya
+    //  MINOR TWEAK: adding try-catch
     try {
       const userId = req.user ? (req.user._id || req.user.id) : null;
       await AuditLog.create({

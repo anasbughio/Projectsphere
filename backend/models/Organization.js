@@ -10,7 +10,7 @@ const organizationSchema = new mongoose.Schema(
     domain: {
       type: String,
       unique: true,
-      sparse: true, // Zaroori nahi ke har company ka domain start mein ho
+      sparse: true, // not necessary every company domain in start
       trim: true,
     },
     subscriptionPlan: {

@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// Caching ka logic sirf Serverless environments (Vercel) ke liye useful hai
 let cached = global.mongoose;
 
 if (!cached) {
@@ -8,15 +7,14 @@ if (!cached) {
 }
 
 const connectDB = async () => {
-  // Agar pehle se connection mojood hai, toh wahi use karein
   if (cached.conn) {
     return cached.conn;
   }
 
-  // Agar connection promise nahi hai, toh connect karein
+  
   if (!cached.promise) {
     const opts = {
-      bufferCommands: true, // Local ke liye 'true' hona behtar hai
+      bufferCommands: true, 
       maxPoolSize: 10,
     };
 

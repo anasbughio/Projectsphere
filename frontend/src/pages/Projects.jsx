@@ -70,13 +70,13 @@ const Projects = () => {
     setIsSubmitting(true);
     try {
       if (editingProject) {
-        // Update Project Payload mein status add kiya gaya
+        // add payload in update project
         const response = await api.put(`/projects/${editingProject._id}`, { name, description, status });
         setProjects((prevProjects) => 
           prevProjects.map((p) => p._id === editingProject._id ? response.data : p)
         );
       } else {
-        // Create Project Payload mein status add kiya gaya
+        // add payload in create project
         const response = await api.post('/projects', { name, description, status });
         setProjects((prevProjects) => [response.data, ...prevProjects]);
       }

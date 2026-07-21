@@ -7,18 +7,18 @@ exports.generateWeeklyReport = async (req, res) => {
   try {
     const orgId = req.user.organizationId;
     
-    // Pichle 7 din ki date set karein
+    // set date of previous 7 days
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // ==========================================
-    // 1. WEEKLY METRICS (Pichle 7 din ka data)
-    // ==========================================
+    
+    // 1. WEEKLY METRICS (previous 7 days)
+    
     const completedTasksThisWeek = await Task.countDocuments({ 
       organizationId: orgId, 
       status: 'Done',
       updatedAt: { $gte: sevenDaysAgo },
-      isDeleted: false // Soft-deleted tasks ko ignore karein
+      isDeleted: false // ignore soft delete task
     });
 
     const newTasksThisWeek = await Task.countDocuments({
@@ -33,9 +33,9 @@ exports.generateWeeklyReport = async (req, res) => {
       isDeleted: false
     });
 
-    // ==========================================
+    
     // 2. OVERALL METRICS (Health & Velocity ke liye)
-    // ==========================================
+    
     const totalTasks = await Task.countDocuments({
       organizationId: orgId,
       isDeleted: false
@@ -54,19 +54,19 @@ exports.generateWeeklyReport = async (req, res) => {
       isDeleted: false
     });
 
-    // 🔥 DYNAMIC CALCULATIONS (Matching Frontend Logic)
+    //  DYNAMIC CALCULATIONS (Matching Frontend Logic)
     // Velocity = (Completed / Total) * 100
     const teamVelocity = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
     
     // Health = 100 - (Overdue / Total) * 100
     const workspaceHealth = totalTasks === 0 ? 100 : Math.max(0, Math.round(100 - ((totalOverdue / totalTasks) * 100)));
 
-    // Health Score ka color logic (Green, Orange, Red)
+    // Health Score color logic
     const healthColor = workspaceHealth > 80 ? '#10b981' : workspaceHealth > 50 ? '#f59e0b' : '#ef4444';
 
-    // ==========================================
-    // 3. ENHANCED EMAIL HTML TEMPLATE
-    // ==========================================
+   
+    // ENHANCED EMAIL HTML TEMPLATE
+    
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
         <div style="background-color: #5a5fe0; padding: 20px; text-align: center; color: white;">
@@ -113,7 +113,7 @@ exports.generateWeeklyReport = async (req, res) => {
       </div>
     `;
 
-    // 4. Email Send Karein
+    // send email
     await sendEmail({
       email: req.user.email,
       subject: 'ProjectSphere - Workspace Health & Velocity Report',

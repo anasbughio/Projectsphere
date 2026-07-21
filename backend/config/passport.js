@@ -25,23 +25,20 @@ passport.use(new GoogleStrategy({
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
-      // Check karein ke user pehle se database mein hai ya nahi
       let user = await User.findOne({ email: profile.emails[0].value });
       
       if (user) {
         return done(null, user);
       }
 
-      // 1. Agar naya user hai, toh sab se pehle uski Organization banayen
       const newOrg = await Organization.create({
         name: `${profile.displayName}'s Workspace`, 
       });
 
-      // 2. Phir naya User banayen aur usko naye Organization ki ID de dein
       user = await User.create({
         name: profile.displayName,
         email: profile.emails[0].value,
-        role: 'Admin', // Naye workspace ka yeh khud Admin hoga
+        role: 'Admin', 
         organizationId: newOrg._id, 
       });
       

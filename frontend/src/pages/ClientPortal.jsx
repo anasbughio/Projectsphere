@@ -10,7 +10,7 @@ const ClientPortal = () => {
   useEffect(() => {
     const fetchClientProjects = async () => {
       try {
-        // Backend RBAC khud hi sirf is client ke projects return karega
+        // Backend RBAC only return this client projects
         const res = await api.get('/projects');
         const projectList = Array.isArray(res.data) ? res.data : (res.data.data || res.data.projects || []);
         setProjects(projectList);

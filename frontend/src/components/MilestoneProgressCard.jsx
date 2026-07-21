@@ -10,17 +10,16 @@ const MilestoneProgressCard = () => {
     const fetchAllMilestones = async () => {
       try {
         setLoading(true);
-        // 1. Pehle saare projects get karein
+        // first get all projects of user
         const projectsRes = await api.get('/projects');
         const projects = projectsRes.data;
         
         let allMilestones = [];
         
-        // 2. Har project ke milestones loop chala kar fetch karein
+        // fetch project milestones
         for (const project of projects) {
           try {
             const mRes = await api.get(`/milestones/project/${project._id}`);
-            // Project ka naam bhi milestone ke sath add kar dete hain UI ke liye
             const projectMilestones = mRes.data.map(m => ({ ...m, projectName: project.name }));
             allMilestones = [...allMilestones, ...projectMilestones];
           } catch (err) {

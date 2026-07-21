@@ -8,10 +8,10 @@ const NotificationBell = ({ user, socket }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // 1. Initial Load par purani notifications fetch karein
+    // on initial load fetch old notification
     const fetchNotifications = async () => {
       try {
-        const res = await api.get('/collaboration/notifications'); // Iska API route backend par bana lijiye ga
+        const res = await api.get('/collaboration/notifications');
         setNotifications(res.data);
         setUnreadCount(res.data.filter(n => !n.isRead).length);
       } catch (err) { console.error("Error fetching notifications", err); }
@@ -21,10 +21,10 @@ const NotificationBell = ({ user, socket }) => {
 
     if (!socket || !user?._id) return;
 
-    // 2. Personal room join karein
+    // join personal room
     socket.emit('joinUserRoom', user._id);
 
-    // 3. Nayi notification listen karein
+    // listen new notification
     socket.on('newNotification', (newNotif) => {
       console.log("🔔 New Live Notification Received:", newNotif);
       setNotifications((prev) => [newNotif, ...prev]);

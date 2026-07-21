@@ -13,7 +13,7 @@ exports.createProject = async (req, res) => {
       createdBy: req.user._id,
     });
 await logAudit({
-      organizationId: req.user.organizationId, // Ye protected route hai is liye req.user available hoga
+      organizationId: req.user.organizationId, // this route is protected so user data is avaliable
       user: req.user._id,
       action: 'PROJECT_CREATED',
       entityType: 'Project',
@@ -31,8 +31,8 @@ exports.getProjects = async (req, res) => {
   try {
     const projects = await Project.find({
       organizationId: req.user.organizationId,
-      isDeleted: false // Sirf active projects aayenge
-    }).populate('createdBy', 'name email'); // Creator ka naam bhi sath bhej rahe hain
+      isDeleted: false // only active projects occur
+    }).populate('createdBy', 'name email'); // sending creator name
 
     res.status(200).json(projects);
   } catch (error) {
@@ -45,7 +45,7 @@ exports.updateProject = async (req, res) => {
   try {
     const { name, description, status } = req.body;
 
-    // Pehle check karein ke project mojood hai aur is user ki org ka hai
+    // first check project is preset and related to this organization
     const project = await Project.findOne({
       _id: req.params.id,
       organizationId: req.user.organizationId,

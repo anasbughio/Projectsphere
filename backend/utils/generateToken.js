@@ -11,7 +11,7 @@ const generateToken = (userId, organizationId, role) => {
   // 2. Long-lived Refresh Token (7 days)
   const refreshToken = jwt.sign(
     { id: userId }, 
-    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, // (Ho sake toh .env mein JWT_REFRESH_SECRET alag se add karein)
+    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, 
     { expiresIn: '7d' }
   );
 

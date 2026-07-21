@@ -3,12 +3,12 @@ import { Navigate } from 'react-router-dom';
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   
-  // Agar token nahi hai, toh wapas login par redirect kar do
+ // if token not found then go to login 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // Agar token hai, toh requested component render kar do
+  // to token exist then render to component
   return children;
 };
 

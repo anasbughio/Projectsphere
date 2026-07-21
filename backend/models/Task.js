@@ -70,7 +70,7 @@ const taskSchema = new mongoose.Schema(
 
 taskSchema.index({ organizationId: 1, projectId: 1, milestoneId: 1 });
 
-// 🔥 1. SINGLE MASTER FUNCTION (Jo Progress aur Status dono update karega)
+// 🔥 1. SINGLE MASTER FUNCTION tp update progress and status
 taskSchema.statics.calculateMilestoneProgress = async function(milestoneId) {
   if (!milestoneId) return;
 
@@ -96,7 +96,7 @@ taskSchema.statics.calculateMilestoneProgress = async function(milestoneId) {
     const updatedMilestone = await mongoose.model('Milestone').findByIdAndUpdate(
       milestoneId, 
       { progress, status },
-      { new: true } // Ye batayega ke actual update hua ya nahi
+      { new: true } // it tells actual update is done or not
     );
     
     if (updatedMilestone) {
@@ -110,21 +110,21 @@ taskSchema.statics.calculateMilestoneProgress = async function(milestoneId) {
     console.error("Progress calculation error:", err);
   }
 };
-// 🔥 2. Jab naya Task bane ya update ho
+// when new task create or update
 taskSchema.post('save', function(doc) {
   if (doc.milestoneId) {
     doc.constructor.calculateMilestoneProgress(doc.milestoneId);
   }
 });
 
-// 🔥 3. Jab task delete ho
+// when task delete
 taskSchema.post('findOneAndDelete', function(doc) {
   if (doc && doc.milestoneId) {
     doc.constructor.calculateMilestoneProgress(doc.milestoneId);
   }
 });
 
-// 🔥 4. Jab Drag & Drop (findOneAndUpdate) use ho
+// when drag and drop uses
 taskSchema.post('findOneAndUpdate', function(doc) {
   
   if (doc && doc.milestoneId) {

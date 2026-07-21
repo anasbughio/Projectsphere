@@ -55,9 +55,7 @@ const AcceptInvite = () => {
         {error && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg text-sm mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          {/* =========================================
-              INPUTS BLOCK (Strictly Separate)
-          ========================================= */}
+          {/*  INPUTS BLOCK (Strictly Separate) */}
           <div className="flex flex-col gap-5 mb-8">
             <div>
               <label className="block text-xs font-semibold text-[#84889c] mb-2 uppercase">Your Full Name</label>
@@ -77,9 +75,7 @@ const AcceptInvite = () => {
             </div>
           </div>
 
-          {/* =========================================
-              BUTTONS BLOCK (Strictly Separate)
-          ========================================= */}
+          {/* BUTTONS BLOCK (Strictly Separate) */}
           <div className="flex justify-end pt-4 border-t border-white/5">
             <button 
               type="submit" disabled={loading} 

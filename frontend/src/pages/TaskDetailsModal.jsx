@@ -21,7 +21,7 @@ const getFileLink = (fileUrl) => {
   if (!fileUrl) return '#';
   if (fileUrl.startsWith('http')) return fileUrl;
   
-  // Yahan fallback URL ko apne Live Backend URL se change karein
+  
   const liveBackend = "https://projectsphere-dlvv.onrender.com"; 
   const baseUrl = import.meta.env?.VITE_API_BASE_URL 
     ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
@@ -61,7 +61,7 @@ const getFileLink = (fileUrl) => {
     } catch (err) { console.error('Error fetching comments', err); }
   };
 
-  // Nayi chat aane par automatically neechay scroll karne ke liye
+  // automatically scroll on new chat
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -71,7 +71,7 @@ const getFileLink = (fileUrl) => {
   const handleCombinedSubmit = async (e) => {
     e.preventDefault();
 
-    // BINARY TEXT PASTE FIX: Agar ghalti se image paste ho gayi hai
+ 
     if (newComment.includes('ÿØÿà') || newComment.length > 3000) {
       alert("Please use the Paperclip icon to attach files! You pasted raw image data.");
       setNewComment('');

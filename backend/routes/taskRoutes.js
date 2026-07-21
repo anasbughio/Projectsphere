@@ -16,8 +16,6 @@ const {
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 const upload = require('../config/multerConfig');
 // Get all global tasks
-
-
 router.route('/all').get(protect, getAllOrganizationTasks);
 router.route('/global/all').get(protect, getGlobalTasks);
 

@@ -1,20 +1,20 @@
 const rateLimit = require('express-rate-limit');
 
-// 1. Authentication Limiter (Strict - Login/Signup ke liye)
+// 1. Authentication Limiter (Strict - Login/Signup)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minute ka waqt
-  max: 5, // Ek IP se 15 minute mein sirf 5 requests allow hain
+  windowMs: 15 * 60 * 1000, // only 15 min 
+  max: 5, // From 1 IP there are only 5 requests in 15min
   message: { 
     message: "Too many login attempts from this IP, please try again after 15 minutes." 
   },
-  standardHeaders: true, // Headers mein baki bachi requests ki info return karega
+  standardHeaders: true, // return remaining info in headers
   legacyHeaders: false,
 });
 
-// 2. File Upload Limiter (Heavy tasks ke liye)
+// 2. File Upload Limiter
 const uploadLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // 1 minute mein 10 files
+  max: 10, // 10 files in 1 minute
   message: { 
     message: "Too many files uploaded. Please wait a minute." 
   }

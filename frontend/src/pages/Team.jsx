@@ -29,11 +29,10 @@ const Team = () => {
 const isAuthorized = () => {
   if (!storedUser?.role) return false;
   
-  // Backend normalizeRole function jo logic use kar raha hai, wahi yahan use karein
+  // Backend normalizeRole function
   const role = storedUser.role.toString().trim().toLowerCase();
   
-  // Backend mein 'Org Admin' normalize ho kar 'admin' ban jata hai
-  // Isliye hum check karenge ke kya user admin, org admin, ya super admin hai
+ 
   return ['admin', 'org admin', 'organization admin', 'super admin'].includes(role);
 };
 const isAdminOrOrgAdmin = isAuthorized();

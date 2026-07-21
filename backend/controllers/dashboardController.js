@@ -6,15 +6,15 @@ const mongoose = require('mongoose');
 const AuditLog = require('../models/AuditLog');
 exports.getDashboardMetrics = async (req, res) => {
   try {
-    const orgId = req.user.organizationId; // Auth middleware se user ki organization mil jayegi
+    const orgId = req.user.organizationId; // finding user organization form authmiddleware
 
-    // 1. Projects ka data
+    // data of projects
     const projects = await Project.find({ organizationId: orgId });
     const totalProjects = projects.length;
     const activeProjects = projects.filter(p => p.status === 'Active' || p.status === 'Planning').length;
     const completedProjects = projects.filter(p => p.status === 'Completed').length;
 
-    // 2. Tasks ka data
+    // data of tasks
     const tasks = await Task.find({ organizationId: orgId });
     const totalTasks = tasks.length;
     const pendingTasks = tasks.filter(t => t.status !== 'Done');
@@ -76,7 +76,7 @@ exports.getAuditLogs = async (req, res) => {
     
     let query = {};
     
-    // Agar search term di hai, toh action ya org name mein search karein
+    // if search term given then search from org admin
     if (search) {
       query = { action: { $regex: search, $options: 'i' } };
     }

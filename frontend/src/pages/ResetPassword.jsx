@@ -7,7 +7,7 @@ const ResetPassword = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Agar forgot-password screen se email pass hui hai toh automatically set kar dein
+
   const [email, setEmail] = useState(location.state?.email || '');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -27,7 +27,7 @@ const ResetPassword = () => {
       const response = await api.post('/auth/reset-password', { email, otp, newPassword });
       setMessage(response.data.message);
       
-      // Success ke baad user ko thori der mein login par bhej dein
+
       setTimeout(() => {
         navigate('/login');
       }, 2500);

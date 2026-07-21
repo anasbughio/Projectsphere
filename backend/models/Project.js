@@ -43,7 +43,7 @@ projectSchema.virtual('milestones', {
   foreignField: 'projectId'
 });
 
-// JSON mein virtuals allow karne ke liye:
+// to allow virtuals in json
 projectSchema.set('toObject', { virtuals: true });
 projectSchema.set('toJSON', { virtuals: true });
 module.exports = mongoose.model('Project', projectSchema);
