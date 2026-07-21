@@ -107,6 +107,8 @@ const getProfileImage = () => {
         
       <nav className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar">
           <ul className="space-y-1.5">
+            {!isClient && (
+              <>
             <li>
               <Link to={isSuperAdmin ? "/admin" : "/board"} 
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
@@ -119,6 +121,8 @@ const getProfileImage = () => {
                 <span>{isSuperAdmin ? 'Platform Overview' : 'Dashboard'}</span>
               </Link>
             </li>
+            </>
+            )}
 
             {(isOrgAdmin || isProjectManager || isTeamMember) && (
               <>
@@ -159,11 +163,18 @@ const getProfileImage = () => {
               </>
             )}
             {isClient && (
-              <li>
-                <Link to="/client-portal" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-portal') ? 'bg-[#7c7fff] text-white' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
-                  <Briefcase size={18} /> <span>Client Portal</span>
-                </Link>
-              </li>
+            <>
+                <li>
+                  <Link to="/client-dashboard" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-dashboard') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                    <LayoutDashboard size={18} /> <span>Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/client-portal" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-portal') && !isActive('/client-dashboard') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                    <Briefcase size={18} /> <span>My Projects</span>
+                  </Link>
+                </li>
+              </>
             )}
           </ul>
         </nav>

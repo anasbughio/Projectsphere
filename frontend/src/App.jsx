@@ -24,6 +24,8 @@ import ClientPortal from './pages/ClientPortal';
 import ProfileSettings from './pages/ProfileSettings';
 import AdminPanel from './pages/AdminPanel'; // Import available
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import ClientDeliverables from './pages/ClientDeliverables';
+import ClientDashboard from './pages/ClientDashboard';
 
 function App() {
   const storedUser = localStorage.getItem('user');
@@ -45,7 +47,7 @@ function App() {
   const isProjectManager = role === 'project manager';
   const isTeamMember = role === 'team member';
   const isClient = role === 'client';
-  const roleHomePath = isSuperAdmin ? '/admin' : isClient ? '/client-portal' : '/board';
+  const roleHomePath = isSuperAdmin ? '/admin' : isClient ? '/client-dashboard' : '/board';
 
   return (
     <BrowserRouter>
@@ -117,7 +119,9 @@ function App() {
             </>
           ) : isClient ? (
             <>
+              <Route path="/client-dashboard" element={<ClientDashboard />} />
               <Route path="/client-portal" element={<ClientPortal />} />
+              <Route path="/client-portal/:projectId" element={<ClientDeliverables />} />
             </>
           ) : (
             <>
