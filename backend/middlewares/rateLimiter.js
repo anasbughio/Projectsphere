@@ -3,7 +3,7 @@ const rateLimit = require('express-rate-limit');
 // 1. Authentication Limiter (Strict - Login/Signup)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // only 15 min 
-  max: 5, // From 1 IP there are only 5 requests in 15min
+  max: 30, // From 1 IP there are only 5 requests in 15min
   message: { 
     message: "Too many login attempts from this IP, please try again after 15 minutes." 
   },
