@@ -21,7 +21,7 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
-    return response; // Agar request theek hai toh response wapas bhej do
+    return response; // if  request is right then send back the response
   },
   async (error) => {
     const originalRequest = error.config;
@@ -33,34 +33,34 @@ const isAuthRoute = originalRequest.url.includes('/auth/login') || originalReque
       originalRequest.url !== '/auth/refresh' &&
       !isAuthRoute
     ) {
-      originalRequest._retry = true; // Retry flag true kar dein
+      originalRequest._retry = true; // true retry flag
 
       try {
-        // Backend se naya token mangwayen using HTTP-only cookie
+      
         const res = await api.get('/auth/refresh');
         
-        // Naya access token save karein
+        // save new access
         const newAccessToken = res.data.token;
         localStorage.setItem('token', newAccessToken);
 
-        // Purani fail hone wali request ke header mein naya token lagayen aur dobara bhejein
+     
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
         
       } catch (refreshError) {
-        // Agar Refresh Token bhi expire ya invalid ho gaya hai, toh User ko strictly logout kar dein
+     
         console.error('Session expired, logging out...');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         
-        // window.location ko use karke strictly login page par bhej dein
+    
         window.location.href = '/login'; 
         
         return Promise.reject(refreshError);
       }
     }
 
-    // Kisi aur error (404, 500 etc.) ki soorat mein waise hi error pass kar dein
+   
     return Promise.reject(error);
   }
 );

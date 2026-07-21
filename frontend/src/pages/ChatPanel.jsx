@@ -164,7 +164,7 @@ const handleFileUpload = async (e) => {
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
     {messages.map((m, i) => {
-          // 🔥 THE FIX: Pehle check karein ke sender object hai ya string, phir uski ID extract karein
+         
           const senderId = typeof m.sender === 'object' ? m.sender._id : m.sender;
           
           // Dono ko String mein convert kar ke compare karein taake koi mismatch na ho

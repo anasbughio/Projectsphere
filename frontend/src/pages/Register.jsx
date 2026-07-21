@@ -27,7 +27,7 @@ const Register = () => {
         password
       });
       
-      // User ko login karwane ke bajaye OTP wali screen par bhej rahe hain
+      //send user to OTP screen
       navigate('/verify', { state: { email: email } });
       
     } catch (err) {

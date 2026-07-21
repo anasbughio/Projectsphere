@@ -9,15 +9,15 @@ exports.getTeamMembers = async (req, res) => {
   try {
     let members;
     
-    // DEBUG: Sab se pehle check karte hain user kaun hai aur role kya hai
+    // DEBUG: first check who is user and what's his role
     console.log("👤 REQUEST BY:", req.user.role, "| ORG ID:", req.user.organizationId);
 
     if (req.user.role === 'Super Admin') {
-      // 1. Saare Org Admins nikalein
+      // find all Org admin
       const allAdmins = await User.find({ role: { $in: ['Org Admin', 'Admin', 'organization admin'] } });
       console.log("🔍 TOTAL ADMINS IN DB:", allAdmins.length);
       
-      // 2. Query run karein
+   
       members = await User.find({ 
         role: { $in: ['Org Admin', 'Admin', 'organization admin'] },
         organizationId: { $ne: null } 
@@ -102,13 +102,13 @@ exports.acceptInvitation = async (req, res) => {
   try {
     const { token, email, name, password } = req.body;
 
-    // 1. Database mein token aur email match karein
+    // match email and token in DB
     const invite = await Invitation.findOne({ email, token });
     if (!invite) {
       return res.status(400).json({ message: "Invalid or expired invitation link." });
     }
 
-    // 2. Naya user create karein (Role aur Org ID invite se aayegi)
+    // create new user
     const user = await User.create({
       name,
       email,
@@ -117,7 +117,7 @@ exports.acceptInvitation = async (req, res) => {
       organizationId: invite.organizationId
     });
 
-    // 3. Invitation ka kaam khatam, isay database se delete kar dein
+    // delete DB
     await Invitation.findByIdAndDelete(invite._id);
 
     res.status(201).json({ message: "Account created successfully. You can now log in." });
@@ -139,7 +139,7 @@ exports.deleteMember = async (req, res) => {
   try {
     const memberId = req.params.id;
     
-    // Admin ya Org Admin check (middleware handle karega)
+    // Admin or Org Admin check 
     const member = await User.findByIdAndDelete(memberId);
     
     if (!member) {

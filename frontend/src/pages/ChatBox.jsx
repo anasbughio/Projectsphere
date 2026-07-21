@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 
-// 1. SOCKET KO COMPONENT SE BAHAR RAKHEIN! 
-// Taake type karte waqt baar baar naye connections na banein.
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
 
 const socket = io(SOCKET_URL, {
-  transports: ['websocket', 'polling'] // 2. Render par disconnect issue fix karne ke liye
+  transports: ['websocket', 'polling'] // disconnect on render
 });
 
 const ChatBox = () => {
@@ -29,7 +27,7 @@ const ChatBox = () => {
   }, [user?.organizationId]);
 
   const sendMessage = () => {
-    if (!text.trim()) return; // Khali message send hone se rokein
+    if (!text.trim()) return; // to prevent on sending empty message
 
     socket.emit('sendMessage', { 
       text, 
@@ -53,7 +51,7 @@ const ChatBox = () => {
         <input 
           value={text} 
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()} // Enter dabane par bhi send ho jaye
+          onKeyDown={(e) => e.key === 'Enter' && sendMessage()} 
           className="flex-1 bg-[#1a1c26] border border-gray-700 text-white p-2.5 rounded-lg focus:outline-none focus:border-blue-500"
           placeholder="Type a message..."
         />

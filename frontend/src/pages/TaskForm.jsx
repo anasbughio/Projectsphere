@@ -35,7 +35,7 @@ const TaskForm = () => {
     api.get('/projects').then(res => setProjects(res.data));
   }, []);
 
-  // 🔥 FUNCTION BANA DIYA HAI TAAKE MODAL SE BHI CALL HO SAKE
+  // create function to call from MODAL
   const fetchProjectMilestones = () => {
     if (selectedProjectId) {
       api.get(`/milestones/project/${selectedProjectId}`)
@@ -46,7 +46,7 @@ const TaskForm = () => {
     }
   };
 
-  // 🔥 USEEFFECT MEIN AB FUNCTION CALL HO RAHA HAI
+  // function call in useEffect
   useEffect(() => {
     fetchProjectMilestones();
   }, [selectedProjectId]);
@@ -145,7 +145,7 @@ const TaskForm = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // 🔥 FIX: Ab direct formData bhej rahe hain kyunke milestoneId usme majood hai
+    
     try {
       if (editingTask) {
         await updateTaskDetails(editingTask._id, formData);
@@ -409,7 +409,7 @@ const TaskForm = () => {
         </div>
       )}
       
-      {/* 🔥 MODAL CALL YAHAN UPDATE HUI HAI */}
+      {/* model call update here*/}
       {showMilestoneModal && (
         <AddMilestoneModal 
           projectId={selectedProjectId} 

@@ -11,7 +11,7 @@ const BurndownChartCard = ({ projectId }) => {
     const fetchBurndownData = async () => {
       try {
         setLoading(true);
-        // Agar projectId pass kiya hai toh specific project, warna pure workspace ka
+        // if project id pass then return project otherwise whole workspace
         const endpoint = projectId 
           ? `/tasks/analytics/burndown?projectId=${projectId}` 
           : `/tasks/analytics/burndown`;

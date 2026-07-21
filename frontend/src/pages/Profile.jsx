@@ -9,7 +9,7 @@ const Profile = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  // 1. Image Select Karne Ka Function
+  // funcrtion of img selection
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -21,7 +21,7 @@ const Profile = () => {
     }
   };
 
-  // 2. Image Upload Karne Ka Function
+  // function of upload img
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!selectedFile) {
@@ -34,7 +34,7 @@ const Profile = () => {
     setMessage('');
 
     const formData = new FormData();
-    // 'profileImage' wahi naam hai jo backend par upload.single('profileImage') mein diya tha
+    
     formData.append('profileImage', selectedFile);
 
     try {
@@ -46,7 +46,7 @@ const Profile = () => {
 
       setMessage('Profile picture updated successfully!');
       
-      // Optionally: LocalStorage mein user data update kar dein taake Navbar mein nayi pic nazar aaye
+  
       const userData = JSON.parse(localStorage.getItem('user'));
       const newPicUrl = response.data.user?.profilePicture || response.data.data?.profilePicture;
       if (newPicUrl) {

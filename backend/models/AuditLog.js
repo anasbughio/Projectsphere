@@ -1,36 +1,42 @@
 const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema({
-  // Multi-tenancy isolation ke liye
+  // For multi-tenancy isolation
   organizationId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Organization', 
     required: true 
   },
-  // Jis user ne action perform kiya
+
+  // User who performed the action
   user: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
     required: true 
   },
-  // Action ka naam (e.g., 'PROJECT_CREATED', 'USER_INVITED', 'TASK_DELETED')
+
+  // Action name (e.g., 'PROJECT_CREATED', 'USER_INVITED', 'TASK_DELETED')
   action: { 
     type: String, 
     required: true 
   },
-  // Kis cheez par action hua (e.g., 'Project', 'User', 'Task')
+
+  // Entity on which the action was performed (e.g., 'Project', 'User', 'Task')
   entityType: { 
     type: String, 
     required: true 
   },
-  // Us specific project, task ya user ki ID
+
+  // ID of the specific project, task, or user
   entityId: { 
     type: mongoose.Schema.Types.ObjectId 
   },
-  // Koi additional detail (e.g., "Haseeb moved task to In Progress")
+
+  // Additional details about the action
+  // (e.g., "Haseeb moved task to In Progress")
   details: { 
     type: String 
   }
-}, { timestamps: true }); // timestamps automatically createdAt aur updatedAt bana dega
+}, { timestamps: true }); // Automatically creates createdAt and updatedAt fields
 
 module.exports = mongoose.model('AuditLog', auditLogSchema);

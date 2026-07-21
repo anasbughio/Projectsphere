@@ -8,11 +8,11 @@ const sendEmail = async (options) => {
 
   const url = 'https://api.brevo.com/v3/smtp/email';
   
-  // Brevo API ka Data Format
+  // Brevo API data format
   const payload = {
     sender: {
       name: "ProjectSphere",
-      email: "anasbughio@gmail.com" // Aapki verified email yahan hardcoded hai
+      email: "anasbughio@gmail.com" // verified email
     },
     to: [{ email: options.email }],
     subject: options.subject,
@@ -35,7 +35,7 @@ const sendEmail = async (options) => {
 
     const data = await response.json();
 
-    // Agar Brevo kisi wajah se reject kare
+    // if bravo reject for some reason
     if (!response.ok) {
       console.error('---> ❌ Brevo API Rejected:', data);
       throw new Error(data.message || 'Email sending failed');

@@ -35,7 +35,7 @@ exports.createTask = async (req, res) => {
 
     const task = await Task.create({
       title, description, status, priority, dueDate, department, projectId, assignedTo,
-      milestoneId: milestoneId || null, // 🔥 Yahan save karwaya
+      milestoneId: milestoneId || null, 
       isGlobal: false,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
@@ -71,8 +71,8 @@ exports.createTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-// @desc    Create new Global Task (Org Admin Only)
-// @route   POST /api/v1/tasks/global
+// Create new Global Task (Org Admin Only)
+// POST /api/v1/tasks/global
 exports.createGlobalTask = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
@@ -84,7 +84,7 @@ exports.createGlobalTask = async (req, res) => {
 
     const task = await Task.create({
       title, description, status, priority, dueDate, department, assignedTo,
-      milestoneId: milestoneId || null, // 🔥 Yahan save karwaya
+      milestoneId: milestoneId || null, 
       isGlobal: true,
       projectId: null,
       createdBy: req.user._id,
@@ -101,8 +101,8 @@ exports.createGlobalTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-// @desc    Get tasks for a specific project (Strict User Isolation)
-// @route   GET /api/v1/tasks/project/:projectId
+//   Get tasks for a specific project (Strict User Isolation)
+//   GET /api/v1/tasks/project/:projectId
 exports.getTasksByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -140,8 +140,8 @@ exports.getTasksByProject = async (req, res) => {
   }
 };
 
-// @desc    Get ALL Global tasks for the logged-in user's organization
-// @route   GET /api/v1/tasks/global/all
+//    Get ALL Global tasks for the logged-in user's organization
+//    GET /api/v1/tasks/global/all
 exports.getGlobalTasks = async (req, res) => {
   try {
     const tasks = await Task.find({ 
@@ -216,7 +216,6 @@ exports.deleteTask = async (req, res) => {
       return res.status(403).json({ message: 'You do not have permission to delete this task' });
     }
 
-    // Hard delete ki jagah findOneAndUpdate lagaya hai
     await Task.findOneAndUpdate(
       { _id: req.params.id, organizationId: req.user.organizationId },
       { isDeleted: true },
@@ -233,7 +232,7 @@ exports.deleteTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
-    // 🔥 Yahan milestoneId add kiya
+    // adding milestone here
     const { title, description, priority, department, assignedTo, milestoneId, dueDate } = req.body;
     
     const task = await Task.findOne({ 
@@ -247,7 +246,7 @@ exports.updateTask = async (req, res) => {
 
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id },
-      // 🔥 Yahan milestoneId aur dueDate dono add kiye update hone ke liye
+      // add and update milestone and duedate
       { title, description, priority, department, dueDate, assignedTo: assignedTo || null, milestoneId: milestoneId || null },
       { returnDocument: 'after' }
     ).populate('assignedTo', 'name');
@@ -308,7 +307,7 @@ exports.getTaskAnalytics = async (req, res) => {
 
 exports.uploadTaskAttachment = async (req, res) => {
   try {
-    // Check karein ke file aayi hai ya nahi
+    // checking file is come or not
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
@@ -320,13 +319,13 @@ exports.uploadTaskAttachment = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Nayi attachment ka object banayen
+    // creating object of new attchment
     const newAttachment = {
-      fileName: req.file.originalname, // User ke computer par jo naam tha
+      fileName: req.file.originalname, // name of user on computer
       fileUrl: `/uploads/${req.file.filename}` // Server par save hone wala path
     };
 
-    // Task ke attachments array mein push karein aur save karein
+    // push the task of attacments in array and save it
     task.attachments.push(newAttachment);
     await task.save();
 
@@ -344,7 +343,7 @@ exports.uploadTaskAttachment = async (req, res) => {
 
 exports.getAllOrganizationTasks = async (req, res) => {
   try {
-    // User jis organization ka hai, uske saare tasks return kardo
+    
     const tasks = await Task.find({ organizationId: req.user.organizationId ,
       isDeleted: false
     });
@@ -358,7 +357,7 @@ exports.getAllOrganizationTasks = async (req, res) => {
 exports.getBurndownData = async (req, res) => {
   try {
     const orgId = req.user.organizationId;
-    const { projectId } = req.query; // Agar kisi specific project ka dekhna ho
+    const { projectId } = req.query; // see a specific project
 
     let query = { organizationId: orgId, isDeleted: false };
     if (projectId) query.projectId = projectId;
@@ -371,23 +370,23 @@ exports.getBurndownData = async (req, res) => {
     const chartData = [];
     const today = new Date();
 
-    // Pichle 14 din ka loop chalayen
+    // previous 14 days loop
     for (let i = 13; i >= 0; i--) {
       const targetDate = new Date();
       targetDate.setDate(today.getDate() - i);
-      targetDate.setHours(23, 59, 59, 999); // Din ka aakhir
+      targetDate.setHours(23, 59, 59, 999); // end of the day
 
-      // Us din tak kitne tasks create ho chuke thay?
+      // how many task created on that day
       const createdUpToDate = tasks.filter(t => new Date(t.createdAt) <= targetDate).length;
       
-      // Us din tak kitne tasks 'Done' ho chuke thay?
-      // Note: Hum updatedAt use kar rahe hain as completion date
+      // how many tasksdone on that day
+      // Note: we use updateDate for completion
       const doneUpToDate = tasks.filter(t => t.status === 'Done' && new Date(t.updatedAt) <= targetDate).length;
 
       // Actual Remaining Tasks
       const actualRemaining = createdUpToDate - doneUpToDate;
 
-      // Ideal Remaining (Formula: Total se ahista ahista 0 tak jana)
+      // Ideal Remaining (Formula: from total to zero)
       const idealRemaining = Math.max(0, Math.round(totalTasks - (totalTasks / 13) * (13 - i)));
 
       chartData.push({

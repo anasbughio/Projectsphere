@@ -7,7 +7,7 @@ const VerifyEmail = () => {
   const [loading, setLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const email = location.state?.email; // Register se email yahan mil gayi
+  const email = location.state?.email; // email recieve from register
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -18,7 +18,7 @@ const VerifyEmail = () => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       
-      navigate('/board'); // Verification complete, ab board par bhej dein
+      navigate('/board'); // Verification complete, send to board
     } catch (err) {
       alert(err.response?.data?.message || 'Verification failed');
     }
@@ -39,7 +39,7 @@ const VerifyEmail = () => {
         />
       <button 
           type="submit" 
-          disabled={loading} // 🔥 FIX: Loading ke dauran button disable karein
+          disabled={loading} // button disable
           className={`w-full py-2.5 rounded-lg font-semibold transition ${
             loading ? 'bg-[#4b4d99] cursor-not-allowed text-white/70' : 'bg-[#7c7fff] hover:bg-[#6b6de0]'
           }`}

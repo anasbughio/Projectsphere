@@ -15,14 +15,14 @@ import BurndownChartCard from '../components/BurndownChartCard';
 import { downloadCSV } from '../utils/exportUtils';
 
 const Dashboard = () => {
-  // 1. Pehle data localStorage se nikalen
+  // first get data from local storage
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [teamCount, setTeamCount] = useState(0); // Naya state Team members ke liye
+  const [teamCount, setTeamCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ totalOrgs: 0, totalUsers: 0, totalProjects: 0 }); // 🔥 Yeh line add karein
+  const [stats, setStats] = useState({ totalOrgs: 0, totalUsers: 0, totalProjects: 0 }); 
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
@@ -49,15 +49,15 @@ const fetchMilestones = async (projectId) => {
   const res = await api.get(`/milestones/project/${projectId}`);
   setProjectMilestones(res.data);
 };
-  // 🔥 1. Ek hi useEffect mein saara data fetch karein taake charts aur cards dono dynamic ho jayein
+ 
  useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
         if (isSuperAdmin) {
-          // Super Admin ke liye sirf Platform Stats call karein (jo humne controller mein banaya tha)
+          
           const res = await api.get('/dashboard/platform-stats'); 
-          setProjects(res.data.projects || []); // Fake data ya platform count
+          setProjects(res.data.projects || []); // Fake data or platform count
           setTasks(res.data.tasks || []);
           setTeamCount(res.data.usersCount || 0);
         } else {
@@ -89,7 +89,7 @@ const fetchMilestones = async (projectId) => {
 
 
   const handleExportReport = () => {
-    // Data ko thora clean aur format karte hain export ke liye
+    // clean data and format
     const formattedData = tasks.map(task => ({
       Task_Title: task.title,
       Status: task.status,
@@ -99,7 +99,7 @@ const fetchMilestones = async (projectId) => {
       Due_Date: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No Due Date',
     }));
 
-    // CSV download trigger karein
+    // Trigger CSV download
     downloadCSV(formattedData, 'Workspace_Tasks_Report');
   };
 
@@ -190,7 +190,7 @@ const fetchMilestones = async (projectId) => {
 
         <div className="flex justify-between items-center mb-6">
         
-        {/* 🔥 EXPORT BUTTON */}
+        {/* EXPORT BUTTON */}
         <button 
           onClick={handleExportReport}
           className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6a6dec] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-lg"

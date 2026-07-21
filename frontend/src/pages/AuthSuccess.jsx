@@ -15,7 +15,7 @@ const AuthSuccess = () => {
 
     if (token && userData) {
       try {
-        // Data ko localStorage mein save karein
+        // save data on local storage
         localStorage.setItem('token', token);
         
         // Decode the URL-encoded JSON data before parsing

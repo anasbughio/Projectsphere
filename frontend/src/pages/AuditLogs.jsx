@@ -10,7 +10,7 @@ const AuditLogs = () => {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        // Hamara naya GET route call ho raha hai
+        // new get route call
         const response = await api.get('/auditlogs');
         setLogs(response.data);
       } catch (err) {
@@ -23,7 +23,7 @@ const AuditLogs = () => {
     fetchLogs();
   }, []);
 
-  // Action ke hisaab se icon aur color set karne ka helper
+  // icon color on action
   const getActionConfig = (action) => {
     switch (action) {
       case 'USER_LOGIN':

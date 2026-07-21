@@ -24,12 +24,12 @@ exports.addComment = async (req, res) => {
 
     const populatedComment = await comment.populate('createdBy', 'name');
     
-const io = getIO(); // 🔥 Ab hum naye socket file se IO le rahe hain
+const io = getIO(); // geting IO from socket.js
 io.to(req.user.organizationId.toString()).emit('newComment', { taskId, comment: populatedComment });
 
     res.status(201).json(populatedComment);
   } catch (error) {
-    console.error("AddComment Error:", error); // Console mein error dekhein
+    console.error("AddComment Error:", error); // error in console
     res.status(500).json({ message: error.message });
   }
 };

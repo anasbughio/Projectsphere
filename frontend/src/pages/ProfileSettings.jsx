@@ -35,7 +35,7 @@ const ProfileSettings = () => {
 
       setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
       
-      // Thora delay de kar refresh karein taake user success message dekh sakay
+    // delay on refresh
       setTimeout(() => {
         window.location.reload(); 
       }, 1500);
@@ -63,7 +63,7 @@ const ProfileSettings = () => {
       setPasswordMsg({ type: 'success', text: 'Password updated securely!' });
       setPasswords({ currentPassword: '', newPassword: '' }); 
       
-      // Success message thori der baad hata dein
+      // remove success msg after sometime
       setTimeout(() => setPasswordMsg({ type: '', text: '' }), 4000);
     } catch (error) {
       setPasswordMsg({ type: 'error', text: error.response?.data?.message || 'Error updating password' });

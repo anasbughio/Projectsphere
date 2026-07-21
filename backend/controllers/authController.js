@@ -223,7 +223,7 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid or Expired OTP" });
     }
    user.password = newPassword;
-    // 3. Purana OTP clear kar dein
+    // clear previous OTP and expiry after successful reset
     user.resetPasswordOtp = undefined;
     user.resetPasswordExpires = undefined;
     
@@ -286,7 +286,7 @@ exports.updatePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     
-    // 1. Current user dhoondein aur uska password DB se select karein
+    // find current user and select password field
     const user = await User.findById(req.user._id).select('+password');
 
     if (!user) {
@@ -299,8 +299,8 @@ exports.updatePassword = async (req, res) => {
       return res.status(400).json({ message: "Incorrect current password" });
     }
 
-    // 3. 🚨 Yahan se manual hashing hata di hai! 
-    // Sirf naya password assign karein, User model ka pre('save') hook isay khud hash kar lega.
+    // remove manual hashing from here
+    // only assign new password and let pre-save middleware handle hashing
     user.password = newPassword; 
     await user.save();
 
@@ -313,7 +313,7 @@ exports.updatePassword = async (req, res) => {
 
 exports.getAllUsersForSuperAdmin = async (req, res) => {
   try {
-    // Super Admin ke liye koi tenant filtering nahi hogi
+    // not tenant filtering for super admin, fetch all users across organizations
     const users = await User.find({}).populate('organizationId', 'name'); 
     res.status(200).json(users);
   } catch (error) {
@@ -325,7 +325,7 @@ exports.getTeamMembers = async (req, res) => {
   try {
     const { role, organizationId } = req.user;
 
-    // 🔥 Super Admin ke liye separate logic
+    // seperate logic for super admin
     if (role === 'Super Admin') {
       const allOrgAdmins = await User.find({ 
         role: 'Org Admin' 
@@ -334,7 +334,7 @@ exports.getTeamMembers = async (req, res) => {
       return res.status(200).json(allOrgAdmins);
     }
 
-    // Org Admin ke liye sirf unki organization ka data
+    // organization data for org admin
     const teamMembers = await User.find({ organizationId });
     return res.status(200).json(teamMembers);
     

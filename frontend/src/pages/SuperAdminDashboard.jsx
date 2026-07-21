@@ -70,12 +70,12 @@ const [searchTerm, setSearchTerm] = useState('');
 useEffect(() => {
     fetchPlatformStats();
     fetchOrganizations();
-    fetchAuditLogs(); // 🔥 ADDED: This will actually run the fetch when the page loads!
+    fetchAuditLogs(); // ADDED: This will actually run the fetch when the page loads!
 
     const handler = () => {
       fetchPlatformStats();
       fetchOrganizations();
-      fetchAuditLogs(); // 🔥 ADDED: This keeps the logs updated on background refresh
+      fetchAuditLogs(); //  ADDED: This keeps the logs updated on background refresh
     };
     window.addEventListener('platformStatsUpdated', handler);
 
@@ -87,7 +87,7 @@ useEffect(() => {
     const pollId = setInterval(() => {
       fetchPlatformStats();
       fetchOrganizations();
-      fetchAuditLogs(); // 🔥 ADDED: Update logs during polling fallback
+      fetchAuditLogs(); //  ADDED: Update logs during polling fallback
     }, 30000);
 
     return () => {

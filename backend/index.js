@@ -30,7 +30,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.io
-initSocket(server); // 🔥 Socket logic initialize ho gayi
+initSocket(server); // socket logic initialized
 
 const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
@@ -41,7 +41,7 @@ const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json());
 app.use(helmet({
-  crossOriginResourcePolicy: false, // Yeh Vercel ko images load karne ki ijazat dega
+  crossOriginResourcePolicy: false, // here give permission to load images to vercel
 }));
 app.use(morgan('dev'));
 app.use(passport.initialize());
@@ -79,7 +79,7 @@ app.get('/api/v1/messages/:projectId', async (req, res) => {
   }
 });
 
-// Yahan getIO use karke broadcast karenge
+// Here getIO broadcast
 const { getIO } = require('./config/socket'); 
 
 app.post('/api/v1/messages/:projectId', async (req, res) => {

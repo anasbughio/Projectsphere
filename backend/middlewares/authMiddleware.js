@@ -9,7 +9,7 @@ exports.protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // User ka data req object mein attach kar rahe hain, password ke baghair
+      // attach user req object
       req.user = await User.findById(decoded.id).select('-password');
 
       if (!req.user) {
@@ -25,7 +25,7 @@ exports.protect = async (req, res, next) => {
   return res.status(401).json({ message: 'Not authorized, no token' });
 };
 
-// AuthMiddleware.js ke andar yeh function add karein
+// add this function in AuthMiddleware.js 
 const normalizeRole = (role) => {
   if (!role) return '';
   const normalized = role.toString().trim().toLowerCase();
