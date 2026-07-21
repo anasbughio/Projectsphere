@@ -5,8 +5,8 @@ exports.getAuditLogs = async (req, res) => {
     
     const logs = await AuditLog.find({ organizationId: req.user.organizationId })
       .populate('user', 'name email') 
-      .sort({ createdAt: -1 }) // Sab se latest logs pehle aayenge
-      .limit(100); // UI par overload se bachne ke liye limit laga di hai
+      .sort({ createdAt: -1 }) 
+      .limit(100); 
 
     res.status(200).json(logs);
   } catch (error) {

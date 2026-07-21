@@ -8,8 +8,8 @@ const bcrypt = require('bcryptjs');
 const { logAudit } = require('../utils/auditLogger');
 const cookieOptions = {
   httpOnly: true,
-  secure: true, // Render par HTTPS hota hai isliye ye true hona chahiye
-  sameSite: 'none', // Different domains (Vercel -> Render) ke liye lazmi hai
+  secure: true, 
+  sameSite: 'none', 
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
@@ -28,10 +28,10 @@ exports.registerOrg = async (req, res) => {
       <p>This code will expire in 10 minutes. Please enter it in the app to complete your registration.</p>
     `;
 
-    // 1. Pehle purana koi OTP ho toh delete karein
+   
     await Otp.findOneAndDelete({ email });
     
-    // 2. Naya OTP Database mein foran save karein
+   
     await Otp.create({
       email,
       otp: verificationCode,
@@ -39,13 +39,10 @@ exports.registerOrg = async (req, res) => {
     });
     console.log("---> ✅ Temporary OTP saved in DB");
 
-    // 3. 🚀 BACKGROUND EMAIL (Yahan se 'await' hata diya hai)
-    // Ab server email ka wait nahi karega, foran response de dega.
     sendEmail({ email, subject: 'ProjectSphere - Verify Your Email', html: emailHtml })
       .then(() => console.log("---> 📧 Background Email sent successfully!"))
       .catch((error) => console.error("---> ❌ Background Email failed:", error.message));
 
-    // 4. Frontend ko FORAN 200 OK bhej dein taake Vercel timeout na ho!
     return res.status(200).json({
       message: 'Verification code sent to your email',
       email: email 
@@ -61,34 +58,29 @@ exports.verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
 
-    // 1. OTP Collection se record dhoondein
     const otpRecord = await Otp.findOne({ email });
     if (!otpRecord) {
       return res.status(400).json({ message: 'OTP expired or not found. Please register again.' });
     }
 
-    // 2. OTP Match karein
     if (otpRecord.otp !== code) {
       return res.status(400).json({ message: 'Invalid verification code' });
     }
 
-    // 3. OTP THEEK HAI! 🎉 Ab Asal DB mein Organization aur User create karein
     const { orgName, userName, password } = otpRecord.userData;
 
     const organization = await Organization.create({ name: orgName });
     const user = await User.create({
       name: userName, 
       email, 
-      password, // Pre-save hook automatically bcrypt kar dega
-      role: 'Org Admin', // <-- YAHAN CHANGE KIYA HAI (Document ke mutabiq)
+      password, 
+      role: 'Org Admin', 
       organizationId: organization._id,
-      isEmailVerified: true // Direct verified true set karein
+      isEmailVerified: true
     });
 
-    // 4. Temporary OTP record ko DB se urra dein
     await Otp.findByIdAndDelete(otpRecord._id);
     
-    // 5. Dual-tokens issue karein (Login process complete)
     const { accessToken, refreshToken } = generateToken(user._id, user.organizationId, user.role);
     
     user.refreshToken = refreshToken;
@@ -103,7 +95,6 @@ exports.verifyEmail = async (req, res) => {
     });
 
   } catch (error) { 
-    // Yahan console.error lagana bohot zaroori hai taake production errors asani se trace ho sakein
     console.error("Verify Email Error:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message }); 
   }
@@ -132,8 +123,6 @@ exports.login = async (req, res) => {
     });
       user.refreshToken = refreshToken;
       await user.save({ validateBeforeSave: false });
-
-      // Cookie set karein
       res.cookie('jwt_refresh', refreshToken, cookieOptions);
 
       res.json({
@@ -150,19 +139,17 @@ exports.login = async (req, res) => {
 
 exports.refreshToken = async (req, res) => {
   try {
-    const token = req.cookies.jwt_refresh; // Cookie se token uthayen
+    const token = req.cookies.jwt_refresh;
     if (!token) return res.status(403).json({ message: 'Access Denied, no refresh token' });
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
-    // Check agar user delete ho gaya ho ya token DB match na kare (Revocation check)
     if (!user || user.refreshToken !== token) {
       return res.status(403).json({ message: 'Access Denied, token invalid or revoked' });
     }
 
-    // Naya access token banayein
     const { accessToken } = generateToken(user._id, user.organizationId, user.role);
 
     res.json({ token: accessToken });
@@ -175,7 +162,6 @@ exports.logout = async (req, res) => {
   try {
     const token = req.cookies.jwt_refresh;
     if (token) {
-      // Decode and remove token from DB
       const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
       const user = await User.findById(decoded.id);
       if (user) {
@@ -184,10 +170,9 @@ exports.logout = async (req, res) => {
       }
     }
   } catch (error) {
-    // Ignore error if token is already expired
+
   }
 
-  // Cookie clear karein
   res.clearCookie('jwt_refresh', { httpOnly: true, secure: true, sameSite: 'none' });
   res.json({ message: 'Logged out successfully' });
 };
@@ -197,7 +182,6 @@ exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // 1. Check karein user DB mein hai ya nahi
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found with this email" });
@@ -205,13 +189,9 @@ exports.forgotPassword = async (req, res) => {
 
     // 2. 6-digit OTP Generate karein
     const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // 3. OTP ko DB mein save karein (expiry time ke sath e.g., 10 mins)
     user.resetPasswordOtp = resetOtp;
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; 
     await user.save();
-
-    // 4. Brevo ke zariye Email bhejein
     const emailOptions = {
       email: user.email,
       subject: "ProjectSphere - Password Reset OTP",
@@ -233,19 +213,15 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-
-    // 1. User find karein aur OTP match/expiry check karein
     const user = await User.findOne({
       email,
       resetPasswordOtp: otp,
-      resetPasswordExpires: { $gt: Date.now() } // Ensure OTP expire nahi hua
+      resetPasswordExpires: { $gt: Date.now() } 
     });
 
     if (!user) {
       return res.status(400).json({ success: false, message: "Invalid or Expired OTP" });
     }
-
-    // 2. Naya password hash karein (agar plain text save nahi kar rahe)
    user.password = newPassword;
     // 3. Purana OTP clear kar dein
     user.resetPasswordOtp = undefined;
@@ -267,10 +243,7 @@ exports.uploadProfilePicture = async (req, res) => {
       return res.status(400).json({ message: 'Koi image upload nahi hui' });
     }
 
-    // File ka path banayen jo frontend par accessible ho
     const imagePath = `/uploads/profiles/${req.file.filename}`;
-
-    // Database mein user ko update karein
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
       { profilePicture: imagePath },
@@ -291,12 +264,10 @@ exports.updateProfile = async (req, res) => {
   try {
     const { name } = req.body; // Hum sirf name le rahe hain
     
-    // Agar name empty bheja hai toh return kar dein
     if (!name) {
       return res.status(400).json({ message: "Name cannot be empty" });
     }
 
-    // $set use karein taake sirf name update ho, baqi cheezein (email, password) safe rahein
     const user = await User.findByIdAndUpdate(
       req.user._id, 
       { $set: { name: name } }, 
