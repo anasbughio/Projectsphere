@@ -139,6 +139,11 @@ const getProfileImage = () => {
                     <CheckSquare size={18} /> <span>Tasks</span>
                   </Link>
                 </li>
+                 <li>
+                  <Link to="/help-desk" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-calendar') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                    <Calendar size={18} /> <span>Help Desk</span>
+                  </Link>
+                </li>
               </>
             )}
             {!isClient && (
@@ -163,6 +168,7 @@ const getProfileImage = () => {
                     <Calendar size={18} /> <span>Calendar</span>
                   </Link>
                 </li>
+                
               </>
             )}
             {isClient && (
@@ -187,17 +193,17 @@ const getProfileImage = () => {
                     <Calendar size={18} /> <span>Meetings & Dates</span>
                   </Link>
                 </li>
+                <li>
+                  <Link to="/help-desk" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-calendar') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                    <Calendar size={18} /> <span>Help Desk</span>
+                  </Link>
+                </li>
               </>
             )}
           </ul>
         </nav>
 
         <div className="p-5 mt-auto">
-          {(isOrgAdmin || isProjectManager) && (
-            <button className="w-full flex items-center justify-center gap-2 bg-[#7c7fff]/10 hover:bg-[#7c7fff] text-[#7c7fff] hover:text-white border border-[#7c7fff]/20 py-2.5 rounded-xl font-medium text-sm transition mb-6">
-              <Plus size={18} /> New Project
-            </button>
-          )}
           <ul className="space-y-1">
             <li><button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-[#84889c] hover:text-red-400 transition font-medium text-sm rounded-lg hover:bg-white/5"><LogOut size={18} /> <span>Logout</span></button></li>
           </ul>

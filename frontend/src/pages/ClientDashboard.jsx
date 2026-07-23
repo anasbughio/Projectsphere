@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Loader2, Briefcase, CheckCircle, Clock, Activity } from 'lucide-react';
+import { Loader2, Briefcase, CheckCircle, Clock, Activity, User } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const ClientDashboard = () => {
@@ -12,21 +12,22 @@ const ClientDashboard = () => {
     totalTasks: 0
   });
   const [chartData, setChartData] = useState([]);
+  // 1. Nayi State Recent Activities ke liye
+  const [activities, setActivities] = useState([]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
-        
+        // Fetch Projects
         const projectsRes = await api.get('/projects');
         const projects = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data.data || []);
 
-     
+        // Fetch Tasks
         let allTasks = [];
         for (const proj of projects) {
           try {
-          
             const taskRes = await api.get(`/tasks/project/${proj._id}`);
             const projTasks = Array.isArray(taskRes.data) ? taskRes.data : (taskRes.data.data || []);
             allTasks = [...allTasks, ...projTasks];
@@ -35,7 +36,7 @@ const ClientDashboard = () => {
           }
         }
 
-        // 3. Stats Calculate Karein
+        // Stats Calculate
         const activeProj = projects.filter(p => p.status !== 'Completed' && p.status !== 'Done').length;
         const completedT = allTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length;
         const inProgressT = allTasks.filter(t => t.status === 'In Progress').length;
@@ -48,12 +49,21 @@ const ClientDashboard = () => {
           totalTasks: allTasks.length
         });
 
-        // 4. Chart Data Prepare Karein
+        // Chart Data
         setChartData([
           { name: 'Completed', value: completedT, color: '#10b981' }, 
           { name: 'In Progress', value: inProgressT, color: '#f59e0b' }, 
           { name: 'Pending', value: pendingT, color: '#606479' }
         ]);
+
+        // 2. Fetch Recent Activities from Backend
+        try {
+          const activityRes = await api.get('/activities/recent');
+          const activityData = Array.isArray(activityRes.data) ? activityRes.data : (activityRes.data.data || []);
+          setActivities(activityData);
+        } catch (err) {
+          console.error("Error fetching activities", err);
+        }
 
       } catch (error) {
         console.error("Error fetching client dashboard data:", error);
@@ -64,6 +74,18 @@ const ClientDashboard = () => {
 
     fetchDashboardData();
   }, []);
+
+  // Time format helper function (e.g., "2 hours ago")
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
 
   if (loading) {
     return (
@@ -119,8 +141,10 @@ const ClientDashboard = () => {
         </div>
       </div>
 
-      {/* Chart Section */}
+      {/* Chart & Activity Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Task Status Breakdown Chart */}
         <div className="bg-[#1a1c26] p-6 rounded-2xl border border-white/5 shadow-lg">
           <h2 className="text-lg font-bold text-white mb-6">Task Status Breakdown</h2>
           {stats.totalTasks === 0 ? (
@@ -156,15 +180,49 @@ const ClientDashboard = () => {
           )}
         </div>
         
-        <div className="bg-[#1a1c26] p-6 rounded-2xl border border-white/5 shadow-lg flex flex-col items-center justify-center text-center">
-          <div className="bg-white/5 p-4 rounded-full mb-4">
-            <Activity className="text-gray-400" size={32} />
-          </div>
-          <h2 className="text-lg font-bold text-white mb-2">Recent Activity</h2>
-          <p className="text-gray-400 text-sm max-w-sm">
-            Activity stream will appear here. Track real-time updates and comments from the project team.
-          </p>
+        {/* 🔥 3. Updated Recent Activity Section */}
+        <div className="bg-[#1a1c26] p-6 rounded-2xl border border-white/5 shadow-lg flex flex-col">
+          <h2 className="text-lg font-bold text-white mb-6">Recent Activity</h2>
+          
+          {activities.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <div className="bg-white/5 p-4 rounded-full mb-4">
+                <Activity className="text-gray-400" size={32} />
+              </div>
+              <p className="text-gray-400 text-sm max-w-sm">
+                Activity stream will appear here. Track real-time updates and comments from the project team.
+              </p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto pr-2 space-y-5 custom-scrollbar max-h-[300px]">
+              {activities.map((log) => (
+                <div key={log._id} className="flex gap-4 items-start relative">
+                  {/* Timeline Line */}
+                  <div className="absolute left-[15px] top-8 bottom-[-20px] w-[2px] bg-white/5"></div>
+                  
+                  {/* Avatar/Icon */}
+                  <div className="relative z-10 bg-[#232530] border border-white/10 p-2 rounded-full text-[#7c7fff] shrink-0">
+                    <User size={14} />
+                  </div>
+                  
+                  {/* Activity Details */}
+                  <div>
+                    <p className="text-sm text-gray-200">
+                      <span className="font-semibold text-white">{log.user?.name || 'Team Member'}</span> {log.action}
+                    </p>
+                    {log.details && (
+                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{log.details}</p>
+                    )}
+                    <span className="text-[10px] text-gray-500 font-medium mt-1 block">
+                      {formatTimeAgo(log.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+        
       </div>
     </div>
   );
