@@ -35,6 +35,7 @@ const KanbanBoard = () => {
   const [assignedTo, setAssignedTo] = useState(''); 
   const [socketInstance, setSocketInstance] = useState(null);
   const [showChart, setShowChart] = useState(false);
+  const [isClientDeliverable, setIsClientDeliverable] = useState(false);
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -139,6 +140,7 @@ const KanbanBoard = () => {
     setDueDate('');
     setDepartment('General');
     setAssignedTo('');
+    setIsClientDeliverable(false);
   };
 
   const openCreateModal = () => {
@@ -157,6 +159,7 @@ const KanbanBoard = () => {
     setDepartment(task.department || 'General');
     setAssignedTo(task.assignedTo?._id || '');
     setIsModalOpen(true);
+    setIsClientDeliverable(task.isClientDeliverable || false);
   };
 
   const handleSubmitTask = async (e) => {
@@ -170,7 +173,7 @@ const KanbanBoard = () => {
 
     try {
       const payload = {
-        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null
+        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null,isClientDeliverable
       };
 
       if (editingTask) {
@@ -440,7 +443,21 @@ const KanbanBoard = () => {
                       <option value="DevOps">DevOps</option>
                     </select>
                   </div>
-                </div>
+                  <div className="col-span-1 sm:col-span-2 mt-2">
+  <label className="flex items-center gap-3 cursor-pointer p-3 bg-[#121218] border border-white/5 rounded-lg hover:border-[#7c7fff]/50 transition">
+    <input 
+      type="checkbox" 
+      checked={isClientDeliverable}
+      onChange={(e) => setIsClientDeliverable(e.target.checked)}
+      className="w-4 h-4 rounded bg-[#1a1c26] border-white/10 text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0"
+    />
+    <div>
+      <span className="block text-sm font-semibold text-white">Client Deliverable</span>
+      <span className="block text-[10px] sm:text-xs text-[#84889c]">Check this if you want the client to see and approve this specific task.</span>
+    </div>
+  </label>
+</div>
+ </div>
 
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Assign To</label>
@@ -532,6 +549,11 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManag
           )}
         </div>
         <div className="flex items-center gap-2 text-right">
+          {task.isClientDeliverable && (
+            <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded border border-blue-500/30 text-blue-400 bg-blue-500/10" title="Client can see and approve this task">
+              👁️ Client
+            </span>
+          )}
           <span className={`px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded border ${
             task.priority === 'Urgent' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
             task.priority === 'High' ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :

@@ -17,33 +17,42 @@ const ClientDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        // 1. Projects aur Tasks fetch karein (Backend RBAC khud hi sirf is client ka data dega)
-        const [projectsRes, tasksRes] = await Promise.all([
-          api.get('/projects'),
-          api.get('/tasks') // Assuming yeh route client ke tamam tasks return karta hai
-        ]);
-
+        
+        
+        const projectsRes = await api.get('/projects');
         const projects = Array.isArray(projectsRes.data) ? projectsRes.data : (projectsRes.data.data || []);
-        const tasks = Array.isArray(tasksRes.data) ? tasksRes.data : (tasksRes.data.data || []);
 
-        // 2. Stats Calculate Karein
+     
+        let allTasks = [];
+        for (const proj of projects) {
+          try {
+          
+            const taskRes = await api.get(`/tasks/project/${proj._id}`);
+            const projTasks = Array.isArray(taskRes.data) ? taskRes.data : (taskRes.data.data || []);
+            allTasks = [...allTasks, ...projTasks];
+          } catch (err) {
+            console.error(`Failed to fetch tasks for project ${proj._id}`);
+          }
+        }
+
+        // 3. Stats Calculate Karein
         const activeProj = projects.filter(p => p.status !== 'Completed' && p.status !== 'Done').length;
-        const completedT = tasks.filter(t => t.status === 'Done' || t.status === 'Completed').length;
-        const inProgressT = tasks.filter(t => t.status === 'In Progress').length;
-        const pendingT = tasks.length - (completedT + inProgressT);
+        const completedT = allTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length;
+        const inProgressT = allTasks.filter(t => t.status === 'In Progress').length;
+        const pendingT = allTasks.length - (completedT + inProgressT);
 
         setStats({
           totalProjects: projects.length,
           activeProjects: activeProj,
           completedTasks: completedT,
-          totalTasks: tasks.length
+          totalTasks: allTasks.length
         });
 
-        // 3. Chart Data Prepare Karein
+        // 4. Chart Data Prepare Karein
         setChartData([
-          { name: 'Completed', value: completedT, color: '#10b981' }, // Emerald
-          { name: 'In Progress', value: inProgressT, color: '#f59e0b' }, // Amber
-          { name: 'Pending', value: pendingT, color: '#606479' }  // Gray
+          { name: 'Completed', value: completedT, color: '#10b981' }, 
+          { name: 'In Progress', value: inProgressT, color: '#f59e0b' }, 
+          { name: 'Pending', value: pendingT, color: '#606479' }
         ]);
 
       } catch (error) {
@@ -64,7 +73,6 @@ const ClientDashboard = () => {
     );
   }
 
-  // overall progress percentage
   const overallProgress = stats.totalTasks === 0 
     ? 0 
     : Math.round((stats.completedTasks / stats.totalTasks) * 100);
@@ -148,7 +156,6 @@ const ClientDashboard = () => {
           )}
         </div>
         
-        {/* Placeholder for future widgets (e.g. Recent Activity or Approvals) */}
         <div className="bg-[#1a1c26] p-6 rounded-2xl border border-white/5 shadow-lg flex flex-col items-center justify-center text-center">
           <div className="bg-white/5 p-4 rounded-full mb-4">
             <Activity className="text-gray-400" size={32} />

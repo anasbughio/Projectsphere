@@ -15,7 +15,9 @@ const Projects = () => {
   const [editingProject, setEditingProject] = useState(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('Active'); // Naya status state
+  const [status, setStatus] = useState('Active'); 
+  const [clients, setClients] = useState([]);
+  const [clientId, setClientId] = useState('');
 
   const normalizeRole = (role) => {
     if (!role) return '';
@@ -45,6 +47,26 @@ const Projects = () => {
 
   useEffect(() => {
     fetchProjects();
+
+   const fetchClients = async () => {
+    try {
+    
+      const res = await api.get('/team'); 
+      
+      // Data structure ko safely handle karein
+      const usersList = Array.isArray(res.data) ? res.data : (res.data.data || res.data.users || []);
+      
+      // Case-insensitive filtering 
+      const clientUsers = usersList.filter(u => 
+        u.role && u.role.toString().trim().toLowerCase() === 'client'
+      );
+      
+      setClients(clientUsers);
+    } catch (err) {
+      console.error("Failed to load clients:", err);
+    }
+  };
+  fetchClients();
   }, []);
 
   // Modal handlers
@@ -71,13 +93,19 @@ const Projects = () => {
     try {
       if (editingProject) {
         // add payload in update project
-        const response = await api.put(`/projects/${editingProject._id}`, { name, description, status });
+        const response = await api.put(`/projects/${editingProject._id}`, { name, description, status,client: clientId || null });
         setProjects((prevProjects) => 
           prevProjects.map((p) => p._id === editingProject._id ? response.data : p)
         );
       } else {
         // add payload in create project
-        const response = await api.post('/projects', { name, description, status });
+        const payload = { 
+  name, 
+  description, 
+  status, 
+  client: clientId || null // Agar khali hai toh null bhej dein
+      };
+const response = await api.post('/projects', payload);
         setProjects((prevProjects) => [response.data, ...prevProjects]);
       }
       handleCloseModal();
@@ -244,6 +272,22 @@ const Projects = () => {
                     <option value="Completed">Completed</option>
                   </select>
                 </div>
+
+                <div>
+  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Assign Client (Optional)</label>
+  <select
+    value={clientId}
+    onChange={(e) => setClientId(e.target.value)}
+    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
+  >
+    <option value="">No Client (Internal Project)</option>
+    {clients.map(client => (
+      <option key={client._id} value={client._id}>
+        {client.name} ({client.email})
+      </option>
+    ))}
+  </select>
+</div>
 
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Description (Optional)</label>

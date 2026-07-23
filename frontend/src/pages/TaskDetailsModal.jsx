@@ -144,31 +144,41 @@ const getFileLink = (fileUrl) => {
             
             {/* --- INLINE CHAT FEED --- */}
             <div className="space-y-4 mb-6 flex-1">
-           {chatFeed.map((item) => {
-  const isOwner = item.senderName === currentUserName; // Yahan check ho raha hai
-  
+{chatFeed.map((item) => {
+  const isOwner = item.senderName === currentUserName; 
+  // 🚨 NAYA CHECK: Kya yeh message client ka feedback hai?
+  const isClientFeedback = item.type === 'comment' && item.text.includes('[Client Feedback]');
+  // Tag hata kar clean message
+  const cleanText = isClientFeedback ? item.text.replace('[Client Feedback]', '').trim() : item.text;
+
   return (
     <div key={item.id} className={`flex gap-3 ${isOwner ? 'flex-row-reverse' : ''}`}>
       {/* Avatar */}
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs text-white shrink-0 ${isOwner ? 'bg-[#7c7fff]' : 'bg-[#2a2d3e]'}`}>
-        {item.senderName.charAt(0).toUpperCase()}
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs text-white shrink-0 ${
+        isClientFeedback ? 'bg-red-500' : isOwner ? 'bg-[#7c7fff]' : 'bg-[#2a2d3e]'
+      }`}>
+        {isClientFeedback ? 'C' : item.senderName.charAt(0).toUpperCase()}
       </div>
 
       {/* Bubble */}
       <div className={`p-3 rounded-xl max-w-[85%] ${
-        isOwner 
-          ? 'bg-[#7c7fff] text-white rounded-tr-none' 
-          : 'bg-[#2a2d3e] text-gray-200 rounded-tl-none'
+        isClientFeedback 
+          ? 'bg-red-500/20 border border-red-500/30 text-white rounded-tl-none' // Client feedback red bubble
+          : isOwner 
+            ? 'bg-[#7c7fff] text-white rounded-tr-none' 
+            : 'bg-[#2a2d3e] text-gray-200 rounded-tl-none'
       }`}>
         {item.type === 'comment' && (
-           <p className={`text-[10px] mb-1 font-bold ${isOwner ? 'text-indigo-100' : 'text-[#7c7fff]'}`}>
-             {isOwner ? 'You' : item.senderName}
+           <p className={`text-[10px] mb-1 font-bold flex items-center gap-1 ${
+             isClientFeedback ? 'text-red-400' : isOwner ? 'text-indigo-100' : 'text-[#7c7fff]'
+           }`}>
+             {isClientFeedback ? '🚨 Client Revision Request' : isOwner ? 'You' : item.senderName}
            </p>
         )}
         
         {/* Item Content (Text ya Attachment) */}
         {item.type === 'comment' ? (
-          <p className="text-sm break-words whitespace-pre-wrap">{item.text}</p>
+          <p className="text-sm break-words whitespace-pre-wrap">{cleanText}</p>
         ) : (
           <div className="mt-1">
             {isImage(item.fileName) ? (
