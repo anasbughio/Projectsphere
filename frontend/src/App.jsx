@@ -27,7 +27,7 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ClientDeliverables from './pages/ClientDeliverables';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientFileHub from './pages/ClientFileHub';
-
+import ClientCalendar from './pages/ClientCalendar';
 function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -122,6 +122,7 @@ function App() {
               <Route path="/client-portal" element={<ClientPortal />} />
               <Route path="/client-portal/:projectId" element={<ClientDeliverables />} />
               <Route element={<ClientFileHub />} path="/client-files"/> 
+              <Route path="/client-calendar" element={<ClientCalendar />} />
             </>
           ) : (
             <>

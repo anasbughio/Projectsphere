@@ -182,6 +182,11 @@ const getProfileImage = () => {
                     <Folder size={18} /> <span>File Hub</span>
                   </Link>
                 </li>
+                <li>
+                  <Link to="/client-calendar" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-calendar') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                    <Calendar size={18} /> <span>Meetings & Dates</span>
+                  </Link>
+                </li>
               </>
             )}
           </ul>

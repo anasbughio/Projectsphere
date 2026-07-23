@@ -7,9 +7,10 @@ const connectDB = require('./config/db');
 const http = require('http');
 const passport = require('passport');
 const path = require('path');
+const meetingRoutes = require('./routes/meetingRoutes');
 
 // Socket & Route Imports
-const { initSocket } = require('./config/socket'); // 🔥 Socket logic separate
+const { initSocket } = require('./config/socket'); //  Socket logic separate
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const taskRoutes = require('./routes/taskRoutes');
@@ -69,6 +70,7 @@ app.use('/api/v1/upload',uploadRoutes);
 app.use('/api/v1/dashboard',dashboardRoutes);
 app.use('/api/v1/organizations', organizationRoutes);
 app.use('/api/v1/milestones', milestoneRoutes);
+app.use('/api/v1/meetings', meetingRoutes);
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })
