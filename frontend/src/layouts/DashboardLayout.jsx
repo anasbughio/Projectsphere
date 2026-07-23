@@ -64,9 +64,12 @@ const getProfileImage = () => {
       const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
       setSocketInstance(socket);
       socket.emit('joinOrganization', user.organizationId);
+      if (user._id) {
+        socket.emit('joinUserRoom', user._id);
+      }
       return () => socket.disconnect();
     }
-  }, [user?.organizationId]);
+  }, [user?.organizationId,user?._id]);
 
   const handleLogout = async () => {
     setShowLogoutModal(true);

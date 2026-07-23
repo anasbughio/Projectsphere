@@ -80,6 +80,11 @@ const taskSchema = new mongoose.Schema(
         }
       }
     ],
+    dependsOn: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Task', 
+    default: null 
+  },
   },
   { timestamps: true }
 );

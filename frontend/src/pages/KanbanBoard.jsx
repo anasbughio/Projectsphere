@@ -36,6 +36,7 @@ const KanbanBoard = () => {
   const [socketInstance, setSocketInstance] = useState(null);
   const [showChart, setShowChart] = useState(false);
   const [isClientDeliverable, setIsClientDeliverable] = useState(false);
+  const [dependsOn, setDependsOn] = useState('');
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -141,6 +142,7 @@ const KanbanBoard = () => {
     setDepartment('General');
     setAssignedTo('');
     setIsClientDeliverable(false);
+    setDependsOn('');
   };
 
   const openCreateModal = () => {
@@ -160,6 +162,7 @@ const KanbanBoard = () => {
     setAssignedTo(task.assignedTo?._id || '');
     setIsModalOpen(true);
     setIsClientDeliverable(task.isClientDeliverable || false);
+    setDependsOn(task.dependsOn?._id || task.dependsOn || '');
   };
 
   const handleSubmitTask = async (e) => {
@@ -173,7 +176,8 @@ const KanbanBoard = () => {
 
     try {
       const payload = {
-        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null,isClientDeliverable
+        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null,isClientDeliverable,
+      dependsOn: dependsOn || null
       };
 
       if (editingTask) {
@@ -223,10 +227,23 @@ const KanbanBoard = () => {
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId) return;
     const taskToUpdate = tasks.find((task) => task._id === taskId);
-      if (!taskToUpdate || !canModifyTask(taskToUpdate)) {
+    
+    if (!taskToUpdate || !canModifyTask(taskToUpdate)) {
       toast.push('You do not have permission to move this task.', { type: 'error' });
       return;
     }
+    if (taskToUpdate.dependsOn) {
+      // Find the task it depends on
+      const dependencyId = typeof taskToUpdate.dependsOn === 'object' ? taskToUpdate.dependsOn._id : taskToUpdate.dependsOn;
+      const blockingTask = tasks.find(t => t._id === dependencyId);
+      
+      // Agar wo task mil gaya aur wo "Done" nahi hai, toh error de do aur move mat hone do
+      if (blockingTask && blockingTask.status !== 'Done') {
+        toast.push(`🔒 Task locked! You must finish "${blockingTask.title}" first.`, { type: 'error' });
+        return; 
+      }
+    }
+    // 🔥 🚨 NAYI LOCK LOGIC END 🚨 🔥
 
     const previousTasks = [...tasks];
     setTasks(tasks.map(task => task._id === taskId ? { ...task, status: newStatus } : task));
@@ -349,6 +366,10 @@ const KanbanBoard = () => {
                 canModifyTask={canModifyTask} 
                 canManageBoard={canManageBoard}
                 onClick={() => setSelectedTask(task)} 
+                isBlocked={
+                  task.dependsOn && 
+                  tasks.find(t => t._id === (task.dependsOn._id || task.dependsOn))?.status !== 'Done'
+                }
               />
             ))}
           </div>
@@ -409,6 +430,21 @@ const KanbanBoard = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Depends On (Optional)</label>
+                  <select 
+                    value={dependsOn} 
+                    onChange={(e) => setDependsOn(e.target.value)} 
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+                  >
+                    <option value="">None (Can start immediately)</option>              
+                    {tasks.filter(t => t._id !== editingTask?._id && t.status !== 'Done').map(t => (
+                      <option key={t._id} value={t._id}>
+                        {t.title} ({t.status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
                   <div>
                     <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Status</label>
                     <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
@@ -524,7 +560,7 @@ const KanbanBoard = () => {
   );
 };
 
-const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard, onClick }) => { 
+const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard, onClick ,isBlocked}) => { 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
   const canInteract = canManageBoard || canModifyTask(task);
 
@@ -565,7 +601,14 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManag
           <span className="text-[8px] sm:text-[9px] text-[#606479] font-bold uppercase hidden sm:inline-block">{task.department}</span>
         </div>
       </div>
-      <h4 className="text-xs sm:text-sm font-bold text-white mb-2 leading-snug">{task.title}</h4>
+      <h4 className="text-xs sm:text-sm font-bold text-white mb-2 leading-snug">{task.title}
+        {isBlocked && (
+          <span className="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded-md border border-red-500/30 flex items-center gap-1" title="Blocked by another task">
+            🔒 Blocked
+          </span>
+        )}
+      </h4>
+      
       {task.description && (
         <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#606479] mb-3 sm:mb-4">
           <AlignLeft size={12} className="shrink-0" />
