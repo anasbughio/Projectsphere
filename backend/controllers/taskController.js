@@ -5,6 +5,7 @@ const Notification = require('../models/Notification');
 const { logAudit } = require('../utils/auditLogger');
 const { getIO } = require('../config/socket');
 
+
 const isAdmin = (user) => normalizeRole(user?.role) === 'admin';
 
 const canModifyTask = (user, task) => {
@@ -23,7 +24,7 @@ const canModifyTask = (user, task) => {
 exports.createTask = async (req, res) => {
   try {
  
-    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId,isClientDeliverable } = req.body;
+    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId,isClientDeliverable,dependsOn } = req.body;
 
     const project = await Project.findOne({ 
       _id: projectId, 
@@ -37,6 +38,7 @@ exports.createTask = async (req, res) => {
       title, description, status, priority, dueDate, department, projectId, assignedTo,
       milestoneId: milestoneId || null, 
       isClientDeliverable: isClientDeliverable || false,
+      dependsOn: dependsOn || null,
       isGlobal: false,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
@@ -133,12 +135,11 @@ exports.getTasksByProject = async (req, res) => {
       isDeleted: false 
     };
 
-    // 🔥 MAIN UPDATE YAHAN HAI 🔥
+  
     if (isClient) {
-      // 1. Agar Client hai, toh SIRF wo tasks dikhao jin par isClientDeliverable true ho
+   
       query.isClientDeliverable = true;
     } else if (!isAdmin(req.user)) {
-      // 2. Agar Team Member hai (Client bhi nahi, Admin bhi nahi), toh sirf uske apne tasks dikhao
       query.$or = [
         { createdBy: req.user._id },
         { assignedTo: req.user._id }
@@ -247,7 +248,7 @@ exports.deleteTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     // adding milestone here
-    const { title, description, priority, department, assignedTo, milestoneId, dueDate } = req.body;
+    const { title, description, priority, department, assignedTo, milestoneId, dueDate ,dependsOn,isClientDeliverable} = req.body;
     
     const task = await Task.findOne({ 
       _id: req.params.id, 
@@ -261,8 +262,12 @@ exports.updateTask = async (req, res) => {
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id },
       // add and update milestone and duedate
-      { title, description, priority, department, dueDate, assignedTo: assignedTo || null, milestoneId: milestoneId || null },
-      { returnDocument: 'after' }
+      { title, description, priority, department, dueDate, assignedTo: assignedTo || null, milestoneId: milestoneId || null,
+        isClientDeliverable: isClientDeliverable || false,
+        dependsOn: dependsOn || null
+       },
+      { returnDocument: 'after' },
+      
     ).populate('assignedTo', 'name');
 
     try {
@@ -424,19 +429,28 @@ exports.clientTaskReview = async (req, res) => {
     
     if (!task) return res.status(404).json({ message: 'Task not found' });
 
+    const io = getIO();
+    let notificationTitle = '';
+    let notificationMsg = '';
+
     if (status === 'Done' || status === 'Completed') {
-      // when client approve
+      // when client said for apporve
       task.isClientApproved = true;
       task.status = 'Done';
+      
+      notificationTitle = 'Task Approved 🎉';
+      notificationMsg = `Client has approved the task: "${task.title}"`;
+      
     } else {
-      // client send revise request
+  
       task.isClientApproved = false;
       task.status = 'In Progress';
       
-   
+      notificationTitle = 'Revision Requested 🚨';
+      notificationMsg = `Client requested a revision for: "${task.title}"`;
+      
       if (comment && comment.trim() !== '') {
         const Comment = require('../models/Comment'); 
-        const { getIO } = require('../config/socket');
 
         const newComment = await Comment.create({
           text: `[Client Feedback] ${comment}`,
@@ -445,9 +459,8 @@ exports.clientTaskReview = async (req, res) => {
           organizationId: req.user.organizationId
         });
 
-        // 2. Real-time chat update 
+        // Chat update event
         const populatedComment = await newComment.populate('createdBy', 'name');
-        const io = getIO();
         io.to(req.user.organizationId.toString()).emit('newComment', { 
           taskId: task._id, 
           comment: populatedComment 
@@ -456,7 +469,46 @@ exports.clientTaskReview = async (req, res) => {
     }
 
     await task.save();
-    res.status(200).json({ message: 'Task updated successfully', task });
+
+   
+    //  REAL-TIME NOTIFICATION SYSTEM (NEWLY ADDED) 
+  
+    
+    // 1. Notify the Assigned Developer
+    if (task.assignedTo) {
+      const devNotification = await Notification.create({
+        recipient: task.assignedTo,
+        sender: req.user._id, // Client
+        type: status === 'Done' ? 'TASK_APPROVED' : 'TASK_REVISED',
+        title: notificationTitle,
+        message: notificationMsg,
+        relatedId: task._id
+      });
+      // Send real-time alert to Developer
+      io.to(String(task.assignedTo)).emit('newNotification', devNotification);
+    }
+
+    // 2. Notify the Project Manager / Admin (who created the task)
+    if (task.createdBy && String(task.createdBy) !== String(task.assignedTo)) {
+      const pmNotification = await Notification.create({
+        recipient: task.createdBy,
+        sender: req.user._id, // Client
+        type: status === 'Done' ? 'TASK_APPROVED' : 'TASK_REVISED',
+        title: notificationTitle,
+        message: notificationMsg,
+        relatedId: task._id
+      });
+      // Send real-time alert to PM
+      io.to(String(task.createdBy)).emit('newNotification', pmNotification);
+    }
+
+    // 3. Update the Kanban Board for the whole team instantly
+    const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
+    io.to(req.user.organizationId.toString()).emit('taskUpdated', populatedTask);
+    
+  
+
+    res.status(200).json({ message: 'Task updated successfully', task: populatedTask });
   } catch (error) {
     console.error('Client Review Error:', error);
     res.status(500).json({ message: error.message });
