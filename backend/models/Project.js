@@ -26,6 +26,11 @@ const projectSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null, // Default null hoga (Internal projects ke liye)
+    },
     // ADDED: Soft-delete flag according to document
     isDeleted: {
       type: Boolean,

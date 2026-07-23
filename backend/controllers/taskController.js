@@ -22,8 +22,8 @@ const canModifyTask = (user, task) => {
 
 exports.createTask = async (req, res) => {
   try {
-    // 🔥 Yahan milestoneId add kiya
-    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId } = req.body;
+ 
+    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId,isClientDeliverable } = req.body;
 
     const project = await Project.findOne({ 
       _id: projectId, 
@@ -36,6 +36,7 @@ exports.createTask = async (req, res) => {
     const task = await Task.create({
       title, description, status, priority, dueDate, department, projectId, assignedTo,
       milestoneId: milestoneId || null, 
+      isClientDeliverable: isClientDeliverable || false,
       isGlobal: false,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
@@ -101,7 +102,7 @@ exports.createGlobalTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-//   Get tasks for a specific project (Strict User Isolation)
+//   Get tasks for a specific project (Strict User Isolation & Deliverables Check)
 //   GET /api/v1/tasks/project/:projectId
 exports.getTasksByProject = async (req, res) => {
   try {
@@ -117,13 +118,27 @@ exports.getTasksByProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found or unauthorized' });
     }
 
+    // Role check for Client
+    const role = normalizeRole(req.user?.role);
+    const isClient = role === 'client';
+    
+    // Security check: Client sirf apna project dekh sake
+    if (isClient && project.clientId && project.clientId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to view tasks for this project' });
+    }
+
     const query = {
       projectId: projectId,
       organizationId: req.user.organizationId,
       isDeleted: false 
     };
 
-    if (!isAdmin(req.user)) {
+    // 🔥 MAIN UPDATE YAHAN HAI 🔥
+    if (isClient) {
+      // 1. Agar Client hai, toh SIRF wo tasks dikhao jin par isClientDeliverable true ho
+      query.isClientDeliverable = true;
+    } else if (!isAdmin(req.user)) {
+      // 2. Agar Team Member hai (Client bhi nahi, Admin bhi nahi), toh sirf uske apne tasks dikhao
       query.$or = [
         { createdBy: req.user._id },
         { assignedTo: req.user._id }
@@ -139,7 +154,6 @@ exports.getTasksByProject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 //    Get ALL Global tasks for the logged-in user's organization
 //    GET /api/v1/tasks/global/all
 exports.getGlobalTasks = async (req, res) => {
@@ -399,5 +413,52 @@ exports.getBurndownData = async (req, res) => {
     res.status(200).json(chartData);
   } catch (error) {
     res.status(500).json({ message: 'Burndown calculate karne mein masla hua', error: error.message });
+  }
+};
+
+
+exports.clientTaskReview = async (req, res) => {
+  try {
+    const { status, comment } = req.body;
+    const task = await Task.findById(req.params.id);
+    
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    if (status === 'Done' || status === 'Completed') {
+      // when client approve
+      task.isClientApproved = true;
+      task.status = 'Done';
+    } else {
+      // client send revise request
+      task.isClientApproved = false;
+      task.status = 'In Progress';
+      
+   
+      if (comment && comment.trim() !== '') {
+        const Comment = require('../models/Comment'); 
+        const { getIO } = require('../config/socket');
+
+        const newComment = await Comment.create({
+          text: `[Client Feedback] ${comment}`,
+          taskId: task._id,
+          createdBy: req.user._id,
+          organizationId: req.user.organizationId
+        });
+
+        // 2. Real-time chat update 
+        const populatedComment = await newComment.populate('createdBy', 'name');
+        const io = getIO();
+        io.to(req.user.organizationId.toString()).emit('newComment', { 
+          taskId: task._id, 
+          comment: populatedComment 
+        });
+      }
+    }
+
+    await task.save();
+    res.status(200).json({ message: 'Task updated successfully', task });
+  } catch (error) {
+    console.error('Client Review Error:', error);
+    res.status(500).json({ message: error.message });
   }
 };

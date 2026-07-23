@@ -16,6 +16,8 @@ const taskSchema = new mongoose.Schema(
       enum: ['To Do', 'In Progress', 'Done'],
       default: 'To Do',
     },
+    isClientDeliverable: { type: Boolean, default: false },
+    isClientApproved: { type: Boolean, default: false },
     priority: {
       type: String,
       enum: ['Low', 'Medium', 'High', 'Urgent'],
@@ -64,6 +66,20 @@ const taskSchema = new mongoose.Schema(
       uploadedAt: { type: Date, default: Date.now }
     }
   ],
+
+  comments: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        text: String,
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        }
+      }
+    ],
   },
   { timestamps: true }
 );
