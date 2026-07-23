@@ -26,6 +26,7 @@ import AdminPanel from './pages/AdminPanel'; // Import available
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ClientDeliverables from './pages/ClientDeliverables';
 import ClientDashboard from './pages/ClientDashboard';
+import ClientFileHub from './pages/ClientFileHub';
 
 function App() {
   const storedUser = localStorage.getItem('user');
@@ -53,8 +54,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         
-        {/* 🔥 BUG FIX 2: SMART ROOT ROUTE */}
-        {/* Agar user logged in hai, toh role ke mutabiq dashboard par bhej do, warna LandingPage dikhao */}
+        {/* SMART ROOT ROUTE */}
         <Route 
           path="/" 
           element={
@@ -79,7 +79,6 @@ function App() {
 
         <Route path="/accept-invite" element={<AcceptInvite />} />
 
-        {/* 🔥 BUG FIX 3: DashboardLayout ko bina "path" ke layout wrapper banaya */}
         <Route element={<DashboardLayout />}>
           
           {/* Role-specific routes */}
@@ -122,6 +121,7 @@ function App() {
               <Route path="/client-dashboard" element={<ClientDashboard />} />
               <Route path="/client-portal" element={<ClientPortal />} />
               <Route path="/client-portal/:projectId" element={<ClientDeliverables />} />
+              <Route element={<ClientFileHub />} path="/client-files"/> 
             </>
           ) : (
             <>

@@ -12,7 +12,8 @@ const {
   uploadTaskAttachment,
   getAllOrganizationTasks,
   getBurndownData,
-  clientTaskReview
+  clientTaskReview,
+  getClientHubFiles
 } = require('../controllers/taskController');
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 const upload = require('../config/multerConfig');
@@ -37,4 +38,5 @@ router.route('/analytics/stats').get(protect, getTaskAnalytics);
 router.post('/:taskId/upload', protect, upload.single('file'), uploadTaskAttachment);
 router.get('/analytics/burndown', protect, getBurndownData);
 router.put('/:id/client-review', protect, clientTaskReview);
+router.get('/client/hub-files', protect, getClientHubFiles);
 module.exports = router;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
   LogOut, LayoutDashboard, FolderKanban, CheckSquare, Users, Search, 
-  Settings, HelpCircle, Rocket, Plus, Calendar, Briefcase, Menu, X, Shield 
+  Settings, HelpCircle, Rocket, Plus, Calendar, Briefcase, Menu, X, Shield,Folder 
 } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client';
@@ -175,6 +175,11 @@ const getProfileImage = () => {
                 <li>
                   <Link to="/client-portal" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-portal') && !isActive('/client-dashboard') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
                     <Briefcase size={18} /> <span>My Projects</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/client-files" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-files') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                    <Folder size={18} /> <span>File Hub</span>
                   </Link>
                 </li>
               </>
