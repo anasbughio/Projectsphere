@@ -28,6 +28,7 @@ import ClientDeliverables from './pages/ClientDeliverables';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientFileHub from './pages/ClientFileHub';
 import ClientCalendar from './pages/ClientCalendar';
+import HelpDesk from './pages/HelpDesk';
 function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -97,6 +98,7 @@ function App() {
               <Route path="/calendar" element={<CalendarView />} />
               <Route path="/team" element={<Team />} />
               <Route path="/activity" element={<AuditLogs />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
             </>
           ) : isProjectManager ? (
             <>
@@ -106,6 +108,7 @@ function App() {
               <Route path="/tasks" element={<TaskForm />} />
               <Route path="/team" element={<Team />} />
               <Route path="/activity" element={<AuditLogs />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
             </>
           ) : isTeamMember ? (
             <>
@@ -115,6 +118,7 @@ function App() {
               <Route path="/projects" element={<Projects />} />
               <Route path="/calendar" element={<CalendarView />} />
               <Route path="/team" element={<Team />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
             </>
           ) : isClient ? (
             <>
@@ -123,6 +127,8 @@ function App() {
               <Route path="/client-portal/:projectId" element={<ClientDeliverables />} />
               <Route element={<ClientFileHub />} path="/client-files"/> 
               <Route path="/client-calendar" element={<ClientCalendar />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
+              
             </>
           ) : (
             <>
@@ -134,6 +140,7 @@ function App() {
               <Route path="/client-portal" element={<ClientPortal />} />
               <Route path="/team" element={<Team />} />
               <Route path="/activity" element={<AuditLogs />} />
+              
             </>
           )}
           

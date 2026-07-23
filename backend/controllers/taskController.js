@@ -4,7 +4,7 @@ const { normalizeRole } = require('../middlewares/authMiddleware');
 const Notification = require('../models/Notification'); 
 const { logAudit } = require('../utils/auditLogger');
 const { getIO } = require('../config/socket');
-
+const ActivityLog = require('../models/ActivityLog');
 
 const isAdmin = (user) => normalizeRole(user?.role) === 'admin';
 
@@ -23,8 +23,7 @@ const canModifyTask = (user, task) => {
 
 exports.createTask = async (req, res) => {
   try {
- 
-    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId,isClientDeliverable,dependsOn } = req.body;
+    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId, isClientDeliverable, dependsOn } = req.body;
 
     const project = await Project.findOne({ 
       _id: projectId, 
@@ -34,6 +33,7 @@ exports.createTask = async (req, res) => {
 
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
+    // 1. Task Created
     const task = await Task.create({
       title, description, status, priority, dueDate, department, projectId, assignedTo,
       milestoneId: milestoneId || null, 
@@ -43,7 +43,17 @@ exports.createTask = async (req, res) => {
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
     });
+
     
+    await ActivityLog.create({
+      organizationId: req.user.organizationId,
+      user: req.user._id, 
+      action: 'Created a new task',
+      details: `Task: ${task.title}`,
+      isClientVisible: task.isClientDeliverable 
+    });
+
+    // 3. Audit Log
     await logAudit({
       organizationId: req.user.organizationId, 
       user: req.user._id,
@@ -270,6 +280,13 @@ exports.updateTask = async (req, res) => {
       
     ).populate('assignedTo', 'name');
 
+
+    await ActivityLog.create({
+  organizationId: req.user.organizationId,
+  user: req.user._id,
+  action: `Updated task status to ${updatedTask.status}`,
+  details: `Task: ${updatedTask.title}`
+});
     try {
       const io = getIO();
       const prevAssignee = task.assignedTo ? String(task.assignedTo) : null;
