@@ -341,7 +341,7 @@ exports.uploadTaskAttachment = async (req, res) => {
     // creating object of new attchment
     const newAttachment = {
       fileName: req.file.originalname, // name of user on computer
-      fileUrl: `/uploads/${req.file.filename}` // Server par save hone wala path
+      fileUrl: `/uploads/${req.file.filename}` // path save on server
     };
 
     // push the task of attacments in array and save it
@@ -381,7 +381,7 @@ exports.getBurndownData = async (req, res) => {
     let query = { organizationId: orgId, isDeleted: false };
     if (projectId) query.projectId = projectId;
 
-    // Tamam tasks fetch karein
+    // Fetch all tasks
     const tasks = await Task.find(query).sort({ createdAt: 1 });
     if (tasks.length === 0) return res.json([]);
 
@@ -511,6 +511,41 @@ exports.clientTaskReview = async (req, res) => {
     res.status(200).json({ message: 'Task updated successfully', task: populatedTask });
   } catch (error) {
     console.error('Client Review Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.getClientHubFiles = async (req, res) => {
+  try {
+    // Find task client approved
+    const tasks = await Task.find({
+      organizationId: req.user.organizationId,
+      isClientDeliverable: true,
+      isClientApproved: true,
+      attachments: { $exists: true, $not: { $size: 0 } }
+    }).select('title attachments');
+
+    let allFiles = [];
+    
+    tasks.forEach(task => {
+      task.attachments.forEach(att => {
+        allFiles.push({
+          fileName: att.fileName,
+          fileUrl: att.fileUrl,
+          uploadedAt: att.uploadedAt || task.updatedAt,
+          taskTitle: task.title,
+          taskId: task._id
+        });
+      });
+    });
+
+        // sort on dates
+    allFiles.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+    res.status(200).json(allFiles);
+  } catch (error) {
+    console.error('File Hub Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
