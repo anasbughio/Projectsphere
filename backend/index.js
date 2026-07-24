@@ -29,6 +29,7 @@ const activityRoutes = require('./routes/activityRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const stripeRoutes = require('./routes/stripeRoutes');
+const { stripeWebhook } = require('./controllers/stripeController'); 
 require('./config/passport');
 
 const app = express();
@@ -42,7 +43,7 @@ const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .map(s => s.trim())
   .filter(Boolean);
 
-app.use('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), stripeRoutes);  
+app.post('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 // Middleware
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json({ limit: '50mb' }));
