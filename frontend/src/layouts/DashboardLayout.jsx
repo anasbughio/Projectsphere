@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
   LogOut, LayoutDashboard, FolderKanban, CheckSquare, Users, Search, 
-  Settings, HelpCircle, Rocket, Plus, Calendar, Briefcase, Menu, X, Shield,Folder 
+  Settings, HelpCircle, Rocket, Plus, Calendar, Briefcase, Menu, X, Shield,Folder,Megaphone
 } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 import NotificationBell from '../components/NotificationBell';
-
+import AnnouncementBanner from '../components/AnnouncementBanner';
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -111,7 +111,7 @@ const getProfileImage = () => {
       <nav className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar">
        <ul className="space-y-1.5">
             
-            {/* 🌟 SUPER ADMIN SIDEBAR LINKS */}
+            {/*  SUPER ADMIN SIDEBAR LINKS */}
             {isSuperAdmin && (
               <>
                 <li>
@@ -139,7 +139,7 @@ const getProfileImage = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/super-admin/users" 
+                  <Link to="/team" 
                     className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
                       isActive('/super-admin/users') 
                       ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
@@ -150,6 +150,18 @@ const getProfileImage = () => {
                     <span>Platform Users</span>
                   </Link>
                 </li>
+                <li>
+  <Link to="/super-admin/announcements" 
+    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+      isActive('/super-admin/announcements') 
+      ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
+      : 'text-[#84889c] hover:text-white hover:bg-white/5'
+    }`}
+  >
+    <Megaphone size={18} />
+    <span>Broadcasts</span>
+  </Link>
+</li>
               </>
             )}
 
@@ -289,7 +301,11 @@ const getProfileImage = () => {
   </Link>
           </div>
         </header>
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar"><Outlet /></div>
+
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar">
+          <AnnouncementBanner />
+          <Outlet />
+          </div>
       </main>
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
