@@ -1,5 +1,6 @@
 const Project = require('../models/Project');
 const { logAudit } = require('../utils/auditLogger');
+const Organization = require('../models/Organization');
 // Create a New Project
 // Create a New Project
 exports.createProject = async (req, res) => {
@@ -18,6 +19,9 @@ exports.createProject = async (req, res) => {
 
     if (currentProjectCount >= organization.maxProjects) {
       return res.status(403).json({ 
+        success: false,
+        code: 'LIMIT_REACHED',        // Frontend check this code
+        type: 'projects',             
         message: `Project limit reached! Your current plan (${organization.subscriptionPlan.toUpperCase()}) only allows up to ${organization.maxProjects} projects. Please upgrade your plan.` 
       });
     }
@@ -45,7 +49,6 @@ exports.createProject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 // Get All Active Projects (Soft-deleted projects hide rahenge)
 exports.getProjects = async (req, res) => {
   try {

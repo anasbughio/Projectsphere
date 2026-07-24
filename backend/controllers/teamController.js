@@ -2,20 +2,20 @@ const User = require('../models/User');
 const Invitation = require('../models/Invitation');
 const crypto = require('crypto');
 const axios = require('axios');
-
+const Organization = require('../models/Organization');
 
 exports.getTeamMembers = async (req, res) => {
-  console.log("🔥 TEAM CONTROLLER REACHED!");
+  console.log("TEAM CONTROLLER REACHED!");
   try {
     let members;
     
     // DEBUG: first check who is user and what's his role
-    console.log("👤 REQUEST BY:", req.user.role, "| ORG ID:", req.user.organizationId);
+    console.log("REQUEST BY:", req.user.role, "| ORG ID:", req.user.organizationId);
 
     if (req.user.role === 'Super Admin') {
       // find all Org admin
       const allAdmins = await User.find({ role: { $in: ['Org Admin', 'Admin', 'organization admin'] } });
-      console.log("🔍 TOTAL ADMINS IN DB:", allAdmins.length);
+      console.log("TOTAL ADMINS IN DB:", allAdmins.length);
       
    
       members = await User.find({ 
@@ -23,14 +23,14 @@ exports.getTeamMembers = async (req, res) => {
         organizationId: { $ne: null } 
       }).populate('organizationId', 'name');
       
-      console.log("✅ MEMBERS SENT TO FRONTEND:", members.length);
+      console.log("MEMBERS SENT TO FRONTEND:", members.length);
     } else {
       members = await User.find({ organizationId: req.user.organizationId });
     }
 
     res.status(200).json(members);
   } catch (error) {
-    console.error("❌ ERROR FETCHING TEAM:", error);
+    console.error("ERROR FETCHING TEAM:", error);
     res.status(500).json({ message: 'Error fetching team members', error: error.message });
   }
 };
@@ -52,6 +52,9 @@ exports.inviteMember = async (req, res) => {
 
     if (currentUserCount >= organization.maxUsers) {
       return res.status(403).json({ 
+        success: false,
+        code: 'LIMIT_REACHED',  // The frontend upgrade modal looks for this exact code
+        type: 'users',          // Tells the modal to display the team member limit message
         message: `User limit reached! Your current plan (${organization.subscriptionPlan.toUpperCase()}) only allows up to ${organization.maxUsers} users. Please upgrade your plan to invite more members.` 
       });
     }
