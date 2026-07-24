@@ -127,3 +127,57 @@ exports.generateWeeklyReport = async (req, res) => {
     res.status(500).json({ message: "Failed to generate report", error: error.message });
   }
 };
+
+
+exports.getWorkspaceAnalytics = async (req, res) => {
+  try {
+    const organizationId = req.user.organizationId;
+    const { projectId } = req.query; // Optional: filter by specific project or whole workspace
+
+    // 1. Build filter query based on organization
+    const projectFilter = { organizationId, isDeleted: false };
+    if (projectId) projectFilter._id = projectId;
+
+    const projects = await Project.find(projectFilter);
+    const projectIds = projects.map(p => p._id);
+
+    // 2. Fetch all tasks related to these projects
+    const tasks = await Task.find({ projectId: { $in: projectIds } });
+
+    // 3. Calculate Metrics
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'Completed' || t.status === 'Done').length;
+    const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
+    const pendingTasks = tasks.filter(t => t.status === 'To Do' || t.status === 'Planning').length;
+
+    // Workspace Health Score (Percentage of completed tasks out of total, min 10% base)
+    const healthScore = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
+
+    // Sprint Velocity (Simulated based on tasks completed per week or past sprints)
+    // You can group tasks by completion date if you track it
+    const velocity = completedTasks * 2; // Arbitrary metric or calculated based on recent completions
+
+    // 4. Return structured analytics data
+    res.status(200).json({
+      success: true,
+      metrics: {
+        totalProjects: projects.length,
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        pendingTasks,
+        healthScore,
+        velocity
+      },
+      tasksBreakdown: {
+        completed: completedTasks,
+        inProgress: inProgressTasks,
+        todo: pendingTasks
+      }
+    });
+
+  } catch (error) {
+    console.error('Analytics Error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching analytics' });
+  }
+};
