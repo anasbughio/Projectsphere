@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
   LogOut, LayoutDashboard, FolderKanban, CheckSquare, Users, Search, 
-  Settings, HelpCircle, Rocket, Plus, Calendar, Briefcase, Menu, X, Shield,Folder,Megaphone,CreditCard
+  Settings, HelpCircle, Rocket, Plus, Calendar, Briefcase, Menu, X, Shield,Folder,Megaphone,CreditCard,Activity
 } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client';
@@ -162,6 +162,12 @@ const getProfileImage = () => {
     <span>Broadcasts</span>
   </Link>
 </li>
+<li>
+  <Link to="/workspace-analytics" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+  <Activity size={18} />
+  <span>Workspace Analytics</span>
+</Link>
+</li>
               </>
             )}
 
@@ -200,6 +206,7 @@ const getProfileImage = () => {
                     <Calendar size={18} /> <span>Help Desk</span>
                   </Link>
                 </li>
+               
               </>
             )}
             
