@@ -21,7 +21,7 @@ const SubscriptionManagement = () => {
   const fetchSubscriptions = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/superadmin/subscriptions');
+      const res = await api.get('api/v1/superadmin/subscriptions');
       setTenants(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to load subscription data:", err);
