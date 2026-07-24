@@ -109,22 +109,66 @@ const getProfileImage = () => {
         </div>
         
       <nav className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar">
-          <ul className="space-y-1.5">
-            {!isClient && (
+       <ul className="space-y-1.5">
+            
+            {/* 🌟 SUPER ADMIN SIDEBAR LINKS */}
+            {isSuperAdmin && (
               <>
-            <li>
-              <Link to={isSuperAdmin ? "/admin" : "/board"} 
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
-                  isActive(isSuperAdmin ? '/admin' : '/board') 
-                  ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
-                  : 'text-[#84889c] hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <LayoutDashboard size={18} />
-                <span>{isSuperAdmin ? 'Platform Overview' : 'Dashboard'}</span>
-              </Link>
-            </li>
-            </>
+                <li>
+                  <Link to="/admin" 
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+                      isActive('/admin') 
+                      ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
+                      : 'text-[#84889c] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <LayoutDashboard size={18} />
+                    <span>Platform Overview</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/super-admin/subscriptions" 
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+                      isActive('/super-admin/subscriptions') 
+                      ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
+                      : 'text-[#84889c] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Briefcase size={18} />
+                    <span>Subscription Plans</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/super-admin/users" 
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+                      isActive('/super-admin/users') 
+                      ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
+                      : 'text-[#84889c] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Users size={18} />
+                    <span>Platform Users</span>
+                  </Link>
+                </li>
+              </>
+            )}
+
+            {/* 🏢 REGULAR ADMIN / MANAGER / TEAM MEMBER LINKS */}
+            {!isSuperAdmin && !isClient && (
+              <>
+                <li>
+                  <Link to="/board" 
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+                      isActive('/board') 
+                      ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' 
+                      : 'text-[#84889c] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <LayoutDashboard size={18} />
+                    <span>Dashboard</span>
+                  </Link>
+                </li>
+              </>
             )}
 
             {(isOrgAdmin || isProjectManager || isTeamMember) && (
@@ -140,13 +184,14 @@ const getProfileImage = () => {
                   </Link>
                 </li>
                  <li>
-                  <Link to="/help-desk" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-calendar') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                  <Link to="/help-desk" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/help-desk') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
                     <Calendar size={18} /> <span>Help Desk</span>
                   </Link>
                 </li>
               </>
             )}
-            {!isClient && (
+            
+            {!isSuperAdmin && !isClient && (
               <li>
                 <Link to="/team"
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
@@ -156,7 +201,7 @@ const getProfileImage = () => {
                   }`}
                 >
                   <Users size={18} /> 
-                  <span>{isSuperAdmin ? 'Platform Users' : 'Team'}</span>
+                  <span>Team</span>
                 </Link>
               </li>
             )}
@@ -168,11 +213,12 @@ const getProfileImage = () => {
                     <Calendar size={18} /> <span>Calendar</span>
                   </Link>
                 </li>
-                
               </>
             )}
+
+            {/* 👤 CLIENT LINKS */}
             {isClient && (
-            <>
+              <>
                 <li>
                   <Link to="/client-dashboard" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-dashboard') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
                     <LayoutDashboard size={18} /> <span>Dashboard</span>
@@ -194,7 +240,7 @@ const getProfileImage = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/help-desk" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/client-calendar') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
+                  <Link to="/help-desk" className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${isActive('/help-desk') ? 'bg-[#7c7fff] text-white shadow-lg shadow-[#7c7fff]/20' : 'text-[#84889c] hover:text-white hover:bg-white/5'}`}>
                     <Calendar size={18} /> <span>Help Desk</span>
                   </Link>
                 </li>

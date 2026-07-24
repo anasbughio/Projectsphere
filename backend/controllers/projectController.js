@@ -1,9 +1,26 @@
 const Project = require('../models/Project');
 const { logAudit } = require('../utils/auditLogger');
 // Create a New Project
+// Create a New Project
 exports.createProject = async (req, res) => {
   try {
-    const { name, description, status,client } = req.body;
+    const { name, description, status, client } = req.body;
+
+    const organization = await Organization.findById(req.user.organizationId);
+    if (!organization) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    const currentProjectCount = await Project.countDocuments({ 
+      organizationId: req.user.organizationId, 
+      isDeleted: false 
+    });
+
+    if (currentProjectCount >= organization.maxProjects) {
+      return res.status(403).json({ 
+        message: `Project limit reached! Your current plan (${organization.subscriptionPlan.toUpperCase()}) only allows up to ${organization.maxProjects} projects. Please upgrade your plan.` 
+      });
+    }
 
     const project = await Project.create({
       name,
@@ -13,14 +30,16 @@ exports.createProject = async (req, res) => {
       createdBy: req.user._id,
       clientId: client || null,
     });
-await logAudit({
-      organizationId: req.user.organizationId, // this route is protected so user data is avaliable
+
+    await logAudit({
+      organizationId: req.user.organizationId,
       user: req.user._id,
       action: 'PROJECT_CREATED',
       entityType: 'Project',
       entityId: project._id,
       details: `Project "${project.name}" was created.`
     });
+
     res.status(201).json(project);
   } catch (error) {
     res.status(500).json({ message: error.message });

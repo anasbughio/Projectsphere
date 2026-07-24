@@ -29,6 +29,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import ClientFileHub from './pages/ClientFileHub';
 import ClientCalendar from './pages/ClientCalendar';
 import HelpDesk from './pages/HelpDesk';
+import SubscriptionManagement from './pages/SubscriptionManagement';
 function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -88,6 +89,7 @@ function App() {
               <Route path="/admin" element={<SuperAdminDashboard />} />
               <Route path="/team" element={<Team />} />
               <Route path="/activity" element={<AuditLogs />} />
+              <Route path="/super-admin/subscriptions" element={<SubscriptionManagement />} />
             </>
           ) : isOrgAdmin ? (
             <>
