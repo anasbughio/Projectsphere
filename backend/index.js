@@ -37,7 +37,7 @@ const server = http.createServer(app);
 
 // Initialize Socket.io
 initSocket(server); // socket logic initialized
-
+app.use(morgan('dev'));
 const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(s => s.trim())
@@ -51,7 +51,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet({
   crossOriginResourcePolicy: false, // here give permission to load images to vercel
 }));
-app.use(morgan('dev'));
+
 app.use(passport.initialize());
 
 app.use(cors({

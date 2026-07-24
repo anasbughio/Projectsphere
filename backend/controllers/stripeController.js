@@ -44,12 +44,14 @@ exports.createCheckoutSession = async (req, res) => {
 
 // 2. Webhook to automatically upgrade users upon successful payment
 exports.stripeWebhook = async (req, res) => {
+    console.log("🔥 [WEBHOOK] ROUTE HIT! Request aayi hai...");
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
     // Verify request came from actual Stripe servers using the raw body
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    console.log(`✅ [WEBHOOK] Signature Verified! Event Type: ${event.type}`);
   } catch (err) {
     console.error('Webhook signature verification failed.', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -57,10 +59,12 @@ exports.stripeWebhook = async (req, res) => {
 
   // Handle successful checkout
 if (event.type === 'checkout.session.completed') {
+    console.log("🎯 [WEBHOOK] Checkout Completed! Database update shuru ho raha hai...");
     const session = event.data.object;
     const organizationId = session.client_reference_id;
     const customerId = session.customer;
     const subscriptionId = session.subscription;
+    console.log("👉 Organization ID recieved:", organizationId);
 
     try {
       const organization = await Organization.findById(organizationId);
@@ -69,7 +73,7 @@ if (event.type === 'checkout.session.completed') {
         // Stripe se line items fetch karein taake exact price ID pata chal jaye
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
         const priceId = lineItems.data[0]?.price?.id;
-
+console.log("👉 Price ID received:", priceId);
         let newPlan = 'free';
         let newMaxUsers = 5;
         let newMaxProjects = 3;
@@ -94,10 +98,14 @@ if (event.type === 'checkout.session.completed') {
         
         await organization.save();
         console.log(`Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook.`);
+      }else {
+        console.error("❌ [WEBHOOK ERROR] Organization not found in DB for ID:", organizationId);
       }
     } catch (dbError) {
       console.error('Error updating organization after payment:', dbError);
     }
+  }else {
+    console.log(`⚠️ [WEBHOOK] Ignored Event: ${event.type} (Hum sirf checkout.session.completed ka wait kar rahe hain)`);
   }
   // Return a 200 response to acknowledge receipt of the event
   res.json({ received: true });
