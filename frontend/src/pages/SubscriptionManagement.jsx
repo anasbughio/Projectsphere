@@ -32,6 +32,11 @@ const SubscriptionManagement = () => {
 
   useEffect(() => {
     fetchSubscriptions();
+    const interval = setInterval(() => {
+      fetchSubscriptions();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
 const handleEditClick = (tenant) => {
