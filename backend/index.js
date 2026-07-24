@@ -27,6 +27,7 @@ const ticketRoutes = require('./routes/ticketRoutes');
 const Message = require('./models/Message');
 const activityRoutes = require('./routes/activityRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
+const announcementRoutes = require('./routes/announcementRoutes');
 require('./config/passport');
 
 const app = express();
@@ -77,6 +78,7 @@ app.use('/api/v1/meetings', meetingRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/activities', activityRoutes);
 app.use('/api/v1/superadmin', superAdminRoutes);
+app.use('/api/v1/announcements', announcementRoutes)
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })

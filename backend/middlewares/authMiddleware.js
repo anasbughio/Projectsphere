@@ -58,3 +58,13 @@ exports.authorizeRoles = (...roles) => {
     next();
   };
 };
+
+// Check if user is Super Admin
+exports.isSuperAdmin = (req, res, next) => {
+  // Check against exact roles you use for super admin (case-insensitive check)
+  if (req.user && req.user.role && req.user.role.toLowerCase() === 'super admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Access Denied: Super Admin privileges required.' });
+  }
+};
