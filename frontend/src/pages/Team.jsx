@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Mail, Shield, MoreVertical, Loader2, Users ,Trash2} from 'lucide-react';
 import api from '../services/api';
+import UpgradeModal from '../components/UpgradeModal';
 
 const normalizeRole = (role) => {
   if (!role) return '';
@@ -18,7 +19,8 @@ const Team = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [limitType, setLimitType] = useState('users');
   // Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -94,7 +96,13 @@ const fetchTeam = async () => {
       // Reset Form
       setName(''); setEmail(''); setPassword(''); setRole('Member');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to add team member');
+     if (err.response && err.response.status === 403 && err.response.data.code === 'LIMIT_REACHED') {
+        setIsModalOpen(false); // Purana invite modal band kar dein
+        setLimitType(err.response.data.type || 'users'); 
+        setShowUpgradeModal(true); // Naya premium modal open karein
+      } else {
+        alert(err.response?.data?.message || 'Failed to add team member');
+      }
     } finally {
       setIsAdding(false);
     }
@@ -245,6 +253,11 @@ console.log("FRONTEND TEAM STATE:", team);
           </div>
         </div>
       )}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+        type={limitType} 
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, FolderKanban, Calendar, Loader2, Trash2, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import UpgradeModal from '../components/UpgradeModal';
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ const Projects = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [limitType, setLimitType] = useState('projects');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('Active'); 
@@ -110,7 +113,14 @@ const response = await api.post('/projects', payload);
       }
       handleCloseModal();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save project');
+      if (err.response && err.response.status === 403 && err.response.data.code === 'LIMIT_REACHED') {
+        handleCloseModal(); // Close the "Create Project" form
+        setLimitType(err.response.data.type || 'projects'); // Pass 'projects' to the modal
+        setShowUpgradeModal(true); // Open the beautiful Upgrade Modal
+      } else {
+        // Fallback for normal errors
+        alert(err.response?.data?.message || 'Failed to save project');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -336,6 +346,19 @@ const response = await api.post('/projects', payload);
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
       `}} />
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+      `}} />
+
+      {/*  RENDER THE UPGRADE MODAL HERE */}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+        type={limitType} 
+      />
     </div>
   );
 };
