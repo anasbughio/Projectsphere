@@ -39,6 +39,23 @@ exports.inviteMember = async (req, res) => {
     const { email, role } = req.body;
     const inviter = req.user; 
 
+    //  DYNAMIC LIMIT CHECK: Organization user limit check
+    const organization = await Organization.findById(inviter.organizationId);
+    if (!organization) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    const currentUserCount = await User.countDocuments({ 
+      organizationId: inviter.organizationId, 
+      isDeleted: false 
+    });
+
+    if (currentUserCount >= organization.maxUsers) {
+      return res.status(403).json({ 
+        message: `User limit reached! Your current plan (${organization.subscriptionPlan.toUpperCase()}) only allows up to ${organization.maxUsers} users. Please upgrade your plan to invite more members.` 
+      });
+    }
+
     // 1. Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -69,7 +86,7 @@ exports.inviteMember = async (req, res) => {
     await axios.post(
       'https://api.brevo.com/v3/smtp/email',
       {
-        sender: { name: "ProjectSphere", email: "anasbughio@gmail.com" }, // Apna sender email zaroor check karein
+        sender: { name: "ProjectSphere", email: "anasbughio@gmail.com" },
         to: [{ email: email }],
         subject: `Invitation to join ProjectSphere Workspace`,
         htmlContent: `
