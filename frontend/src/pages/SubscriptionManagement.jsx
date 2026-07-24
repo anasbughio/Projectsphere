@@ -18,22 +18,23 @@ const SubscriptionManagement = () => {
     expiresAt: ''
   });
 
-  const fetchSubscriptions = async () => {
+const fetchSubscriptions = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const res = await api.get('/superadmin/subscriptions');
       setTenants(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to load subscription data:", err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSubscriptions();
+fetchSubscriptions(true); // Initial load with spinner
+
     const interval = setInterval(() => {
-      fetchSubscriptions();
+      fetchSubscriptions(false); // Background refresh without spinner
     }, 10000);
 
     return () => clearInterval(interval);

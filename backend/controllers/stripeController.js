@@ -56,7 +56,7 @@ exports.stripeWebhook = async (req, res) => {
   }
 
   // Handle successful checkout
-  if (event.type === 'checkout.session.completed') {
+if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const organizationId = session.client_reference_id;
     const customerId = session.customer;
@@ -66,19 +66,20 @@ exports.stripeWebhook = async (req, res) => {
       const organization = await Organization.findById(organizationId);
       
       if (organization) {
-        // Determine plan by matching the paid amount or passing metadata
-        const amountTotal = session.amount_total;
-        
+        // Stripe se line items fetch karein taake exact price ID pata chal jaye
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+        const priceId = lineItems.data[0]?.price?.id;
+
         let newPlan = 'free';
         let newMaxUsers = 5;
         let newMaxProjects = 3;
 
-        // Example logic: Adjust amounts based on your actual Stripe pricing (amount is in cents, so 2900 = $29.00)
-        if (amountTotal === 2900) { 
+        // Match with your environment variables or direct Price IDs
+        if (priceId === process.env.STRIPE_PRO_PRICE_ID) { 
           newPlan = 'pro';
           newMaxUsers = 25;
           newMaxProjects = 15;
-        } else if (amountTotal === 9900) {
+        } else if (priceId === process.env.STRIPE_ENTERPRISE_PRICE_ID) {
           newPlan = 'enterprise';
           newMaxUsers = 999;
           newMaxProjects = 999;
@@ -92,13 +93,12 @@ exports.stripeWebhook = async (req, res) => {
         organization.stripeSubscriptionId = subscriptionId;
         
         await organization.save();
-        console.log(`Organization ${organization.name} upgraded to ${newPlan} successfully.`);
+        console.log(`Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook.`);
       }
     } catch (dbError) {
       console.error('Error updating organization after payment:', dbError);
     }
   }
-
   // Return a 200 response to acknowledge receipt of the event
   res.json({ received: true });
 };
