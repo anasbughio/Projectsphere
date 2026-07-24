@@ -31,6 +31,7 @@ import ClientCalendar from './pages/ClientCalendar';
 import HelpDesk from './pages/HelpDesk';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import AnnouncementsManagement from './pages/AnnouncementsManagement';
+import Billing from './views/Billing';
 function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -97,6 +98,7 @@ function App() {
             <>
               <Route path="/board" element={<Dashboard />} />
               <Route path="/projects" element={<Projects />} />
+              <Route path="/billing" element={<Billing />} />
               <Route path="/projects/:projectId" element={<KanbanBoard />} />
               <Route path="/tasks" element={<TaskForm />} />
               <Route path="/calendar" element={<CalendarView />} />

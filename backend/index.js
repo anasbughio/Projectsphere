@@ -28,6 +28,8 @@ const Message = require('./models/Message');
 const activityRoutes = require('./routes/activityRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
+const stripeRoutes = require('./routes/stripeRoutes');
+const { stripeWebhook } = require('./controllers/stripeController'); 
 require('./config/passport');
 
 const app = express();
@@ -35,12 +37,13 @@ const server = http.createServer(app);
 
 // Initialize Socket.io
 initSocket(server); // socket logic initialized
-
+app.use(morgan('dev'));
 const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
 
+app.post('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 // Middleware
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json({ limit: '50mb' }));
@@ -48,7 +51,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet({
   crossOriginResourcePolicy: false, // here give permission to load images to vercel
 }));
-app.use(morgan('dev'));
+
 app.use(passport.initialize());
 
 app.use(cors({
@@ -78,7 +81,8 @@ app.use('/api/v1/meetings', meetingRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/activities', activityRoutes);
 app.use('/api/v1/superadmin', superAdminRoutes);
-app.use('/api/v1/announcements', announcementRoutes)
+app.use('/api/v1/announcements', announcementRoutes);
+app.use('/api/v1/stripe', stripeRoutes);
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })

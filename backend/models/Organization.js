@@ -39,7 +39,16 @@ const organizationSchema = new mongoose.Schema(
     isDeleted: {
       type: Boolean,
       default: false
+    },
+    stripeCustomerId: {
+      type: String,
+      default: null
+    },
+    stripeSubscriptionId: {
+      type: String,
+      default: null
     }
+  
   },
   { timestamps: true }
 );
