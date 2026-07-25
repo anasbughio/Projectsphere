@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, CheckSquare, Activity, 
   MoreVertical, Calendar, Clock, AlertCircle, 
-  ArrowUpRight, AlertTriangle, Loader2, FolderKanban, Mail, CheckCircle, Users,Download
+  ArrowUpRight, AlertTriangle, Loader2, FolderKanban, Mail, CheckCircle, Users, Download
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, 
@@ -15,9 +15,18 @@ import BurndownChartCard from '../components/BurndownChartCard';
 import { downloadCSV } from '../utils/exportUtils';
 
 const Dashboard = () => {
-  // first get data from local storage
+  // Get data from local storage
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
+  
+  // 👉 1. Determine User Roles dynamically
+  const userRole = user?.role?.toLowerCase() || '';
+  const isSuperAdmin = userRole === 'super admin';
+  // Check if user is higher management
+  const isManagerOrAdmin = ['org admin', 'organization admin', 'admin', 'project manager'].includes(userRole);
+  // If not super admin and not manager, they are a team member
+  const isTeamMember = !isSuperAdmin && !isManagerOrAdmin; 
+
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [teamCount, setTeamCount] = useState(0);
@@ -27,13 +36,12 @@ const Dashboard = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportStatus, setReportStatus] = useState(null);
   const [projectMilestones, setProjectMilestones] = useState([]);
-  const isSuperAdmin = user?.role === 'Super Admin';
+
   const handleGenerateReport = async () => {
     setIsGenerating(true);
     setReportStatus(null);
     try {
       const res = await api.post('/reports/weekly');
-      // Be explicit about what happens next for the user
       const userEmail = user?.email || 'your email';
       setReportStatus({ type: 'success', text: `Report requested — it will be sent to ${userEmail} shortly.` });
       setTimeout(() => setReportStatus(null), 3000);
@@ -45,30 +53,48 @@ const Dashboard = () => {
       setIsGenerating(false);
     }
   };
-const fetchMilestones = async (projectId) => {
-  const res = await api.get(`/milestones/project/${projectId}`);
-  setProjectMilestones(res.data);
-};
+
+  const fetchMilestones = async (projectId) => {
+    const res = await api.get(`/milestones/project/${projectId}`);
+    setProjectMilestones(res.data);
+  };
  
- useEffect(() => {
+  useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
         if (isSuperAdmin) {
-          
           const res = await api.get('/dashboard/platform-stats'); 
-          setProjects(res.data.projects || []); // Fake data or platform count
+          setProjects(res.data.projects || []); 
           setTasks(res.data.tasks || []);
           setTeamCount(res.data.usersCount || 0);
         } else {
-          // Normal Admin/Member ke liye purana code
+          // Normal Admin/Member data fetching
           const [projectRes, taskRes, teamRes] = await Promise.all([
             api.get('/projects'),
             api.get('/tasks/all'),
             api.get('/team')
           ]);
-          setProjects(projectRes.data);
-          setTasks(taskRes.data);
+
+          let fetchedTasks = taskRes.data;
+          let fetchedProjects = projectRes.data;
+
+          // 👉 2. Filter data for Team Members
+          if (isTeamMember) {
+            // Sirf wahi tasks dikhayen jo is user ko assign kiye gaye hain
+            fetchedTasks = fetchedTasks.filter(task => 
+              task.assignedTo === user?._id || 
+              task.assignee === user?._id || 
+              (task.assignees && task.assignees.includes(user?._id))
+            );
+
+            // (Optional) Sirf unhi projects ko dikhayen jinme user ke tasks hain
+            const myProjectIds = fetchedTasks.map(t => t.projectId || t.project);
+            fetchedProjects = fetchedProjects.filter(p => myProjectIds.includes(p._id));
+          }
+
+          setProjects(fetchedProjects);
+          setTasks(fetchedTasks);
           setTeamCount(teamRes.data.length);
         }
       } catch (error) {
@@ -78,7 +104,8 @@ const fetchMilestones = async (projectId) => {
       }
     };
     fetchDashboardData();
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, isTeamMember, user?._id]);
+
   if (loading) {
     return (
       <div className="h-full min-h-screen flex items-center justify-center">
@@ -86,7 +113,6 @@ const fetchMilestones = async (projectId) => {
       </div>
     );
   }
-
 
   const handleExportReport = () => {
     // clean data and format
@@ -100,14 +126,14 @@ const fetchMilestones = async (projectId) => {
     }));
 
     // Trigger CSV download
-    downloadCSV(formattedData, 'Workspace_Tasks_Report');
+    downloadCSV(formattedData, `${isTeamMember ? 'My' : 'Workspace'}_Tasks_Report`);
   };
 
   // Projects Calculations
   const activeProjectsCount = projects.filter(p => p.status === 'Active' || p.status === 'Planning').length;
   const completedProjectsCount = projects.filter(p => p.status === 'Completed').length;
   
-  // Tasks Calculations
+  // Tasks Calculations (Automatically based on filtered user tasks!)
   const totalTasks = tasks.length;
   const pendingTasks = tasks.filter(t => t.status !== 'Done');
   const completedTasks = tasks.filter(t => t.status === 'Done');
@@ -116,7 +142,7 @@ const fetchMilestones = async (projectId) => {
   // Velocity = (Completed Tasks / Total Tasks) * 100
   const teamVelocity = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
 
-  // Workspace Health = 100% se Overdue tasks ki penalty minus karein
+  // Workspace Health
   const workspaceHealth = totalTasks === 0 ? 100 : Math.max(0, Math.round(100 - ((overdueTasksCount / totalTasks) * 100)));
 
   // Critical Deadlines (Sort by closest due date)
@@ -125,8 +151,8 @@ const fetchMilestones = async (projectId) => {
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
     .slice(0, 3);
 
-  // Team Workload Calculations (For Progress Bars)
-  const totalPendingForWorkload = pendingTasks.length || 1; // Prevent division by zero
+  // Team Workload Calculations
+  const totalPendingForWorkload = pendingTasks.length || 1; 
   const getWorkload = (dept) => {
     const deptTasks = pendingTasks.filter(t => t.department === dept).length;
     return Math.round((deptTasks / totalPendingForWorkload) * 100);
@@ -172,6 +198,7 @@ const fetchMilestones = async (projectId) => {
 
       {/* TOP ACTIONS */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 w-full my-4">
+        {/* Only Org Admin & PMs should see the weekly report generation button ideally, but kept here if members can trigger it too */}
         <button
           onClick={handleGenerateReport}
           disabled={isGenerating}
@@ -189,7 +216,6 @@ const fetchMilestones = async (projectId) => {
         </Link>
 
         <div className="flex justify-between items-center mb-6">
-        
         {/* EXPORT BUTTON */}
         <button 
           onClick={handleExportReport}
@@ -202,80 +228,74 @@ const fetchMilestones = async (projectId) => {
       </div>
 
       {/* KPI CARDS BLOCK */}
-   {isSuperAdmin && stats ? (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div className="bg-[#1a1c26] p-6 rounded-xl border border-white/5">
-      <h3 className="text-[#84889c] uppercase text-xs">Total Organizations</h3>
-      <div className="text-3xl font-bold text-white mt-2">{stats.totalOrgs || 0}</div>
-    </div>
-  </div>
-) : isSuperAdmin ? (
-  <div className="text-white">Loading stats...</div>
-) : (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-     {/* Normal user view */}
-  </div>
-)}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        
-        {/* REPLACED REVENUE WITH TEAM MEMBERS */}
-        <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">Total Team Members</h3>
-            <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
-              <Users size={16} />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{teamCount}</div>
-          <div className="flex items-center gap-1 text-xs font-medium text-[#7c7fff]">
-            <span>Active in workspace</span>
+      {isSuperAdmin && stats ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-[#1a1c26] p-6 rounded-xl border border-white/5">
+            <h3 className="text-[#84889c] uppercase text-xs">Total Organizations</h3>
+            <div className="text-3xl font-bold text-white mt-2">{stats.totalOrgs || 0}</div>
           </div>
         </div>
+      ) : isSuperAdmin ? (
+        <div className="text-white">Loading stats...</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">Total Team Members</h3>
+              <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
+                <Users size={16} />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{teamCount}</div>
+            <div className="flex items-center gap-1 text-xs font-medium text-[#7c7fff]">
+              <span>Active in workspace</span>
+            </div>
+          </div>
 
-        <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">Total Projects</h3>
-            <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
-              <Briefcase size={16} />
+          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">{isTeamMember ? "My Projects" : "Total Projects"}</h3>
+              <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
+                <Briefcase size={16} />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{projects.length}</div>
+            <div className="text-xs font-medium text-[#7c7fff]">
+              {activeProjectsCount} Active, {completedProjectsCount} Completed
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{projects.length}</div>
-          <div className="text-xs font-medium text-[#7c7fff]">
-            {activeProjectsCount} Active, {completedProjectsCount} Completed
-          </div>
-        </div>
 
-        <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">Pending Tasks</h3>
-            <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
-              <CheckSquare size={16} />
+          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">{isTeamMember ? "My Pending Tasks" : "Pending Tasks"}</h3>
+              <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
+                <CheckSquare size={16} />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{pendingTasks.length}</div>
+            <div className={`flex items-center gap-1 text-xs font-medium ${overdueTasksCount > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              {overdueTasksCount > 0 ? <AlertTriangle size={14} /> : <CheckCircle size={14} />}
+              <span>{overdueTasksCount > 0 ? `${overdueTasksCount} overdue` : 'On track'}</span>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{pendingTasks.length}</div>
-          <div className={`flex items-center gap-1 text-xs font-medium ${overdueTasksCount > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-            {overdueTasksCount > 0 ? <AlertTriangle size={14} /> : <CheckCircle size={14} />}
-            <span>{overdueTasksCount > 0 ? `${overdueTasksCount} overdue` : 'On track'}</span>
-          </div>
-        </div>
 
-        <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">Team Velocity</h3>
-            <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
-              <Activity size={16} />
+          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">{isTeamMember ? "My Task Velocity" : "Team Velocity"}</h3>
+              <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
+                <Activity size={16} />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{teamVelocity}%</div>
+            <div className="text-xs font-medium text-[#84889c]">
+              {teamVelocity >= 80 ? 'Optimal efficiency' : 'Needs attention'}
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{teamVelocity}%</div>
-          <div className="text-xs font-medium text-[#84889c]">
-            {teamVelocity >= 80 ? 'Optimal efficiency' : 'Needs attention'}
-          </div>
         </div>
-      </div>
+      )}
 
       {/* ANALYTICS CHARTS BLOCK */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        
         {/* Task Status Pie Chart */}
         <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 h-[320px] flex flex-col">
           <h2 className="text-base sm:text-lg font-bold text-white mb-4">Task Status Distribution</h2>
@@ -327,12 +347,14 @@ const fetchMilestones = async (projectId) => {
           </div>
         </div>
       </div>
+
       <div className="mt-8">
         <BurndownChartCard />
       </div>
-<div className="mt-8">
-   <MilestoneProgressCard />
-</div>
+      <div className="mt-8">
+         <MilestoneProgressCard />
+      </div>
+
       {/* MAIN CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
@@ -340,7 +362,7 @@ const fetchMilestones = async (projectId) => {
           {/* PROJECT PORTFOLIO BLOCK */}
           <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm flex flex-col overflow-hidden">
             <div className="p-4 sm:p-6 border-b border-white/5 flex justify-between items-center">
-              <h2 className="text-base sm:text-lg font-bold text-white">Recent Projects</h2>
+              <h2 className="text-base sm:text-lg font-bold text-white">{isTeamMember ? "My Active Projects" : "Recent Projects"}</h2>
             </div>
             <div className="p-0 overflow-x-auto w-full">
               <table className="w-full text-left border-collapse min-w-[500px]">
@@ -384,29 +406,31 @@ const fetchMilestones = async (projectId) => {
           </div>
 
           {/* DYNAMIC: TEAM WORKLOAD BLOCK */}
-          <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6">
-            <div className="flex justify-between items-start mb-6 sm:mb-8">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-white">Team Workload</h2>
-                <p className="text-[10px] sm:text-xs text-[#84889c] mt-1">Real-time task allocation across core teams.</p>
+          {!isTeamMember && ( // Team Members don't usually need to see entire department workload
+            <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6">
+              <div className="flex justify-between items-start mb-6 sm:mb-8">
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-white">Team Workload</h2>
+                  <p className="text-[10px] sm:text-xs text-[#84889c] mt-1">Real-time task allocation across core teams.</p>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-4 sm:gap-5">
-              {workloadData.map((dept) => (
-                <div key={dept.name} className="flex items-center gap-3 sm:gap-4">
-                  <span className="w-16 sm:w-20 text-xs sm:text-sm font-medium text-white truncate">{dept.name}</span>
-                  <div className="flex-1 h-5 sm:h-6 bg-[#121218] rounded-md overflow-hidden flex border border-white/5 relative">
-                    <div 
-                      className="bg-[#7c7fff] h-full flex items-center px-2 text-[9px] sm:text-[10px] font-bold text-[#121218] transition-all duration-500 ease-in-out" 
-                      style={{ width: `${dept.percent}%` }}
-                    >
-                      {dept.percent > 0 ? `${dept.percent}%` : ''}
+              <div className="flex flex-col gap-4 sm:gap-5">
+                {workloadData.map((dept) => (
+                  <div key={dept.name} className="flex items-center gap-3 sm:gap-4">
+                    <span className="w-16 sm:w-20 text-xs sm:text-sm font-medium text-white truncate">{dept.name}</span>
+                    <div className="flex-1 h-5 sm:h-6 bg-[#121218] rounded-md overflow-hidden flex border border-white/5 relative">
+                      <div 
+                        className="bg-[#7c7fff] h-full flex items-center px-2 text-[9px] sm:text-[10px] font-bold text-[#121218] transition-all duration-500 ease-in-out" 
+                        style={{ width: `${dept.percent}%` }}
+                      >
+                        {dept.percent > 0 ? `${dept.percent}%` : ''}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 sm:gap-6">
@@ -414,7 +438,7 @@ const fetchMilestones = async (projectId) => {
           {/* CRITICAL DEADLINES BLOCK */}
           <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <h2 className="text-base sm:text-lg font-bold text-white">Critical Deadlines</h2>
+              <h2 className="text-base sm:text-lg font-bold text-white">{isTeamMember ? "My Critical Deadlines" : "Critical Deadlines"}</h2>
               <div className="w-6 h-6 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center"><AlertCircle size={14} /></div>
             </div>
             <div className="flex flex-col gap-3 sm:gap-4">
@@ -447,9 +471,9 @@ const fetchMilestones = async (projectId) => {
             </div>
           </div>
 
-          {/* REPLACED "SYSTEM HEALTH" WITH "WORKSPACE HEALTH" */}
+          {/* WORKSPACE/PERSONAL HEALTH */}
           <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 relative overflow-hidden">
-            <h2 className="text-base sm:text-lg font-bold text-white mb-1 relative z-10">Workspace Health</h2>
+            <h2 className="text-base sm:text-lg font-bold text-white mb-1 relative z-10">{isTeamMember ? "Personal Health Score" : "Workspace Health"}</h2>
             <p className="text-[10px] sm:text-xs text-[#84889c] mb-4 sm:mb-6 relative z-10">Based on on-time task completion</p>
             <div className="flex items-end justify-between relative z-10">
               <div>
