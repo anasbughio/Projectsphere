@@ -29,7 +29,7 @@ const activityRoutes = require('./routes/activityRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const stripeRoutes = require('./routes/stripeRoutes');
-const { stripeWebhook } = require('./controllers/stripeController'); 
+const { stripeWebhook ,cancelSubscription} = require('./controllers/stripeController'); 
 require('./config/passport');
 
 const app = express();
@@ -51,6 +51,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet({
   crossOriginResourcePolicy: false, // here give permission to load images to vercel
 }));
+
 
 app.use(passport.initialize());
 

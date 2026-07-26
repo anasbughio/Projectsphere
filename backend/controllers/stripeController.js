@@ -42,9 +42,9 @@ exports.createCheckoutSession = async (req, res) => {
   }
 };
 
-// 2. Webhook to automatically upgrade users upon successful payment
+// 2. Webhook to automatically upgrade/downgrade users
 exports.stripeWebhook = async (req, res) => {
-    console.log("🔥 [WEBHOOK] ROUTE HIT! Request aayi hai...");
+  console.log("🔥 [WEBHOOK] ROUTE HIT! Request received...");
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -57,28 +57,29 @@ exports.stripeWebhook = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle successful checkout
-if (event.type === 'checkout.session.completed') {
-    console.log("🎯 [WEBHOOK] Checkout Completed! Database update shuru ho raha hai...");
+  // Handle successful checkout (UPGRADE)
+  if (event.type === 'checkout.session.completed') {
+    console.log("🎯 [WEBHOOK] Checkout Completed! Database update starting...");
     const session = event.data.object;
     const organizationId = session.client_reference_id;
     const customerId = session.customer;
     const subscriptionId = session.subscription;
-    console.log("👉 Organization ID recieved:", organizationId);
+    console.log("👉 Organization ID received:", organizationId);
 
     try {
       const organization = await Organization.findById(organizationId);
       
       if (organization) {
-        // Stripe se line items fetch karein taake exact price ID pata chal jaye
+        // Fetch line items to get exact price ID
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
         const priceId = lineItems.data[0]?.price?.id;
-console.log("👉 Price ID received:", priceId);
+        console.log("👉 Price ID received:", priceId);
+        
         let newPlan = 'free';
         let newMaxUsers = 5;
         let newMaxProjects = 3;
 
-        // Match with your environment variables or direct Price IDs
+        // Match with your environment variables
         if (priceId === process.env.STRIPE_PRO_PRICE_ID) { 
           newPlan = 'pro';
           newMaxUsers = 25;
@@ -97,16 +98,65 @@ console.log("👉 Price ID received:", priceId);
         organization.stripeSubscriptionId = subscriptionId;
         
         await organization.save();
-        console.log(`Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook.`);
-      }else {
+        console.log(`✅ Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook.`);
+      } else {
         console.error("❌ [WEBHOOK ERROR] Organization not found in DB for ID:", organizationId);
       }
     } catch (dbError) {
       console.error('Error updating organization after payment:', dbError);
     }
-  }else {
-    console.log(`⚠️ [WEBHOOK] Ignored Event: ${event.type} (Hum sirf checkout.session.completed ka wait kar rahe hain)`);
+  } 
+  
+  // 👉 NEW: Handle subscription cancellation or expiration (DOWNGRADE)
+  else if (event.type === 'customer.subscription.deleted') {
+    console.log("⚠️ [WEBHOOK] Subscription Deleted/Expired! Downgrading to Free...");
+    const subscription = event.data.object;
+    const customerId = subscription.customer;
+
+    try {
+      // Find the organization by the Stripe Customer ID
+      const organization = await Organization.findOne({ stripeCustomerId: customerId });
+
+      if (organization) {
+        // Downgrade limits back to Free Plan
+        organization.subscriptionPlan = 'free';
+        organization.maxUsers = 5;
+        organization.maxProjects = 3;
+        organization.stripeSubscriptionId = null; // Clear active subscription ID
+
+        await organization.save();
+        console.log(`📉 [WEBHOOK] Organization ${organization.name} downgraded to FREE successfully.`);
+      } else {
+        console.error("❌ [WEBHOOK ERROR] Organization not found for customer ID:", customerId);
+      }
+    } catch (dbError) {
+      console.error('Error downgrading organization:', dbError);
+    }
+  } 
+  
+  else {
+    console.log(`ℹ️ [WEBHOOK] Ignored Event: ${event.type}`);
   }
+
   // Return a 200 response to acknowledge receipt of the event
   res.json({ received: true });
+};
+
+// 3. Cancel Active Subscription
+exports.cancelSubscription = async (req, res) => {
+  try {
+    const organizationId = req.user.organizationId;
+    const organization = await Organization.findById(organizationId);
+
+    if (!organization || !organization.stripeSubscriptionId) {
+      return res.status(400).json({ message: "No active premium subscription found." });
+    }
+
+    
+    await stripe.subscriptions.cancel(organization.stripeSubscriptionId);    
+    res.status(200).json({ message: "Subscription cancelled successfully. You are now on the Free plan." });
+  } catch (error) {
+    console.error("Error cancelling subscription:", error);
+    res.status(500).json({ message: "Failed to cancel subscription. Please try again." });
+  }
 };
