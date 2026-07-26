@@ -159,4 +159,47 @@ exports.cancelSubscription = async (req, res) => {
     console.error("Error cancelling subscription:", error);
     res.status(500).json({ message: "Failed to cancel subscription. Please try again." });
   }
+};// 3. Cancel Active Subscription (Bulletproof Version)
+exports.cancelSubscription = async (req, res) => {
+  try {
+    const organizationId = req.user.organizationId;
+    const organization = await Organization.findById(organizationId);
+
+    if (!organization || !organization.stripeSubscriptionId) {
+      return res.status(400).json({ message: "No active premium subscription found in Database." });
+    }
+
+    console.log(`Attempting to cancel Stripe Subscription ID: ${organization.stripeSubscriptionId}`);
+
+    try {
+      // Attempt to cancel in Stripe
+      await stripe.subscriptions.cancel(organization.stripeSubscriptionId);
+      console.log("✅ Successfully cancelled in Stripe.");
+    } catch (stripeErr) {
+      console.error("⚠️ Stripe API Error during cancellation:", stripeErr.message);
+      
+      // Agar Stripe kahe ke subscription pehle hi delete ho chuki hai ya nahi mili (Test Mode issue)
+      // Toh hum code ko crash nahi hone denge, balke DB update kar denge.
+      if (stripeErr.code === 'resource_missing' || stripeErr.message.includes('No such subscription')) {
+         console.log("ℹ️ Subscription already missing in Stripe. Forcing local DB downgrade to free up the user.");
+      } else {
+         // Agar koi aur masla (like network issue) hai, toh error throw karein
+         throw stripeErr; 
+      }
+    }
+
+    // Force DB downgrade immediately
+    organization.subscriptionPlan = 'free';
+    organization.maxUsers = 5;
+    organization.maxProjects = 3;
+    organization.stripeSubscriptionId = null; // Clear the ghost ID
+    
+    await organization.save();
+
+    res.status(200).json({ message: "Subscription cancelled successfully. You are now on the Free plan." });
+  } catch (error) {
+    console.error("Error cancelling subscription:", error);
+    // Error message frontend par bhejain taake user ko exact masla nazar aaye
+    res.status(500).json({ message: `Failed to cancel: ${error.message}` });
+  }
 };

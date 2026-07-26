@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { Check, Zap, Shield, Loader2, AlertTriangle } from 'lucide-react';
+import toast from 'react-hot-toast'; // Imported toast for sleek notifications
 
 const Billing = () => {
   const [loadingPlan, setLoadingPlan] = useState(null);
@@ -14,16 +15,17 @@ const Billing = () => {
   useEffect(() => {
     const fetchPlanFromDB = async () => {
       try {
-        // 👇 APNI API KA NAAM YAHAN THEEK KAREIN AGAR '/auth/me' NAHI HAI
+        // 👇 Adjust your API endpoint here if it's not '/auth/me'
         const response = await api.get('/auth/me'); 
         
-        // Mongoose mein populate hone ke baad data aksar organizationId mein hota hai
+        // After Mongoose population, organization data is usually inside organizationId
         const orgData = response.data.organizationId || response.data.organization;
         const livePlan = orgData?.subscriptionPlan || 'free';
         
         setCurrentPlan(livePlan);
       } catch (error) {
         console.error("Error fetching live plan from DB:", error);
+        toast.error("Failed to load subscription details.");
       } finally {
         setIsCheckingDB(false);
       }
@@ -45,13 +47,14 @@ const Billing = () => {
       }
     } catch (error) {
       console.error('Checkout failed', error);
-      alert('Failed to initiate checkout. Please try again.');
+      toast.error('Failed to initiate checkout. Please try again.');
     } finally {
       setLoadingPlan(null);
     }
   };
 
   const handleCancelSubscription = async () => {
+    // Keeping window.confirm as it natively pauses execution to grab user attention for critical actions
     if (!window.confirm("⚠️ Are you sure you want to cancel? Your workspace will be downgraded to the Free Plan immediately, and excess users/projects will be locked.")) {
       return;
     }
@@ -59,12 +62,15 @@ const Billing = () => {
     setIsCancelling(true);
     try {
       const response = await api.post('/stripe/cancel-subscription');
-      alert(response.data.message);
+      toast.success(response.data.message || "Subscription cancelled successfully.");
       
-      // Cancel hone ke baad automatically page reload hoga aur naya (Free) data DB se aa jayega
-      window.location.reload(); 
+      // Automatically reload the page after cancellation to fetch the updated (Free) data from the DB
+      setTimeout(() => {
+        window.location.reload(); 
+      }, 1500); // Slight delay so the user can read the success toast before reloading
+      
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to cancel subscription.");
+      toast.error(err.response?.data?.message || "Failed to cancel subscription.");
     } finally {
       setIsCancelling(false);
     }
