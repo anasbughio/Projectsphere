@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { registerOrg, login, refreshToken, logout, verifyEmail, forgotPassword,
-   resetPassword ,uploadProfilePicture,updateProfile,updatePassword,getAllUsersForSuperAdmin,getTeamMembers,deleteMember} = require('../controllers/authController');
+   resetPassword ,uploadProfilePicture,updateProfile,updatePassword,getAllUsersForSuperAdmin,getTeamMembers,deleteMember,getMe} = require('../controllers/authController');
 const generateToken = require('../utils/generateToken');
 const passport = require('passport');
 const { protect,authorizeRoles } = require('../middlewares/authMiddleware');
@@ -53,6 +53,6 @@ router.post('/profile-picture', protect, upload.single('profileImage'), uploadPr
 router.put('/profile', protect, updateProfile);
 router.put('/update-password', protect, updatePassword);
 router.get('/all-platform-users', protect, authorizeRoles('Super Admin'), getAllUsersForSuperAdmin);
-
+router.get('/me', protect,getMe);
 
 module.exports = router;
