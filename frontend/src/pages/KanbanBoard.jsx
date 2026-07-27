@@ -171,8 +171,7 @@ const KanbanBoard = () => {
       toast.push('You do not have permission to edit this task.', { type: 'error' });
       return;
     }
-    
-    setIsSaving(true);
+     setIsSaving(true);
 
     try {
       const payload = {
@@ -198,6 +197,43 @@ const KanbanBoard = () => {
     }
   };
 
+  const exportToCSV = () => {
+    if (tasks.length === 0) {
+      toast.error("No tasks to export!", { type: 'error' });
+      return;
+    }
+
+    // 1. Define Headers
+    const headers = ['Task Title', 'Description', 'Status', 'Priority', 'Department', 'Assignee', 'Due Date'];
+
+    // 2. Map data to rows
+    const csvRows = tasks.map(task => {
+      return [
+        `"${task.title?.replace(/"/g, '""') || ''}"`,
+        `"${task.description?.replace(/"/g, '""') || ''}"`,
+        `"${task.status || ''}"`,
+        `"${task.priority || ''}"`,
+        `"${task.department || ''}"`,
+        `"${task.assignedTo?.name || 'Unassigned'}"`,
+        `"${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}"`
+      ].join(',');
+    });
+
+    // 3. Combine and trigger download
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ProjectSphere_Tasks_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Tasks exported to Excel successfully!", { type: 'success' });
+  };
   const handleDeleteTask = async (taskId) => {
     const taskToDelete = tasks.find((task) => task._id === taskId);
     if (!taskToDelete) return;
@@ -281,6 +317,12 @@ const KanbanBoard = () => {
         </div>
         
         <div className="flex items-center flex-wrap gap-2 sm:gap-4"> 
+          <button 
+            onClick={exportToCSV} 
+            className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-emerald-400 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
+          >
+            📥 Export CSV
+          </button>
           <button 
             onClick={openCreateModal} 
             className="flex items-center gap-1.5 sm:gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition shadow-lg shadow-[#7c7fff]/20"
