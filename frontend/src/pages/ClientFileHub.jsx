@@ -8,7 +8,7 @@ const ClientFileHub = () => {
 
   const fetchClientFiles = async () => {
     try {
-      // Backend par hum iski API banayenge jo sirf 'Approved' tasks ki files layegi
+      
       const res = await api.get('/tasks/client/hub-files'); 
       setFiles(res.data);
     } catch (error) {
