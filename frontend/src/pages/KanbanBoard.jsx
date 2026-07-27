@@ -108,6 +108,7 @@ const KanbanBoard = () => {
       }
     };
 
+
     const handleDeleted = (deletedTaskId) => {
       setTasks((prev) => prev.filter(t => t._id !== deletedTaskId));
     };
@@ -171,8 +172,7 @@ const KanbanBoard = () => {
       toast.push('You do not have permission to edit this task.', { type: 'error' });
       return;
     }
-    
-    setIsSaving(true);
+     setIsSaving(true);
 
     try {
       const payload = {
@@ -198,6 +198,57 @@ const KanbanBoard = () => {
     }
   };
 
+    const handleDuplicateTask = (task) => {
+    setEditingTask(null); // Treat this as a brand new task, not an edit!
+    setTitle(`${task.title} (Copy)`); // Append (Copy) to avoid confusion
+    setDescription(task.description || '');
+    setStatus(task.status || columns[0]);
+    setPriority(task.priority || 'Medium');
+    setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+    setDepartment(task.department || 'General');
+    setAssignedTo(task.assignedTo?._id || '');
+    setIsClientDeliverable(task.isClientDeliverable || false);
+    setDependsOn(task.dependsOn?._id || task.dependsOn || '');
+    
+    setIsModalOpen(true); // Pop the modal open!
+  };
+  const exportToCSV = () => {
+    if (tasks.length === 0) {
+      toast.error("No tasks to export!", { type: 'error' });
+      return;
+    }
+
+    // 1. Define Headers
+    const headers = ['Task Title', 'Description', 'Status', 'Priority', 'Department', 'Assignee', 'Due Date'];
+
+    // 2. Map data to rows
+    const csvRows = tasks.map(task => {
+      return [
+        `"${task.title?.replace(/"/g, '""') || ''}"`,
+        `"${task.description?.replace(/"/g, '""') || ''}"`,
+        `"${task.status || ''}"`,
+        `"${task.priority || ''}"`,
+        `"${task.department || ''}"`,
+        `"${task.assignedTo?.name || 'Unassigned'}"`,
+        `"${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}"`
+      ].join(',');
+    });
+
+    // 3. Combine and trigger download
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ProjectSphere_Tasks_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Tasks exported to Excel successfully!", { type: 'success' });
+  };
   const handleDeleteTask = async (taskId) => {
     const taskToDelete = tasks.find((task) => task._id === taskId);
     if (!taskToDelete) return;
@@ -243,7 +294,7 @@ const KanbanBoard = () => {
         return; 
       }
     }
-    // 🔥 🚨 NAYI LOCK LOGIC END 🚨 🔥
+    
 
     const previousTasks = [...tasks];
     setTasks(tasks.map(task => task._id === taskId ? { ...task, status: newStatus } : task));
@@ -281,6 +332,12 @@ const KanbanBoard = () => {
         </div>
         
         <div className="flex items-center flex-wrap gap-2 sm:gap-4"> 
+          <button 
+            onClick={exportToCSV} 
+            className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-emerald-400 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
+          >
+            📥 Export CSV
+          </button>
           <button 
             onClick={openCreateModal} 
             className="flex items-center gap-1.5 sm:gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition shadow-lg shadow-[#7c7fff]/20"
@@ -363,6 +420,7 @@ const KanbanBoard = () => {
                 onDragStart={handleDragStart} 
                 onEdit={openEditModal} 
                 onDelete={handleDeleteTask} 
+                onDuplicate={handleDuplicateTask}
                 canModifyTask={canModifyTask} 
                 canManageBoard={canManageBoard}
                 onClick={() => setSelectedTask(task)} 
@@ -560,7 +618,7 @@ const KanbanBoard = () => {
   );
 };
 
-const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManageBoard, onClick ,isBlocked}) => { 
+const TaskCard = ({ task, onDragStart, onEdit, onDelete,onDuplicate, canModifyTask, canManageBoard, onClick ,isBlocked}) => { 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
   const canInteract = canManageBoard || canModifyTask(task);
 
@@ -575,6 +633,9 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, canModifyTask, canManag
         <div className="flex gap-1.5 sm:gap-2">
           {(canManageBoard || canModifyTask(task)) && (
             <>
+            <button onClick={(e) => { e.stopPropagation(); onDuplicate(task); }} className="p-1 rounded text-[#606479] hover:text-emerald-400 transition" title="Duplicate task">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-[16px] sm:h-[16px]"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              </button>
               <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
                 <Edit3 size={14} className="sm:w-[16px] sm:h-[16px]" />
               </button>
