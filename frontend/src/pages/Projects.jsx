@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, FolderKanban, Calendar, Loader2, Trash2, Edit2 } from 'lucide-react';
+import { Plus, FolderKanban, Calendar, Loader2, Trash2, Edit2, Search, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import UpgradeModal from '../components/UpgradeModal';
@@ -21,6 +21,10 @@ const Projects = () => {
   const [status, setStatus] = useState('Active'); 
   const [clients, setClients] = useState([]);
   const [clientId, setClientId] = useState('');
+
+  // Search and Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const normalizeRole = (role) => {
     if (!role) return '';
@@ -53,17 +57,11 @@ const Projects = () => {
 
    const fetchClients = async () => {
     try {
-    
       const res = await api.get('/team'); 
-      
-      // Data structure ko safely handle karein
       const usersList = Array.isArray(res.data) ? res.data : (res.data.data || res.data.users || []);
-      
-      // Case-insensitive filtering 
       const clientUsers = usersList.filter(u => 
         u.role && u.role.toString().trim().toLowerCase() === 'client'
       );
-      
       setClients(clientUsers);
     } catch (err) {
       console.error("Failed to load clients:", err);
@@ -78,7 +76,7 @@ const Projects = () => {
     setEditingProject(null);
     setName('');
     setDescription('');
-    setStatus('Active'); // Reset status on close
+    setStatus('Active'); 
   };
 
   const handleEditClick = (e, project) => {
@@ -86,7 +84,7 @@ const Projects = () => {
     setEditingProject(project);
     setName(project.name);
     setDescription(project.description || '');
-    setStatus(project.status || 'Active'); // Edit karte waqt current status set karein
+    setStatus(project.status || 'Active'); 
     setIsModalOpen(true);
   };
 
@@ -95,30 +93,22 @@ const Projects = () => {
     setIsSubmitting(true);
     try {
       if (editingProject) {
-        // add payload in update project
-        const response = await api.put(`/projects/${editingProject._id}`, { name, description, status,client: clientId || null });
+        const response = await api.put(`/projects/${editingProject._id}`, { name, description, status, client: clientId || null });
         setProjects((prevProjects) => 
           prevProjects.map((p) => p._id === editingProject._id ? response.data : p)
         );
       } else {
-        // add payload in create project
-        const payload = { 
-  name, 
-  description, 
-  status, 
-  client: clientId || null // Agar khali hai toh null bhej dein
-      };
-const response = await api.post('/projects', payload);
+        const payload = { name, description, status, client: clientId || null };
+        const response = await api.post('/projects', payload);
         setProjects((prevProjects) => [response.data, ...prevProjects]);
       }
       handleCloseModal();
     } catch (err) {
       if (err.response && err.response.status === 403 && err.response.data.code === 'LIMIT_REACHED') {
-        handleCloseModal(); // Close the "Create Project" form
-        setLimitType(err.response.data.type || 'projects'); // Pass 'projects' to the modal
-        setShowUpgradeModal(true); // Open the beautiful Upgrade Modal
+        handleCloseModal(); 
+        setLimitType(err.response.data.type || 'projects'); 
+        setShowUpgradeModal(true); 
       } else {
-        // Fallback for normal errors
         alert(err.response?.data?.message || 'Failed to save project');
       }
     } finally {
@@ -128,7 +118,6 @@ const response = await api.post('/projects', payload);
 
   const handleDeleteProject = async (projectId) => {
     if (!window.confirm('Are you sure you want to delete this project?')) return;
-
     try {
       await api.delete(`/projects/${projectId}`);
       setProjects((prevProjects) => prevProjects.filter((project) => project._id !== projectId));
@@ -136,6 +125,22 @@ const response = await api.post('/projects', payload);
       alert(err.response?.data?.message || 'Failed to delete project');
     }
   };
+
+  // Copy Project Link Handler
+  const handleCopyLink = (e, projectId) => {
+    e.stopPropagation();
+    const projectUrl = `${window.location.origin}/projects/${projectId}`;
+    navigator.clipboard.writeText(projectUrl);
+    alert("Project link copied to clipboard!");
+  };
+
+  // FILTER LOGIC
+  const filteredProjects = projects.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="min-h-full flex flex-col font-sans px-4 sm:px-6 lg:px-8 py-6 w-full max-w-full box-border overflow-x-hidden">
@@ -184,59 +189,97 @@ const response = await api.post('/projects', payload);
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {projects.map((project) => (
-            <div 
-              key={project._id} 
-              className="bg-[#1a1c26] border border-white/5 rounded-xl p-4 sm:p-5 hover:border-white/10 transition-all group cursor-pointer flex flex-col h-full min-w-0 shadow-sm"
-              onClick={() => navigate(`/projects/${project._id}`)}
+        <>
+          {/* Search & Filter Bar */}
+          <div className="bg-[#121218] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-4 items-center shadow-sm">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search projects..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                className="w-full bg-[#1a1c26] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-white focus:border-[#7c7fff] focus:outline-none transition" 
+              />
+            </div>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)} 
+              className="w-full md:w-auto bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 text-sm focus:border-[#7c7fff] focus:outline-none cursor-pointer"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#7c7fff]/10 flex items-center justify-center text-[#7c7fff] shrink-0">
-                  <FolderKanban size={20} />
-                </div>
-                {canEditProject && (
+              <option value="All">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Planning">Planning</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          {/* Grid Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {filteredProjects.map((project) => (
+              <div 
+                key={project._id} 
+                className="bg-[#1a1c26] border border-white/5 rounded-xl p-4 sm:p-5 hover:border-white/10 transition-all group cursor-pointer flex flex-col h-full min-w-0 shadow-sm"
+                onClick={() => navigate(`/projects/${project._id}`)}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#7c7fff]/10 flex items-center justify-center text-[#7c7fff] shrink-0">
+                    <FolderKanban size={20} />
+                  </div>
+                  
                   <div className="flex items-center gap-2 sm:gap-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={(e) => handleEditClick(e, project)}
-                      className="text-[#606479] hover:text-[#7c7fff] transition p-1 sm:p-0"
-                      title="Edit project"
+                      onClick={(e) => handleCopyLink(e, project._id)}
+                      className="text-[#606479] hover:text-emerald-400 transition p-1 sm:p-0"
+                      title="Copy Link to Clipboard"
                     >
-                      <Edit2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                      <Copy size={16} className="sm:w-[18px] sm:h-[18px]" />
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteProject(project._id);
-                      }}
-                      className="text-[#606479] hover:text-red-400 transition p-1 sm:p-0"
-                      title="Delete project"
-                    >
-                      <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
-                    </button>
+                    
+                    {canEditProject && (
+                      <>
+                        <button
+                          onClick={(e) => handleEditClick(e, project)}
+                          className="text-[#606479] hover:text-[#7c7fff] transition p-1 sm:p-0"
+                          title="Edit project"
+                        >
+                          <Edit2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProject(project._id);
+                          }}
+                          className="text-[#606479] hover:text-red-400 transition p-1 sm:p-0"
+                          title="Delete project"
+                        >
+                          <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                        </button>
+                      </>
+                    )}
                   </div>
-                )}
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-white mb-2 truncate" title={project.name}>{project.name}</h3>
-              <p className="text-[#84889c] text-xs sm:text-sm mb-6 line-clamp-2 min-h-[32px] sm:min-h-[40px] flex-1">
-                {project.description || 'No description provided.'}
-              </p>
-              <div className="flex justify-between items-center pt-4 border-t border-white/5 mt-auto">
-                <span className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                  project.status === 'Active' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' :
-                  project.status === 'Completed' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' :
-                  'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                }`}>
-                  {project.status || 'Active'}
-                </span>
-                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#606479]">
-                  <Calendar size={12} className="sm:w-3.5 sm:h-3.5" />
-                  <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-white mb-2 truncate" title={project.name}>{project.name}</h3>
+                <p className="text-[#84889c] text-xs sm:text-sm mb-6 line-clamp-2 min-h-[32px] sm:min-h-[40px] flex-1">
+                  {project.description || 'No description provided.'}
+                </p>
+                <div className="flex justify-between items-center pt-4 border-t border-white/5 mt-auto">
+                  <span className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                    project.status === 'Active' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' :
+                    project.status === 'Completed' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' :
+                    'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                  }`}>
+                    {project.status || 'Active'}
+                  </span>
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#606479]">
+                    <Calendar size={12} className="sm:w-3.5 sm:h-3.5" />
+                    <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Create/Edit Project Modal */}
@@ -269,7 +312,6 @@ const response = await api.post('/projects', payload);
                   />
                 </div>
                 
-                {/* Status Dropdown added here */}
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Status</label>
                   <select
@@ -284,20 +326,20 @@ const response = await api.post('/projects', payload);
                 </div>
 
                 <div>
-  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Assign Client (Optional)</label>
-  <select
-    value={clientId}
-    onChange={(e) => setClientId(e.target.value)}
-    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
-  >
-    <option value="">No Client (Internal Project)</option>
-    {clients.map(client => (
-      <option key={client._id} value={client._id}>
-        {client.name} ({client.email})
-      </option>
-    ))}
-  </select>
-</div>
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Assign Client (Optional)</label>
+                  <select
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">No Client (Internal Project)</option>
+                    {clients.map(client => (
+                      <option key={client._id} value={client._id}>
+                        {client.name} ({client.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Description (Optional)</label>
@@ -339,13 +381,7 @@ const response = await api.post('/projects', payload);
         </div>
       )}
 
-      {/* Custom Scrollbar Styles for the Modal Textarea if needed */}
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-      `}} />
+      {/* Custom Scrollbar Styles */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -353,7 +389,7 @@ const response = await api.post('/projects', payload);
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
       `}} />
 
-      {/*  RENDER THE UPGRADE MODAL HERE */}
+      {/* RENDER THE UPGRADE MODAL HERE */}
       <UpgradeModal 
         isOpen={showUpgradeModal} 
         onClose={() => setShowUpgradeModal(false)} 

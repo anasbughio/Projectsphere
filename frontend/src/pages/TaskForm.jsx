@@ -5,7 +5,6 @@ import { io } from 'socket.io-client';
 import { useToast } from '../components/ToastProvider';
 import TaskDetailsModal from './TaskDetailsModal'; 
 import api from '../services/api';
-// 🔥 IMPORT ADD KIYA HAI
 import AddMilestoneModal from '../components/AddMilestoneModal'; 
 
 const TaskForm = () => {
@@ -25,6 +24,8 @@ const TaskForm = () => {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [projects, setProjects] = useState([]);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [sortBy, setSortBy] = useState('Newest');
+  const [isCompact, setIsCompact] = useState(false);
   const [formData, setFormData] = useState({
     title: '', description: '', priority: 'Medium', department: 'General', status: 'To Do', dueDate: '', milestoneId: ''
   });
@@ -97,13 +98,30 @@ const TaskForm = () => {
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          task.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
-    const matchesDepartment = departmentFilter === 'All' || task.department === departmentFilter;
-    return matchesSearch && matchesPriority && matchesDepartment;
-  });
+  const filteredAndSortedTasks = tasks
+    .filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
+      const matchesDepartment = departmentFilter === 'All' || task.department === departmentFilter;
+      return matchesSearch && matchesPriority && matchesDepartment;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'Newest') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === 'Oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === 'Due Date') {
+        // Push tasks without due dates to the bottom
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      }
+      if (sortBy === 'Priority') {
+        // Assign weights to priorities to sort them correctly
+        const priorityWeight = { 'Urgent': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+        return (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
+      }
+      return 0;
+    });
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
@@ -200,6 +218,12 @@ const TaskForm = () => {
           <p className="text-sm text-gray-400">Manage and track cross-department tasks</p>
         </div>
         <button 
+            onClick={() => setIsCompact(!isCompact)}
+            className="bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition"
+          >
+            {isCompact ? 'Detailed View' : 'Compact View'}
+          </button>
+        <button 
           onClick={() => setShowMilestoneModal(true)}
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
         >
@@ -211,6 +235,7 @@ const TaskForm = () => {
         >
           {showForm ? 'Close Form' : '+ New Global Task'}
         </button>
+
       </div>
 
       {showForm && (
@@ -325,14 +350,102 @@ const TaskForm = () => {
       )}
 
       {/* FILTER BAR */}
-      <div className="bg-[#121218] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-4 items-center">
+      {/* ADVANCED FILTER BAR */}
+      <div className="bg-[#121218] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-3 items-center shadow-sm">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
-          <input type="text" placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#1a1c26] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-white focus:border-[#7c7fff] focus:outline-none transition" />
+          <input 
+            type="text" 
+            placeholder="Search global tasks..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+            className="w-full bg-[#1a1c26] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-white focus:border-[#7c7fff] focus:outline-none transition" 
+          />
         </div>
-        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="w-full md:w-auto bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 focus:border-[#7c7fff] focus:outline-none cursor-pointer"><option value="All">All Priorities</option><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Urgent">Urgent</option></select>
-      </div>
+        
+        {/* The Missing Department Filter */}
+        <select 
+          value={departmentFilter} 
+          onChange={(e) => setDepartmentFilter(e.target.value)} 
+          className="w-full md:w-auto bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 text-sm focus:border-[#7c7fff] focus:outline-none cursor-pointer"
+        >
+          <option value="All">All Departments</option>
+          <option value="General">General</option>
+          <option value="Frontend">Frontend</option>
+          <option value="Backend">Backend</option>
+          <option value="Design">Design</option>
+          <option value="DevOps">DevOps</option>
+        </select>
 
+        {/* Priority Filter */}
+        <select 
+          value={priorityFilter} 
+          onChange={(e) => setPriorityFilter(e.target.value)} 
+          className="w-full md:w-auto bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 text-sm focus:border-[#7c7fff] focus:outline-none cursor-pointer"
+        >
+          <option value="All">All Priorities</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+
+        {/* Smart 'Clear Filters' Button - Only shows if a filter is active */}
+        {(searchQuery !== '' || priorityFilter !== 'All' || departmentFilter !== 'All') && (
+          <button 
+            onClick={() => { 
+              setSearchQuery(''); 
+              setPriorityFilter('All'); 
+              setDepartmentFilter('All'); 
+            }}
+            className="text-xs font-semibold text-red-400 hover:text-red-300 transition px-2 whitespace-nowrap"
+          >
+            Clear Filters
+          </button>
+        )}
+        {/* Priority Filter */}
+        <select 
+          value={priorityFilter} 
+          onChange={(e) => setPriorityFilter(e.target.value)} 
+          className="w-full md:w-auto bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 text-sm focus:border-[#7c7fff] focus:outline-none cursor-pointer"
+        >
+          <option value="All">All Priorities</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+
+        {/* NEW: Sort By Dropdown */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <span className="text-xs text-gray-500 uppercase font-semibold hidden lg:block">Sort:</span>
+          <select 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value)} 
+            className="w-full bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 text-sm focus:border-[#7c7fff] focus:outline-none cursor-pointer"
+          >
+            <option value="Newest">Newest First</option>
+            <option value="Oldest">Oldest First</option>
+            <option value="Priority">Highest Priority</option>
+            <option value="Due Date">Earliest Deadline</option>
+          </select>
+        </div>
+
+        {/* Smart 'Clear Filters' Button */}
+        {(searchQuery !== '' || priorityFilter !== 'All' || departmentFilter !== 'All' || sortBy !== 'Newest') && (
+          <button 
+            onClick={() => { 
+              setSearchQuery(''); 
+              setPriorityFilter('All'); 
+              setDepartmentFilter('All'); 
+              setSortBy('Newest');
+            }}
+            className="text-xs font-semibold text-red-400 hover:text-red-300 transition px-2 whitespace-nowrap"
+          >
+            Reset
+          </button>
+        )}
+      </div>
       {loading ? (
         <div className="flex justify-center items-center h-64">
            <Loader2 className="animate-spin text-[#7c7fff]" size={40} />
@@ -340,7 +453,8 @@ const TaskForm = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {columns.map(colStatus => {
-            const colTasks = filteredTasks.filter(t => t.status === colStatus);
+            // ✅ BUG FIX: Changed filteredTasks to filteredAndSortedTasks
+            const colTasks = filteredAndSortedTasks.filter(t => t.status === colStatus);
             return (
               <div key={colStatus} className="bg-[#121218] rounded-xl p-4 border border-white/5 min-h-[500px] flex flex-col" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, colStatus)}>
                 <h2 className="text-gray-400 font-semibold mb-4 border-b border-white/5 pb-3 flex justify-between items-center">
@@ -363,17 +477,23 @@ const TaskForm = () => {
                           draggable 
                           onDragStart={(e) => handleDragStart(e, task._id)} 
                           onClick={() => setSelectedTask(task)} 
-                          className={`bg-[#1a1c26] p-4 rounded-xl border transition cursor-pointer hover:shadow-lg relative group ${taskOverdue ? 'border-red-500/30 hover:border-red-500/60 shadow-red-500/5' : 'border-white/5 hover:border-[#7c7fff]/50 shadow-[#7c7fff]/10'}`}
+                          // ✅ FEATURE: Dynamic padding based on isCompact
+                          className={`bg-[#1a1c26] ${isCompact ? 'p-2.5' : 'p-4'} rounded-xl border transition cursor-pointer hover:shadow-lg relative group ${taskOverdue ? 'border-red-500/30 hover:border-red-500/60 shadow-red-500/5' : 'border-white/5 hover:border-[#7c7fff]/50 shadow-[#7c7fff]/10'}`}
                         >
                           <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition z-10">
                             <button onClick={(e) => handleEditClick(e, task)} className="p-1.5 bg-[#222533] rounded hover:text-blue-400 transition hover:bg-[#2a2d3e]" title="Edit Task"><Edit2 size={14} /></button>
                             <button onClick={(e) => handleDelete(e, task._id)} className="p-1.5 bg-[#222533] rounded hover:text-red-500 transition hover:bg-[#2a2d3e]" title="Delete Task"><Trash2 size={14} /></button>
                           </div>
                           
-                          <h3 className={`font-semibold text-sm mb-1 pr-16 transition-colors ${taskOverdue ? 'text-red-100 group-hover:text-red-400' : 'text-white group-hover:text-[#7c7fff]'}`}>{task.title}</h3>
-                          <p className="text-xs text-gray-400 mb-4 line-clamp-2">{task.description}</p>
+                          {/* ✅ FEATURE: Dynamic text sizing */}
+                          <h3 className={`font-semibold ${isCompact ? 'text-xs' : 'text-sm mb-1'} pr-16 transition-colors ${taskOverdue ? 'text-red-100 group-hover:text-red-400' : 'text-white group-hover:text-[#7c7fff]'}`}>{task.title}</h3>
                           
-                          <div className="flex justify-between items-center text-[10px] pt-3 border-t border-white/5">
+                          {/* ✅ FEATURE: Hide description if in Compact Mode */}
+                          {!isCompact && (
+                            <p className="text-xs text-gray-400 mb-4 line-clamp-2">{task.description}</p>
+                          )}
+                          
+                          <div className={`flex justify-between items-center text-[10px] ${isCompact ? 'mt-2' : 'pt-3 border-t border-white/5'}`}>
                             <span className={`px-2 py-1 rounded font-bold uppercase ${
                               task.priority === 'Urgent' ? 'text-red-400 bg-red-500/10' :
                               task.priority === 'High' ? 'text-orange-400 bg-orange-500/10' :
