@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Mail, Loader2, CheckCircle2, TrendingUp, ShieldCheck, Building2, Users, AlertCircle } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../components/ToastProvider'; // ✅ Import your custom toast
 
 const WorkspaceAnalytics = () => {
+  const toast = useToast(); // ✅ Initialize toast
+
   const [loading, setLoading] = useState(true);
   const [platformData, setPlatformData] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
-  const [emailSuccess, setEmailSuccess] = useState('');
 
   // Fetch platform-wide stats for Super Admin
   const fetchPlatformAnalytics = async () => {
@@ -28,12 +30,11 @@ const WorkspaceAnalytics = () => {
   // Handler to trigger the weekly email report for Super Admin
   const handleSendEmailReport = async () => {
     setSendingEmail(true);
-    setEmailSuccess('');
     try {
-      const response = await api.post('/reports/generate-weekly-report');
-      setEmailSuccess(response.data.message || 'Platform summary report sent successfully to your email!');
+    const response = await api.post('/reports/weekly');
+      toast.push(response.data.message || 'Platform summary report sent successfully to your email!', { type: 'success' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to send email report');
+      toast.push(err.response?.data?.message || 'Failed to send email report', { type: 'error' });
     } finally {
       setSendingEmail(false);
     }
@@ -78,13 +79,6 @@ const WorkspaceAnalytics = () => {
           </button>
         </div>
       </div>
-
-      {emailSuccess && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm flex items-center gap-2">
-          <CheckCircle2 size={18} />
-          {emailSuccess}
-        </div>
-      )}
 
       {/* Global Metrics Grid Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

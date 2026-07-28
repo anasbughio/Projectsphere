@@ -123,7 +123,8 @@ console.log("FRONTEND TEAM STATE:", team);
           <h2 className="text-2xl font-bold text-white mb-1">Team Workspace</h2>
           <p className="text-[#84889c] text-sm">Manage your team members and roles</p>
         </div>
-        {isAdminOrOrgAdmin && (
+        {/* 🔥 ADDED SUPER ADMIN CHECK HERE */}
+        {isAdminOrOrgAdmin && storedUser?.role?.toLowerCase() !== 'super admin' && (
           <button 
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg shadow-[#7c7fff]/20"
