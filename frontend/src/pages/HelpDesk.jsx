@@ -203,7 +203,7 @@ const openImageInNewTab = async (base64String) => {
           <p className="text-gray-400 text-sm mt-1">Manage client issues and requests</p>
         </div>
 
-        {view === 'list' && (
+        {view === 'list' && isClient && (
           <button onClick={() => setView('create')} className="bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 shadow-lg">
             <Plus size={18} /> New Ticket
           </button>
