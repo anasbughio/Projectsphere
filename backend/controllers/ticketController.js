@@ -5,10 +5,9 @@ exports.createTicket = async (req, res) => {
   try {
     const { title, description, priority } = req.body;
 
-    // Generate a unique Ticket ID based on the current count in the organization
-    // E.g., if there are 4 tickets, the new one will be TKT-1005
-    const ticketCount = await Ticket.countDocuments({ organizationId: req.user.organizationId });
-    const ticketId = `TKT-${1001 + ticketCount}`;
+    // Generate a truly unique random 6-digit number to prevent MongoDB duplicate key crashes
+    const uniqueNumber = Math.floor(100000 + Math.random() * 900000);
+    const ticketId = `TKT-${uniqueNumber}`;
 
     const newTicket = await Ticket.create({
       ticketId,
