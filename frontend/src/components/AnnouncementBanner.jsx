@@ -3,9 +3,10 @@ import api from '../services/api';
 import { Megaphone, X, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const AnnouncementBanner = () => {
-  // 1. Safely extract user role to determine if they are Client, Super Admin, or Tenant
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
-  const userRole = storedUser?.role?.toLowerCase() || '';
+  
+  // ✅ FIX 1: Added .trim() to guarantee no hidden spaces break the role check
+  const userRole = storedUser?.role?.toString().trim().toLowerCase() || '';
   
   const isSuperAdmin = userRole === 'super admin';
   const isClient = userRole === 'client';
@@ -42,16 +43,23 @@ const AnnouncementBanner = () => {
 
   if (isSuperAdmin) return null;
 
-  // ✅ FIX: The filtering logic now strictly enforces the Target Audience!
   const visibleAnnouncements = announcements.filter(a => {
     // Hide if the user already dismissed it
     if (hidden.includes(a._id)) return false;
 
-    // Audience Targeting Logic:
-    if (a.targetAudience === 'clients' && !isClient) return false; // Only clients see this
-    if (a.targetAudience === 'tenants' && isClient) return false;  // Clients cannot see tenant broadcasts
+    // Clean up the audience string just in case
+    const audience = a.targetAudience ? a.targetAudience.toString().trim().toLowerCase() : 'all';
 
-    return true; // 'all' audience, or passed the checks above
+    // ✅ FIX 2: Bulletproof, strict audience targeting
+    if (audience === 'clients') {
+      return isClient; // ONLY returns true if the user is a client
+    }
+    
+    if (audience === 'tenants') {
+      return !isClient; // ONLY returns true if the user is NOT a client
+    }
+
+    return true; // 'all' audience passes through for everyone
   });
 
   if (visibleAnnouncements.length === 0) return null;
