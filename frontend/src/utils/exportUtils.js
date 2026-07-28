@@ -1,20 +1,27 @@
-export const downloadCSV = (data, filename) => {
+export const downloadCSV = (data, filename, toast) => {
   if (!data || data.length === 0) {
-    alert("Export karne ke liye koi data nahi hai!");
+    // Check if toast is provided, otherwise fallback to alert just in case
+    if (toast && toast.push) {
+      toast.push("There is no data to export!", { type: 'error' });
+    } else {
+      alert("There is no data to export!");
+    }
     return;
   }
 
-  // 1. Headers nikalna (JSON ke keys)
+
   const headers = Object.keys(data[0]);
   
-  // 2. Data ko CSV format (comma separated) mein convert karna
+  // 2.Convert data in CSV format
   const csvRows = [];
-  csvRows.push(headers.join(',')); // Pehli line headers ki
+  csvRows.push(headers.join(',')); // first line for headers
   
   for (const row of data) {
     const values = headers.map(header => {
-      const val = row[header];
-      // Agar value string hai aur usme comma hai, toh usko quotes mein wrap karein
+      // Handle null and undefined values safely
+      const val = row[header] !== null && row[header] !== undefined ? row[header] : "";
+      
+
       const escaped = ('' + val).replace(/"/g, '""');
       return `"${escaped}"`;
     });
@@ -23,7 +30,6 @@ export const downloadCSV = (data, filename) => {
   
   const csvString = csvRows.join('\n');
   
-  // 3. Blob banakar file download karwana
   const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
@@ -35,4 +41,9 @@ export const downloadCSV = (data, filename) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+
+  // Optional: Show a success toast when download starts!
+  if (toast && toast.push) {
+    toast.push("Tasks exported to CSV successfully!", { type: 'success' });
+  }
 };

@@ -14,10 +14,12 @@ import { Link } from 'react-router-dom';
 import MilestoneProgressCard from '../components/MilestoneProgressCard';
 import BurndownChartCard from '../components/BurndownChartCard';
 import { downloadCSV } from '../utils/exportUtils';
+import { useToast } from '../components/ToastProvider'; // ✅ IMPORT ADDED HERE
 
 // ================= CUSTOM MOTION COMPONENTS =================
 
 const customEase = [0.16, 1, 0.3, 1];
+// ✅ REMOVED useToast FROM HERE
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -74,6 +76,8 @@ const SpotlightCard = ({ children, className }) => {
 // ================= MAIN DASHBOARD =================
 
 const Dashboard = () => {
+  const toast = useToast(); // ✅ HOOK MOVED INSIDE THE COMPONENT HERE
+
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
   
@@ -179,7 +183,7 @@ const Dashboard = () => {
       Created_Date: new Date(task.createdAt).toLocaleDateString(),
       Due_Date: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No Due Date',
     }));
-    downloadCSV(formattedData, `${isTeamMember ? 'My' : 'Workspace'}_Tasks_Report`);
+    downloadCSV(formattedData, `${isTeamMember ? 'My' : 'Workspace'}_Tasks_Report`, toast);
   };
 
   const activeProjectsCount = projects.filter(p => p.status === 'Active' || p.status === 'Planning').length;

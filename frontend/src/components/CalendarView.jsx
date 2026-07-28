@@ -8,17 +8,20 @@ import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import api from '../services/api';
 import { Loader2, Plus, X, Video } from 'lucide-react'; 
+import { useToast } from '../components/ToastProvider';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
 const CalendarView = () => {
+  const toast = useToast();
+
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Meeting Modal States (ClientId hata diya hai)
+  // Meeting Modal States (ClientId removed)
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
@@ -81,7 +84,7 @@ const CalendarView = () => {
     }
   };
 
-  // 🔥 Ab sirf Title, Date, Time, aur Project ID jayegi
+  // 🔥 Now only Title, Date, Time, and Project ID will be sent
   const handleCreateMeeting = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -93,10 +96,10 @@ const CalendarView = () => {
       setShowModal(false);
       setTitle(''); setDate(''); setTime(''); setMeetingLink('');
       
-      alert("Meeting Scheduled Successfully! Assigned client can now see it.");
+      toast.push("Meeting Scheduled Successfully! Assigned client can now see it.", { type: 'success' });
     } catch (error) {
       console.error("Error creating meeting:", error);
-      alert(error.response?.data?.message || "Failed to create meeting.");
+      toast.push(error.response?.data?.message || "Failed to create meeting.", { type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -169,7 +172,7 @@ const CalendarView = () => {
         />
       </div>
 
-      {/* Schedule Meeting Modal (Client Dropdown hata diya gaya hai) */}
+      {/* Schedule Meeting Modal (Client Dropdown removed) */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1a1c26] rounded-2xl border border-white/10 w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">

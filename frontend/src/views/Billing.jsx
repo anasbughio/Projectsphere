@@ -1,31 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Check, Zap, Shield, Loader2, AlertTriangle } from 'lucide-react';
-import toast from 'react-hot-toast'; // Imported toast for sleek notifications
+import { Check, Zap, Shield, Loader2, AlertTriangle, X } from 'lucide-react';
+import { useToast } from '../components/ToastProvider'; // ✅ Using your custom toast instead
 
 const Billing = () => {
+  const toast = useToast(); // ✅ Initialize your custom toast
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   
-  // 1. Fresh DB States
+  // ✅ NEW: State to control the custom confirmation modal
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  
   const [currentPlan, setCurrentPlan] = useState('free');
   const [isCheckingDB, setIsCheckingDB] = useState(true);
 
-  // 2. Fetch LIVE data from Database
   useEffect(() => {
     const fetchPlanFromDB = async () => {
       try {
-        // 👇 Adjust your API endpoint here if it's not '/auth/me'
         const response = await api.get('/auth/me'); 
         
-        // After Mongoose population, organization data is usually inside organizationId
         const orgData = response.data.organizationId || response.data.organization;
         const livePlan = orgData?.subscriptionPlan || 'free';
         
         setCurrentPlan(livePlan);
       } catch (error) {
         console.error("Error fetching live plan from DB:", error);
-        toast.error("Failed to load subscription details.");
+        toast.push("Failed to load subscription details.", { type: 'error' });
       } finally {
         setIsCheckingDB(false);
       }
@@ -47,36 +47,32 @@ const Billing = () => {
       }
     } catch (error) {
       console.error('Checkout failed', error);
-      toast.error('Failed to initiate checkout. Please try again.');
+      toast.push('Failed to initiate checkout. Please try again.', { type: 'error' });
     } finally {
       setLoadingPlan(null);
     }
   };
 
-  const handleCancelSubscription = async () => {
-    // Keeping window.confirm as it natively pauses execution to grab user attention for critical actions
-    if (!window.confirm("⚠️ Are you sure you want to cancel? Your workspace will be downgraded to the Free Plan immediately, and excess users/projects will be locked.")) {
-      return;
-    }
-
+  // ✅ NEW: The actual cancellation logic that runs when they click "Yes, Cancel" in the modal
+  const executeCancellation = async () => {
     setIsCancelling(true);
     try {
       const response = await api.post('/stripe/cancel-subscription');
-      toast.success(response.data.message || "Subscription cancelled successfully.");
+      toast.push(response.data.message || "Subscription cancelled successfully.", { type: 'success' });
+      setShowCancelModal(false); // Close the modal
       
-      // Automatically reload the page after cancellation to fetch the updated (Free) data from the DB
       setTimeout(() => {
         window.location.reload(); 
-      }, 1500); // Slight delay so the user can read the success toast before reloading
+      }, 1500); 
       
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to cancel subscription.");
+      toast.push(err.response?.data?.message || "Failed to cancel subscription.", { type: 'error' });
+      setShowCancelModal(false); // Close the modal even on error
     } finally {
       setIsCancelling(false);
     }
   };
 
-  // 3. Show Loader while hitting DB
   if (isCheckingDB) {
     return (
       <div className="flex justify-center items-center h-[70vh]">
@@ -89,7 +85,7 @@ const Billing = () => {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto">
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto relative">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Upgrade Your Workspace</h1>
         <p className="text-gray-400 max-w-xl mx-auto">
@@ -106,7 +102,7 @@ const Billing = () => {
           
           {isPremium && (
             <button
-              onClick={handleCancelSubscription}
+              onClick={() => setShowCancelModal(true)} // ✅ Opens the custom modal instead of an alert
               disabled={isCancelling}
               className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm"
             >
@@ -198,6 +194,45 @@ const Billing = () => {
         </div>
 
       </div>
+
+      {/* ✅ CUSTOM CONFIRMATION MODAL */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#2a2d3e] border border-white/10 p-6 rounded-2xl shadow-2xl max-w-md w-full flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center text-red-400">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={24} />
+                <span className="font-bold text-lg text-white">Confirm Cancellation</span>
+              </div>
+              <button onClick={() => setShowCancelModal(false)} className="text-[#84889c] hover:text-white transition">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-300 leading-relaxed bg-[#121218] p-4 rounded-xl border border-white/5">
+              Are you sure you want to cancel? Your workspace will be downgraded to the Free Plan immediately, and excess users/projects will be locked.
+            </p>
+            
+            <div className="flex justify-end gap-3 mt-2">
+              <button 
+                onClick={() => setShowCancelModal(false)}
+                className="px-5 py-2.5 text-sm font-semibold text-[#84889c] hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              >
+                Keep My Plan
+              </button>
+              <button 
+                onClick={executeCancellation}
+                disabled={isCancelling}
+                className="px-5 py-2.5 text-sm font-bold bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors shadow-lg shadow-red-500/20 flex items-center gap-2 disabled:opacity-50"
+              >
+                {isCancelling ? <Loader2 size={16} className="animate-spin" /> : null}
+                {isCancelling ? 'Cancelling...' : 'Yes, Cancel Plan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
