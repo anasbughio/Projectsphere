@@ -59,6 +59,17 @@ const TaskForm = () => {
   });
 
   const toast = useToast();
+  
+  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+  const currentUserId = storedUser?._id;
+
+  const normalizeRole = (role) => {
+    if (!role) return '';
+    const normalized = role.toString().trim().toLowerCase();
+    if (['admin', 'org admin', 'organization admin', 'project manager'].includes(normalized)) return 'admin';
+    return 'member';
+  };
+  const isTeamMember = normalizeRole(storedUser?.role) === 'member';
 
   useEffect(() => {
     api.get('/projects').then(res => setProjects(res.data));
@@ -126,6 +137,12 @@ const TaskForm = () => {
 
   const filteredAndSortedTasks = tasks
     .filter(task => {
+      if (isTeamMember) {
+        const assigneeId = task.assignedTo?._id || task.assignedTo;
+        if (assigneeId !== currentUserId) {
+          return false; // Hide task if it is not assigned to this team member
+        }
+      }
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
