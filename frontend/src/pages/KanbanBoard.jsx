@@ -60,16 +60,26 @@ const KanbanBoard = () => {
   };
   const toast = useToast();
 
-  const fetchBoardData = async () => {
+ const fetchBoardData = async () => {
     try {
       const [taskRes, teamRes] = await Promise.all([
         api.get(`/tasks/project/${projectId}`),
         api.get('/team')
       ]);
+      
       const normalizedTasks = taskRes.data.map((task) => {
-        const selectedMember = teamRes.data.find((member) => member._id === task.assignedTo);
-        return { ...task, assignedTo: selectedMember ? { _id: selectedMember._id, name: selectedMember.name } : null };
+        //  Safely extract the ID whether the backend populated it or not
+        const assigneeId = task.assignedTo?._id || task.assignedTo;
+        const selectedMember = teamRes.data.find((member) => member._id === assigneeId);
+        
+        return { 
+          ...task, 
+          assignedTo: selectedMember 
+            ? { _id: selectedMember._id, name: selectedMember.name } 
+            : task.assignedTo // Fallback to the original data instead of 'null'
+        };
       });
+      
       setTasks(normalizedTasks);
       setTeam(teamRes.data);
     } catch (error) { 
@@ -78,7 +88,6 @@ const KanbanBoard = () => {
       setLoading(false); 
     }
   };
-
   useEffect(() => {
     fetchBoardData();
   }, [projectId]);
