@@ -3,16 +3,22 @@ import api from '../services/api';
 import { Megaphone, X, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const AnnouncementBanner = () => {
+  // Extract the user's role to check if they are a Super Admin
+  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+  const isSuperAdmin = storedUser?.role?.toLowerCase() === 'super admin';
+
   const [announcements, setAnnouncements] = useState([]);
   
-  // ✅ FIX 1: Initialize the 'hidden' state from localStorage so it survives page refreshes
   const [hidden, setHidden] = useState(() => {
     const savedHidden = localStorage.getItem('dismissedAnnouncements');
     return savedHidden ? JSON.parse(savedHidden) : [];
   });
 
   useEffect(() => {
-   const fetchAnnouncements = async () => {
+    // If the user is a Super Admin, don't even bother fetching the announcements
+    if (isSuperAdmin) return;
+
+    const fetchAnnouncements = async () => {
       try {
         const res = await api.get(`/announcements?t=${new Date().getTime()}`);
         setAnnouncements(Array.isArray(res.data) ? res.data : []);
@@ -29,14 +35,16 @@ const AnnouncementBanner = () => {
 
     // when user close it clear
     return () => clearInterval(intervalId);
-  }, []);
+  }, [isSuperAdmin]);
 
   const dismissBanner = (id) => {
-    // ✅ FIX 2: Update both the React State AND the browser's localStorage
     const newHiddenList = [...hidden, id];
     setHidden(newHiddenList);
     localStorage.setItem('dismissedAnnouncements', JSON.stringify(newHiddenList));
   };
+
+  //  Immediately return null (hide the banner) if the user is a Super Admin
+  if (isSuperAdmin) return null;
 
   const visibleAnnouncements = announcements.filter(a => !hidden.includes(a._id));
 
