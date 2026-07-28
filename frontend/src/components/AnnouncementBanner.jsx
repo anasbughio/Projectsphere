@@ -4,13 +4,17 @@ import { Megaphone, X, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const AnnouncementBanner = () => {
   const [announcements, setAnnouncements] = useState([]);
-  const [hidden, setHidden] = useState([]);
+  
+  // ✅ FIX 1: Initialize the 'hidden' state from localStorage so it survives page refreshes
+  const [hidden, setHidden] = useState(() => {
+    const savedHidden = localStorage.getItem('dismissedAnnouncements');
+    return savedHidden ? JSON.parse(savedHidden) : [];
+  });
 
   useEffect(() => {
    const fetchAnnouncements = async () => {
       try {
         const res = await api.get(`/announcements?t=${new Date().getTime()}`);
-        
         setAnnouncements(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Failed to load announcements");
@@ -28,10 +32,12 @@ const AnnouncementBanner = () => {
   }, []);
 
   const dismissBanner = (id) => {
-    setHidden([...hidden, id]);
+    // ✅ FIX 2: Update both the React State AND the browser's localStorage
+    const newHiddenList = [...hidden, id];
+    setHidden(newHiddenList);
+    localStorage.setItem('dismissedAnnouncements', JSON.stringify(newHiddenList));
   };
 
-  
   const visibleAnnouncements = announcements.filter(a => !hidden.includes(a._id));
 
   if (visibleAnnouncements.length === 0) return null;
