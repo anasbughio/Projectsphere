@@ -3,8 +3,15 @@ import api from '../services/api';
 import { Loader2, Plus, MessageSquare, TicketIcon, X, Send, AlertCircle, Paperclip, CheckCircle } from 'lucide-react';
 
 const HelpDesk = () => {
-  const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const isClient = loggedInUser?.role?.toLowerCase() === 'client';
+ const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const rawRole = loggedInUser?.role || '';
+  const userRole = rawRole.toString().trim().toLowerCase();
+  
+  // 2. Strict check for client
+  const isClient = userRole === 'client';
+
+  // Debugging log (You can check your browser console (F12) to see this)
+  console.log("Logged in as:", userRole, "| Is Client?:", isClient);
 
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -186,7 +193,7 @@ const openImageInNewTab = async (base64String) => {
   return (
     <div className="p-6 bg-[#121218] min-h-screen text-white relative">
       
-      {/* 🔥 BEAUTIFUL CUSTOM ALERT (TOAST) UI */}
+      {/* BEAUTIFUL CUSTOM ALERT (TOAST) UI */}
       {alert.show && (
         <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-lg shadow-2xl transition-all duration-300 animate-fade-in-down border ${alert.type === 'success' ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]' : 'bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]'}`}>
           {alert.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
@@ -195,7 +202,7 @@ const openImageInNewTab = async (base64String) => {
       )}
 
       {/* Header Section */}
-      <div className="mb-6 flex items-center justify-between">
+  <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <TicketIcon className="text-[#7c7fff]" /> Support Tickets
@@ -203,6 +210,7 @@ const openImageInNewTab = async (base64String) => {
           <p className="text-gray-400 text-sm mt-1">Manage client issues and requests</p>
         </div>
 
+        {/* STRICT CONDITION: Must be in 'list' view AND strictly a 'client' */}
         {view === 'list' && isClient && (
           <button onClick={() => setView('create')} className="bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 shadow-lg">
             <Plus size={18} /> New Ticket
