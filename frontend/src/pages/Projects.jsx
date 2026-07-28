@@ -1,8 +1,42 @@
 import { useState, useEffect } from 'react';
 import { Plus, FolderKanban, Calendar, Loader2, Trash2, Edit2, Search, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import UpgradeModal from '../components/UpgradeModal';
+
+// ================= MOTION VARIANTS =================
+const customEase = [0.16, 1, 0.3, 1];
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+};
+
+const fadeUpVariant = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: customEase } }
+};
+
+const cardVariant = {
+  hidden: { opacity: 0, scale: 0.95, y: 20 },
+  show: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, ease: customEase } }
+};
+
+const modalBackdropVariant = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { duration: 0.3 } },
+  exit: { opacity: 0, transition: { duration: 0.2 } }
+};
+
+const modalContentVariant = {
+  hidden: { opacity: 0, scale: 0.95, y: 20 },
+  show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', damping: 25, stiffness: 300 } },
+  exit: { opacity: 0, scale: 0.95, y: -20, transition: { duration: 0.2 } }
+};
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -143,55 +177,68 @@ const Projects = () => {
   });
 
   return (
-    <div className="min-h-full flex flex-col font-sans px-4 sm:px-6 lg:px-8 py-6 w-full max-w-full box-border overflow-x-hidden">
-      
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      variants={staggerContainer}
+      className="min-h-full flex flex-col font-sans px-4 sm:px-6 lg:px-8 py-6 w-full max-w-full box-border overflow-x-hidden relative"
+    >
+      {/* Subtle Background Glow */}
+      <div className="absolute top-0 left-[20%] w-[500px] h-[500px] bg-[#7c7fff]/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+      <motion.div variants={fadeUpVariant} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Projects</h2>
           <p className="text-[#84889c] text-xs sm:text-sm">Manage your workspace projects</p>
         </div>
         {canCreateProject && (
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => {
               handleCloseModal();
               setIsModalOpen(true);
             }}
-            className="flex items-center justify-center gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-4 py-2.5 rounded-lg font-semibold transition-all w-full sm:w-auto shadow-sm shadow-[#7c7fff]/20"
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#7c7fff] to-[#6b6de0] text-white px-5 py-2.5 rounded-lg font-semibold transition-all w-full sm:w-auto shadow-[0_0_20px_rgba(124,127,255,0.2)]"
           >
             <Plus size={18} />
             New Project
-          </button>
+          </motion.button>
         )}
-      </div>
+      </motion.div>
 
       {/* Content Section */}
       {loading ? (
         <div className="flex-1 flex justify-center items-center min-h-[400px]">
-          <Loader2 className="animate-spin text-[#7c7fff]" size={32} />
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
+            <Loader2 className="text-[#7c7fff]" size={32} />
+          </motion.div>
         </div>
       ) : error ? (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm sm:text-base">
+        <motion.div variants={fadeUpVariant} className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm sm:text-base">
           {error}
-        </div>
+        </motion.div>
       ) : projects.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-2xl bg-[#1a1c26]/50 p-6 sm:p-12 text-center min-h-[400px]">
+        <motion.div variants={fadeUpVariant} className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-2xl bg-[#1a1c26]/50 p-6 sm:p-12 text-center min-h-[400px]">
           <FolderKanban size={48} className="text-[#606479] mb-4" />
           <h3 className="text-base sm:text-lg font-medium text-white mb-2">No projects found</h3>
           <p className="text-[#84889c] text-sm mb-6">Get started by creating your first project.</p>
           {canCreateProject && (
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 bg-[#1a1c26] border border-white/10 hover:bg-[#222533] text-white px-5 py-2.5 rounded-lg font-medium transition-all"
             >
               <Plus size={16} /> Create Project
-            </button>
+            </motion.button>
           )}
-        </div>
+        </motion.div>
       ) : (
         <>
           {/* Search & Filter Bar */}
-          <div className="bg-[#121218] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-4 items-center shadow-sm">
+          <motion.div variants={fadeUpVariant} className="bg-[#121218] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-4 items-center shadow-sm">
             <div className="relative flex-1 w-full">
               <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
               <input 
@@ -199,30 +246,35 @@ const Projects = () => {
                 placeholder="Search projects..." 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
-                className="w-full bg-[#1a1c26] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-white focus:border-[#7c7fff] focus:outline-none transition" 
+                className="w-full bg-[#1a1c26] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-white focus:border-[#7c7fff] focus:outline-none transition-colors" 
               />
             </div>
             <select 
               value={statusFilter} 
               onChange={(e) => setStatusFilter(e.target.value)} 
-              className="w-full md:w-auto bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 text-sm focus:border-[#7c7fff] focus:outline-none cursor-pointer"
+              className="w-full md:w-auto bg-[#1a1c26] text-white border border-white/5 rounded-lg px-4 py-2 text-sm focus:border-[#7c7fff] focus:outline-none cursor-pointer transition-colors"
             >
               <option value="All">All Statuses</option>
               <option value="Active">Active</option>
               <option value="Planning">Planning</option>
               <option value="Completed">Completed</option>
             </select>
-          </div>
+          </motion.div>
 
-          {/* Grid Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          {/* Grid Layout - Staggered Animation */}
+          <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {filteredProjects.map((project) => (
-              <div 
+              <motion.div 
+                variants={cardVariant}
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
                 key={project._id} 
-                className="bg-[#1a1c26] border border-white/5 rounded-xl p-4 sm:p-5 hover:border-white/10 transition-all group cursor-pointer flex flex-col h-full min-w-0 shadow-sm"
+                className="bg-[#1a1c26] border border-white/5 rounded-xl p-4 sm:p-5 hover:border-white/10 transition-colors group cursor-pointer flex flex-col h-full min-w-0 shadow-sm relative overflow-hidden"
                 onClick={() => navigate(`/projects/${project._id}`)}
               >
-                <div className="flex justify-between items-start mb-4">
+                {/* Subtle internal glow on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#7c7fff]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+
+                <div className="flex justify-between items-start mb-4 relative z-10">
                   <div className="w-10 h-10 rounded-lg bg-[#7c7fff]/10 flex items-center justify-center text-[#7c7fff] shrink-0">
                     <FolderKanban size={20} />
                   </div>
@@ -259,11 +311,11 @@ const Projects = () => {
                     )}
                   </div>
                 </div>
-                <h3 className="text-base sm:text-lg font-bold text-white mb-2 truncate" title={project.name}>{project.name}</h3>
-                <p className="text-[#84889c] text-xs sm:text-sm mb-6 line-clamp-2 min-h-[32px] sm:min-h-[40px] flex-1">
+                <h3 className="text-base sm:text-lg font-bold text-white mb-2 truncate relative z-10" title={project.name}>{project.name}</h3>
+                <p className="text-[#84889c] text-xs sm:text-sm mb-6 line-clamp-2 min-h-[32px] sm:min-h-[40px] flex-1 relative z-10">
                   {project.description || 'No description provided.'}
                 </p>
-                <div className="flex justify-between items-center pt-4 border-t border-white/5 mt-auto">
+                <div className="flex justify-between items-center pt-4 border-t border-white/5 mt-auto relative z-10">
                   <span className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border ${
                     project.status === 'Active' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' :
                     project.status === 'Completed' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' :
@@ -276,110 +328,121 @@ const Projects = () => {
                     <span>{new Date(project.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </>
       )}
 
-      {/* Create/Edit Project Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
-          <div 
-            className="bg-[#2a2d3e] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
+      {/* Create/Edit Project Modal with AnimatePresence */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div 
+            variants={modalBackdropVariant}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md"
           >
-            <div className="p-5 sm:p-6 border-b border-white/5 shrink-0">
-              <h3 className="text-lg sm:text-xl font-bold text-white">
-                {editingProject ? 'Edit Project' : 'Create New Project'}
-              </h3>
-              <p className="text-[#84889c] text-xs sm:text-sm mt-1">
-                {editingProject ? 'Update your workspace project details.' : 'Set up a new workspace for your team.'}
-              </p>
-            </div>
-            
-            <form onSubmit={handleSubmitProject} className="p-5 sm:p-6 overflow-y-auto custom-scrollbar">
-              <div className="flex flex-col gap-4 sm:gap-5 mb-6 sm:mb-8">
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Project Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all"
-                    placeholder="E.g. E-commerce Redesign"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Status</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Planning">Planning</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Assign Client (Optional)</label>
-                  <select
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">No Client (Internal Project)</option>
-                    {clients.map(client => (
-                      <option key={client._id} value={client._id}>
-                        {client.name} ({client.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Description (Optional)</label>
-                  <textarea 
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all resize-none h-20 sm:h-24 custom-scrollbar"
-                    placeholder="Briefly describe the project goals..."
-                  />
-                </div>
+            <motion.div 
+              variants={modalContentVariant}
+              className="bg-[#1a1c26] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 sm:p-6 border-b border-white/5 shrink-0 bg-[#121218]">
+                <h3 className="text-lg sm:text-xl font-bold text-white">
+                  {editingProject ? 'Edit Project' : 'Create New Project'}
+                </h3>
+                <p className="text-[#84889c] text-xs sm:text-sm mt-1">
+                  {editingProject ? 'Update your workspace project details.' : 'Set up a new workspace for your team.'}
+                </p>
               </div>
+              
+              <form onSubmit={handleSubmitProject} className="p-5 sm:p-6 overflow-y-auto custom-scrollbar">
+                <div className="flex flex-col gap-4 sm:gap-5 mb-6 sm:mb-8">
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Project Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-3 sm:px-4 py-2.5 bg-[#121218] border border-white/5 rounded-lg text-sm sm:text-base text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all"
+                      placeholder="E.g. E-commerce Redesign"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Status</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="w-full px-3 sm:px-4 py-2.5 bg-[#121218] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Planning">Planning</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-white/5">
-                <button 
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white hover:bg-white/5 transition-all text-center"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-lg text-sm font-semibold text-white transition-all flex items-center justify-center min-w-[120px] ${
-                    isSubmitting ? 'bg-[#5b5eb8] cursor-not-allowed' : 'bg-[#7c7fff] hover:bg-[#6b6de0] shadow-md shadow-[#7c7fff]/20'
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : editingProject ? (
-                    'Save Changes'
-                  ) : (
-                    'Create Project'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Assign Client (Optional)</label>
+                    <select
+                      value={clientId}
+                      onChange={(e) => setClientId(e.target.value)}
+                      className="w-full px-3 sm:px-4 py-2.5 bg-[#121218] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all cursor-pointer"
+                    >
+                      <option value="">No Client (Internal Project)</option>
+                      {clients.map(client => (
+                        <option key={client._id} value={client._id}>
+                          {client.name} ({client.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase tracking-wide">Description (Optional)</label>
+                    <textarea 
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full px-3 sm:px-4 py-2.5 bg-[#121218] border border-white/5 rounded-lg text-sm sm:text-base text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all resize-none h-20 sm:h-24 custom-scrollbar"
+                      placeholder="Briefly describe the project goals..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-white/5">
+                  <button 
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-sm font-semibold text-[#a0a4b8] hover:text-white hover:bg-white/5 transition-all text-center"
+                  >
+                    Cancel
+                  </button>
+                  <motion.button 
+                    whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                    whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-lg text-sm font-semibold text-white transition-all flex items-center justify-center min-w-[120px] ${
+                      isSubmitting ? 'bg-[#5b5eb8] cursor-not-allowed' : 'bg-gradient-to-r from-[#7c7fff] to-[#6b6de0] shadow-[0_0_15px_rgba(124,127,255,0.2)]'
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : editingProject ? (
+                      'Save Changes'
+                    ) : (
+                      'Create Project'
+                    )}
+                  </motion.button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Custom Scrollbar Styles */}
       <style dangerouslySetInnerHTML={{__html: `
@@ -395,7 +458,7 @@ const Projects = () => {
         onClose={() => setShowUpgradeModal(false)} 
         type={limitType} 
       />
-    </div>
+    </motion.div>
   );
 };
 

@@ -8,23 +8,78 @@ import {
   PieChart, Pie, Cell, 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
+import { motion, useMotionTemplate, useMotionValue } from 'framer-motion';
 import api from '../services/api';
 import { Link } from 'react-router-dom';
 import MilestoneProgressCard from '../components/MilestoneProgressCard';
 import BurndownChartCard from '../components/BurndownChartCard';
 import { downloadCSV } from '../utils/exportUtils';
 
+// ================= CUSTOM MOTION COMPONENTS =================
+
+const customEase = [0.16, 1, 0.3, 1];
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+};
+
+const fadeUpVariant = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: customEase } }
+};
+
+const fadeScaleVariant = {
+  hidden: { opacity: 0, scale: 0.95 },
+  show: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: customEase } }
+};
+
+// Spotlight effect for KPI Cards
+const SpotlightCard = ({ children, className }) => {
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  function handleMouseMove({ currentTarget, clientX, clientY }) {
+    let { left, top } = currentTarget.getBoundingClientRect();
+    mouseX.set(clientX - left);
+    mouseY.set(clientY - top);
+  }
+
+  return (
+    <motion.div
+      variants={fadeUpVariant}
+      onMouseMove={handleMouseMove}
+      className={`relative group overflow-hidden rounded-xl border border-white/5 bg-[#1a1c26] shadow-sm ${className}`}
+    >
+      <motion.div
+        className="pointer-events-none absolute -inset-px opacity-0 transition duration-300 group-hover:opacity-100 z-0"
+        style={{
+          background: useMotionTemplate`
+            radial-gradient(
+              400px circle at ${mouseX}px ${mouseY}px,
+              rgba(124, 127, 255, 0.1),
+              transparent 80%
+            )
+          `,
+        }}
+      />
+      <div className="relative z-10">{children}</div>
+    </motion.div>
+  );
+};
+
+// ================= MAIN DASHBOARD =================
+
 const Dashboard = () => {
-  // Get data from local storage
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
   
-  // 👉 1. Determine User Roles dynamically
   const userRole = user?.role?.toLowerCase() || '';
   const isSuperAdmin = userRole === 'super admin';
-  // Check if user is higher management
   const isManagerOrAdmin = ['org admin', 'organization admin', 'admin', 'project manager'].includes(userRole);
-  // If not super admin and not manager, they are a team member
   const isTeamMember = !isSuperAdmin && !isManagerOrAdmin; 
 
   const [projects, setProjects] = useState([]);
@@ -69,7 +124,6 @@ const Dashboard = () => {
           setTasks(res.data.tasks || []);
           setTeamCount(res.data.usersCount || 0);
         } else {
-          // Normal Admin/Member data fetching
           const [projectRes, taskRes, teamRes] = await Promise.all([
             api.get('/projects'),
             api.get('/tasks/all'),
@@ -79,16 +133,13 @@ const Dashboard = () => {
           let fetchedTasks = taskRes.data;
           let fetchedProjects = projectRes.data;
 
-          // 👉 2. Filter data for Team Members
           if (isTeamMember) {
-            // Sirf wahi tasks dikhayen jo is user ko assign kiye gaye hain
             fetchedTasks = fetchedTasks.filter(task => 
               task.assignedTo === user?._id || 
               task.assignee === user?._id || 
               (task.assignees && task.assignees.includes(user?._id))
             );
 
-            // (Optional) Sirf unhi projects ko dikhayen jinme user ke tasks hain
             const myProjectIds = fetchedTasks.map(t => t.projectId || t.project);
             fetchedProjects = fetchedProjects.filter(p => myProjectIds.includes(p._id));
           }
@@ -109,13 +160,17 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="h-full min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#7c7fff]" size={40} />
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+        >
+          <Loader2 className="text-[#7c7fff]" size={40} />
+        </motion.div>
       </div>
     );
   }
 
   const handleExportReport = () => {
-    // clean data and format
     const formattedData = tasks.map(task => ({
       Task_Title: task.title,
       Status: task.status,
@@ -124,34 +179,25 @@ const Dashboard = () => {
       Created_Date: new Date(task.createdAt).toLocaleDateString(),
       Due_Date: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No Due Date',
     }));
-
-    // Trigger CSV download
     downloadCSV(formattedData, `${isTeamMember ? 'My' : 'Workspace'}_Tasks_Report`);
   };
 
-  // Projects Calculations
   const activeProjectsCount = projects.filter(p => p.status === 'Active' || p.status === 'Planning').length;
   const completedProjectsCount = projects.filter(p => p.status === 'Completed').length;
   
-  // Tasks Calculations (Automatically based on filtered user tasks!)
   const totalTasks = tasks.length;
   const pendingTasks = tasks.filter(t => t.status !== 'Done');
   const completedTasks = tasks.filter(t => t.status === 'Done');
   const overdueTasksCount = pendingTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date()).length;
 
-  // Velocity = (Completed Tasks / Total Tasks) * 100
   const teamVelocity = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
-
-  // Workspace Health
   const workspaceHealth = totalTasks === 0 ? 100 : Math.max(0, Math.round(100 - ((overdueTasksCount / totalTasks) * 100)));
 
-  // Critical Deadlines (Sort by closest due date)
   const criticalDeadlines = pendingTasks
     .filter(t => t.dueDate)
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
     .slice(0, 3);
 
-  // Team Workload Calculations
   const totalPendingForWorkload = pendingTasks.length || 1; 
   const getWorkload = (dept) => {
     const deptTasks = pendingTasks.filter(t => t.department === dept).length;
@@ -164,7 +210,6 @@ const Dashboard = () => {
     { name: 'DevOps', percent: getWorkload('DevOps') }
   ];
 
-  // Pie Chart Data (Status)
   const statusCounts = { 'To Do': 0, 'In Progress': 0, 'Done': 0 };
   tasks.forEach(t => { if (statusCounts[t.status] !== undefined) statusCounts[t.status]++; });
   const statusData = [
@@ -174,7 +219,6 @@ const Dashboard = () => {
   ];
   const STATUS_COLORS = ['#606479', '#f59e0b', '#10b981'];
 
-  // Bar Chart Data (Priority)
   const priorityCounts = { 'Low': 0, 'Medium': 0, 'High': 0, 'Urgent': 0 };
   tasks.forEach(t => { if (priorityCounts[t.priority] !== undefined) priorityCounts[t.priority]++; });
   const priorityData = [
@@ -185,61 +229,73 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-6 font-sans pb-8 px-4 sm:px-6 lg:px-8 max-w-full overflow-hidden">
+    <motion.div 
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col gap-6 font-sans pb-8 px-4 sm:px-6 lg:px-8 max-w-full overflow-hidden"
+    >
       
       {reportStatus && (
-        <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border flex items-center gap-3 transition-all animate-in fade-in slide-in-from-top-5 ${
-          reportStatus.type === 'success' ? 'bg-[#10b981]/10 border-[#10b981]/20 text-[#10b981]' : 'bg-red-500/10 border-red-500/20 text-red-400'
-        }`}>
+        <motion.div 
+          initial={{ opacity: 0, y: -20, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.9 }}
+          className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border flex items-center gap-3 transition-colors ${
+            reportStatus.type === 'success' ? 'bg-[#10b981]/10 border-[#10b981]/20 text-[#10b981]' : 'bg-red-500/10 border-red-500/20 text-red-400'
+          }`}
+        >
           {reportStatus.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
           <span className="font-medium text-sm">{reportStatus.text}</span>
-        </div>
+        </motion.div>
       )}
 
       {/* TOP ACTIONS */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 w-full my-4">
-        {/* Only Org Admin & PMs should see the weekly report generation button ideally, but kept here if members can trigger it too */}
-        <button
+      <motion.div variants={fadeUpVariant} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 w-full my-4">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleGenerateReport}
           disabled={isGenerating}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 w-full sm:w-auto bg-gradient-to-r from-[#7c7fff] to-[#5a5fe0] hover:opacity-90 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm shadow-[#7c7fff]/20"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 w-full sm:w-auto bg-gradient-to-r from-[#7c7fff] to-[#5a5fe0] hover:opacity-90 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(124,127,255,0.2)]"
         >
           {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
           <span>{isGenerating ? 'Sending...' : 'Generate Weekly Report'}</span>
-        </button>
-        <Link
-          to="/activity"
-          className="flex items-center justify-center gap-2 px-4 py-2.5 w-full sm:w-auto bg-[#5a5fe0]/10 hover:bg-[#5a5fe0]/20 text-[#5a5fe0] hover:text-white text-sm font-medium rounded-lg border border-[#5a5fe0]/20 transition-all duration-200 shadow-sm"
-        >
-          <Activity size={18} />
-          <span>View Activity History</span>
-        </Link>
+        </motion.button>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Link
+            to="/activity"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 w-full sm:w-auto bg-[#5a5fe0]/10 hover:bg-[#5a5fe0]/20 text-[#5a5fe0] hover:text-white text-sm font-medium rounded-lg border border-[#5a5fe0]/20 transition-all duration-200"
+          >
+            <Activity size={18} />
+            <span>View Activity History</span>
+          </Link>
+        </motion.div>
 
-        <div className="flex justify-between items-center mb-6">
-        {/* EXPORT BUTTON */}
-        <button 
-          onClick={handleExportReport}
-          className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6a6dec] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-lg"
-        >
-          <Download size={18} />
-          Export Report (CSV)
-        </button>
-      </div>
-      </div>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex justify-between items-center mb-6 sm:mb-0">
+          <button 
+            onClick={handleExportReport}
+            className="flex items-center gap-2 bg-[#7c7fff] hover:bg-[#6a6dec] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-lg"
+          >
+            <Download size={18} />
+            Export Report (CSV)
+          </button>
+        </motion.div>
+      </motion.div>
 
       {/* KPI CARDS BLOCK */}
       {isSuperAdmin && stats ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-[#1a1c26] p-6 rounded-xl border border-white/5">
+        <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <SpotlightCard className="p-6">
             <h3 className="text-[#84889c] uppercase text-xs">Total Organizations</h3>
             <div className="text-3xl font-bold text-white mt-2">{stats.totalOrgs || 0}</div>
-          </div>
-        </div>
+          </SpotlightCard>
+        </motion.div>
       ) : isSuperAdmin ? (
         <div className="text-white">Loading stats...</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+        <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SpotlightCard className="p-5">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">Total Team Members</h3>
               <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
@@ -250,9 +306,9 @@ const Dashboard = () => {
             <div className="flex items-center gap-1 text-xs font-medium text-[#7c7fff]">
               <span>Active in workspace</span>
             </div>
-          </div>
+          </SpotlightCard>
 
-          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+          <SpotlightCard className="p-5">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">{isTeamMember ? "My Projects" : "Total Projects"}</h3>
               <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
@@ -263,9 +319,9 @@ const Dashboard = () => {
             <div className="text-xs font-medium text-[#7c7fff]">
               {activeProjectsCount} Active, {completedProjectsCount} Completed
             </div>
-          </div>
+          </SpotlightCard>
 
-          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+          <SpotlightCard className="p-5">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">{isTeamMember ? "My Pending Tasks" : "Pending Tasks"}</h3>
               <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
@@ -277,9 +333,9 @@ const Dashboard = () => {
               {overdueTasksCount > 0 ? <AlertTriangle size={14} /> : <CheckCircle size={14} />}
               <span>{overdueTasksCount > 0 ? `${overdueTasksCount} overdue` : 'On track'}</span>
             </div>
-          </div>
+          </SpotlightCard>
 
-          <div className="bg-[#1a1c26] p-5 rounded-xl border border-white/5 shadow-sm">
+          <SpotlightCard className="p-5">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xs font-semibold text-[#84889c] tracking-widest uppercase">{isTeamMember ? "My Task Velocity" : "Team Velocity"}</h3>
               <div className="p-1.5 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg">
@@ -290,14 +346,13 @@ const Dashboard = () => {
             <div className="text-xs font-medium text-[#84889c]">
               {teamVelocity >= 80 ? 'Optimal efficiency' : 'Needs attention'}
             </div>
-          </div>
-        </div>
+          </SpotlightCard>
+        </motion.div>
       )}
 
       {/* ANALYTICS CHARTS BLOCK */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Task Status Pie Chart */}
-        <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 h-[320px] flex flex-col">
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <motion.div variants={fadeScaleVariant} className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 h-[320px] flex flex-col hover:border-white/10 transition-colors">
           <h2 className="text-base sm:text-lg font-bold text-white mb-4">Task Status Distribution</h2>
           <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -310,6 +365,7 @@ const Dashboard = () => {
                   outerRadius={70}
                   paddingAngle={5}
                   dataKey="value"
+                  stroke="none"
                 >
                   {statusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
@@ -323,10 +379,9 @@ const Dashboard = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Task Priority Bar Chart */}
-        <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 h-[320px] flex flex-col">
+        <motion.div variants={fadeScaleVariant} className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 h-[320px] flex flex-col hover:border-white/10 transition-colors">
           <h2 className="text-base sm:text-lg font-bold text-white mb-4">Tasks by Priority</h2>
           <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -345,29 +400,29 @@ const Dashboard = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <div className="mt-8">
+      <motion.div variants={fadeUpVariant} className="mt-8">
         <BurndownChartCard />
-      </div>
-      <div className="mt-8">
+      </motion.div>
+      <motion.div variants={fadeUpVariant} className="mt-8">
          <MilestoneProgressCard />
-      </div>
+      </motion.div>
 
       {/* MAIN CONTENT GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
           
           {/* PROJECT PORTFOLIO BLOCK */}
-          <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm flex flex-col overflow-hidden">
+          <motion.div variants={fadeUpVariant} className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm flex flex-col overflow-hidden hover:border-white/10 transition-colors">
             <div className="p-4 sm:p-6 border-b border-white/5 flex justify-between items-center">
               <h2 className="text-base sm:text-lg font-bold text-white">{isTeamMember ? "My Active Projects" : "Recent Projects"}</h2>
             </div>
             <div className="p-0 overflow-x-auto w-full">
               <table className="w-full text-left border-collapse min-w-[500px]">
                 <thead>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-white/5 bg-white/[0.01]">
                     <th className="px-4 sm:px-6 py-4 text-xs font-semibold text-[#84889c] uppercase tracking-wider">Project Name</th>
                     <th className="px-4 sm:px-6 py-4 text-xs font-semibold text-[#84889c] uppercase tracking-wider">Date Created</th>
                     <th className="px-4 sm:px-6 py-4 text-xs font-semibold text-[#84889c] uppercase tracking-wider">Status</th>
@@ -378,8 +433,14 @@ const Dashboard = () => {
                   {projects.length === 0 ? (
                     <tr><td colSpan="4" className="px-6 py-8 text-center text-[#84889c] text-sm">No projects found.</td></tr>
                   ) : (
-                    projects.slice(0, 5).map((project) => (
-                      <tr key={project._id} className="hover:bg-white/[0.02] transition">
+                    projects.slice(0, 5).map((project, index) => (
+                      <motion.tr 
+                        key={project._id} 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="hover:bg-white/[0.03] transition-colors"
+                      >
                         <td className="px-4 sm:px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-[#7c7fff]/10 text-[#7c7fff] rounded-lg hidden sm:block"><FolderKanban size={16} /></div>
@@ -395,19 +456,19 @@ const Dashboard = () => {
                           }`}>{project.status}</span>
                         </td>
                         <td className="px-4 sm:px-6 py-4 text-right">
-                          <button className="text-[#606479] hover:text-white transition"><MoreVertical size={16} /></button>
+                          <button className="text-[#606479] hover:text-white transition-colors"><MoreVertical size={16} /></button>
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-          </div>
+          </motion.div>
 
           {/* DYNAMIC: TEAM WORKLOAD BLOCK */}
-          {!isTeamMember && ( // Team Members don't usually need to see entire department workload
-            <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6">
+          {!isTeamMember && (
+            <SpotlightCard className="p-4 sm:p-6">
               <div className="flex justify-between items-start mb-6 sm:mb-8">
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-white">Team Workload</h2>
@@ -415,81 +476,102 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="flex flex-col gap-4 sm:gap-5">
-                {workloadData.map((dept) => (
+                {workloadData.map((dept, index) => (
                   <div key={dept.name} className="flex items-center gap-3 sm:gap-4">
                     <span className="w-16 sm:w-20 text-xs sm:text-sm font-medium text-white truncate">{dept.name}</span>
                     <div className="flex-1 h-5 sm:h-6 bg-[#121218] rounded-md overflow-hidden flex border border-white/5 relative">
-                      <div 
-                        className="bg-[#7c7fff] h-full flex items-center px-2 text-[9px] sm:text-[10px] font-bold text-[#121218] transition-all duration-500 ease-in-out" 
-                        style={{ width: `${dept.percent}%` }}
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${dept.percent}%` }}
+                        transition={{ duration: 1, delay: 0.2 + (index * 0.1), ease: customEase }}
+                        className="bg-gradient-to-r from-[#5a5fe0] to-[#7c7fff] h-full flex items-center px-2 text-[9px] sm:text-[10px] font-bold text-white" 
                       >
                         {dept.percent > 0 ? `${dept.percent}%` : ''}
-                      </div>
+                      </motion.div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </SpotlightCard>
           )}
         </div>
 
         <div className="flex flex-col gap-4 sm:gap-6">
           
           {/* CRITICAL DEADLINES BLOCK */}
-          <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6">
+          <motion.div variants={fadeScaleVariant} className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 hover:border-white/10 transition-colors">
             <div className="flex justify-between items-center mb-4 sm:mb-6">
               <h2 className="text-base sm:text-lg font-bold text-white">{isTeamMember ? "My Critical Deadlines" : "Critical Deadlines"}</h2>
-              <div className="w-6 h-6 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center"><AlertCircle size={14} /></div>
+              <motion.div 
+                animate={{ scale: [1, 1.2, 1] }} 
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="w-6 h-6 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center"
+              >
+                <AlertCircle size={14} />
+              </motion.div>
             </div>
             <div className="flex flex-col gap-3 sm:gap-4">
               {criticalDeadlines.length === 0 ? (
                 <div className="text-sm text-[#84889c] text-center py-4">No upcoming deadlines!</div>
               ) : (
-                criticalDeadlines.map(task => {
+                criticalDeadlines.map((task, index) => {
                   const isOverdue = new Date(task.dueDate) < new Date();
                   return (
-                    <div key={task._id} className={`bg-[#121218] border ${isOverdue ? 'border-red-500/20' : 'border-white/5'} rounded-xl p-3 sm:p-4 relative overflow-hidden`}>
-                      {isOverdue && <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>}
+                    <motion.div 
+                      key={task._id} 
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.15 }}
+                      whileHover={{ scale: 1.02 }}
+                      className={`bg-[#121218] border ${isOverdue ? 'border-red-500/30' : 'border-white/5'} rounded-xl p-3 sm:p-4 relative overflow-hidden group`}
+                    >
+                      {isOverdue && <div className="absolute top-0 left-0 w-1 h-full bg-red-500 group-hover:w-1.5 transition-all"></div>}
                       <div className="flex justify-between items-center mb-2 sm:mb-3">
                         <span className={`px-2 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded ${
-                          task.priority === 'Urgent' ? 'bg-red-500 text-white' : 
+                          task.priority === 'Urgent' ? 'bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 
                           task.priority === 'High' ? 'bg-amber-500/20 text-amber-500' : 'bg-white/5 text-[#a0a4b8]'
                         }`}>{task.priority}</span>
                         <span className={`text-[10px] sm:text-xs font-semibold ${isOverdue ? 'text-red-400' : 'text-[#a0a4b8]'}`}>
                           {new Date(task.dueDate).toLocaleDateString()}
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-bold text-white mb-2 line-clamp-1">{task.title}</h4>
+                      <h4 className="text-xs sm:text-sm font-bold text-white mb-2 line-clamp-1 group-hover:text-[#7c7fff] transition-colors">{task.title}</h4>
                       <div className="flex items-center gap-2 text-[10px] sm:text-xs text-[#a0a4b8] font-medium">
                         <Clock size={12} className="sm:w-3.5 sm:h-3.5" />
                         <span className="capitalize">{task.status}</span>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* WORKSPACE/PERSONAL HEALTH */}
-          <div className="bg-[#1a1c26] rounded-xl border border-white/5 shadow-sm p-4 sm:p-6 relative overflow-hidden">
+          <SpotlightCard className="p-4 sm:p-6">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#7c7fff]/10 blur-2xl rounded-full"></div>
             <h2 className="text-base sm:text-lg font-bold text-white mb-1 relative z-10">{isTeamMember ? "Personal Health Score" : "Workspace Health"}</h2>
             <p className="text-[10px] sm:text-xs text-[#84889c] mb-4 sm:mb-6 relative z-10">Based on on-time task completion</p>
             <div className="flex items-end justify-between relative z-10">
               <div>
-                <div className={`text-3xl sm:text-4xl font-bold tracking-tight ${workspaceHealth > 80 ? 'text-emerald-400' : workspaceHealth > 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", bounce: 0.5, delay: 0.4 }}
+                  className={`text-4xl sm:text-5xl font-black tracking-tighter ${workspaceHealth > 80 ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-200' : workspaceHealth > 50 ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200' : 'text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-300'}`}
+                >
                   {workspaceHealth}%
-                </div>
-                <div className="text-[9px] sm:text-[10px] font-semibold text-[#7c7fff] uppercase tracking-widest mt-1">
+                </motion.div>
+                <div className="text-[9px] sm:text-[10px] font-semibold text-[#7c7fff] uppercase tracking-widest mt-2">
                   {workspaceHealth === 100 ? 'Perfect Standing' : overdueTasksCount > 0 ? `${overdueTasksCount} Tasks Impacting Health` : 'Maintaining'}
                 </div>
               </div>
             </div>
-          </div>
+          </SpotlightCard>
 
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
