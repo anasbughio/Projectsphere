@@ -3,43 +3,70 @@ import api from '../services/api';
 import { Megaphone, X, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const AnnouncementBanner = () => {
+  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+  
+  // ✅ FIX 1: Added .trim() to guarantee no hidden spaces break the role check
+  const userRole = storedUser?.role?.toString().trim().toLowerCase() || '';
+  
+  const isSuperAdmin = userRole === 'super admin';
+  const isClient = userRole === 'client';
+
   const [announcements, setAnnouncements] = useState([]);
-  const [hidden, setHidden] = useState([]);
+  
+  const [hidden, setHidden] = useState(() => {
+    const savedHidden = localStorage.getItem('dismissedAnnouncements');
+    return savedHidden ? JSON.parse(savedHidden) : [];
+  });
 
   useEffect(() => {
-   const fetchAnnouncements = async () => {
+    if (isSuperAdmin) return;
+
+    const fetchAnnouncements = async () => {
       try {
         const res = await api.get(`/announcements?t=${new Date().getTime()}`);
-        
         setAnnouncements(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Failed to load announcements");
       }
     };
 
-    // when dasboard open automatically load
     fetchAnnouncements();
-
-    // Auto refresh after 10 sec
     const intervalId = setInterval(fetchAnnouncements, 10000);
-
-    // when user close it clear
     return () => clearInterval(intervalId);
-  }, []);
+  }, [isSuperAdmin]);
 
   const dismissBanner = (id) => {
-    setHidden([...hidden, id]);
+    const newHiddenList = [...hidden, id];
+    setHidden(newHiddenList);
+    localStorage.setItem('dismissedAnnouncements', JSON.stringify(newHiddenList));
   };
 
-  
-  const visibleAnnouncements = announcements.filter(a => !hidden.includes(a._id));
+  if (isSuperAdmin) return null;
+
+  const visibleAnnouncements = announcements.filter(a => {
+    // Hide if the user already dismissed it
+    if (hidden.includes(a._id)) return false;
+
+    // Clean up the audience string just in case
+    const audience = a.targetAudience ? a.targetAudience.toString().trim().toLowerCase() : 'all';
+
+    // ✅ FIX 2: Bulletproof, strict audience targeting
+    if (audience === 'clients') {
+      return isClient; // ONLY returns true if the user is a client
+    }
+    
+    if (audience === 'tenants') {
+      return !isClient; // ONLY returns true if the user is NOT a client
+    }
+
+    return true; // 'all' audience passes through for everyone
+  });
 
   if (visibleAnnouncements.length === 0) return null;
 
   return (
     <div className="w-full flex flex-col gap-2 mb-6">
       {visibleAnnouncements.map((item) => {
-        // Theme colors based on type
         let bgColor = "bg-[#7c7fff]/10";
         let borderColor = "border-[#7c7fff]/20";
         let iconColor = "text-[#7c7fff]";
