@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search,TrendingDown } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search, TrendingDown } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
@@ -16,6 +16,8 @@ const KanbanBoard = () => {
   
   const [tasks, setTasks] = useState([]);
   const [team, setTeam] = useState([]); 
+  // ✅ NEW: Added milestones state
+  const [milestones, setMilestones] = useState([]); 
   const [loading, setLoading] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +39,8 @@ const KanbanBoard = () => {
   const [showChart, setShowChart] = useState(false);
   const [isClientDeliverable, setIsClientDeliverable] = useState(false);
   const [dependsOn, setDependsOn] = useState('');
+  // ✅ NEW: Added milestoneId state for the form
+  const [milestoneId, setMilestoneId] = useState(''); 
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -60,15 +64,16 @@ const KanbanBoard = () => {
   };
   const toast = useToast();
 
- const fetchBoardData = async () => {
+  const fetchBoardData = async () => {
     try {
-      const [taskRes, teamRes] = await Promise.all([
+      // ✅ FIX: Fetch milestones alongside tasks and team
+      const [taskRes, teamRes, milestoneRes] = await Promise.all([
         api.get(`/tasks/project/${projectId}`),
-        api.get('/team')
+        api.get('/team'),
+        api.get(`/milestones/project/${projectId}`) 
       ]);
       
       const normalizedTasks = taskRes.data.map((task) => {
-        //  Safely extract the ID whether the backend populated it or not
         const assigneeId = task.assignedTo?._id || task.assignedTo;
         const selectedMember = teamRes.data.find((member) => member._id === assigneeId);
         
@@ -76,18 +81,20 @@ const KanbanBoard = () => {
           ...task, 
           assignedTo: selectedMember 
             ? { _id: selectedMember._id, name: selectedMember.name } 
-            : task.assignedTo // Fallback to the original data instead of 'null'
+            : task.assignedTo 
         };
       });
       
       setTasks(normalizedTasks);
       setTeam(teamRes.data);
+      setMilestones(milestoneRes.data); // Save fetched milestones
     } catch (error) { 
       console.error('Failed to load board data', error); 
     } finally { 
       setLoading(false); 
     }
   };
+
   useEffect(() => {
     fetchBoardData();
   }, [projectId]);
@@ -116,7 +123,6 @@ const KanbanBoard = () => {
         setTasks((prev) => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
       }
     };
-
 
     const handleDeleted = (deletedTaskId) => {
       setTasks((prev) => prev.filter(t => t._id !== deletedTaskId));
@@ -153,6 +159,7 @@ const KanbanBoard = () => {
     setAssignedTo('');
     setIsClientDeliverable(false);
     setDependsOn('');
+    setMilestoneId(''); // ✅ Reset milestone ID
   };
 
   const openCreateModal = () => {
@@ -173,6 +180,8 @@ const KanbanBoard = () => {
     setIsModalOpen(true);
     setIsClientDeliverable(task.isClientDeliverable || false);
     setDependsOn(task.dependsOn?._id || task.dependsOn || '');
+    // ✅ Extract milestone ID if present
+    setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); 
   };
 
   const handleSubmitTask = async (e) => {
@@ -184,9 +193,11 @@ const KanbanBoard = () => {
      setIsSaving(true);
 
     try {
+      // ✅ ADDED milestoneId to the payload
       const payload = {
-        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null,isClientDeliverable,
-      dependsOn: dependsOn || null
+        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null, isClientDeliverable,
+        dependsOn: dependsOn || null,
+        milestoneId: milestoneId || null 
       };
 
       if (editingTask) {
@@ -207,9 +218,9 @@ const KanbanBoard = () => {
     }
   };
 
-    const handleDuplicateTask = (task) => {
-    setEditingTask(null); // Treat this as a brand new task, not an edit!
-    setTitle(`${task.title} (Copy)`); // Append (Copy) to avoid confusion
+  const handleDuplicateTask = (task) => {
+    setEditingTask(null); 
+    setTitle(`${task.title} (Copy)`);
     setDescription(task.description || '');
     setStatus(task.status || columns[0]);
     setPriority(task.priority || 'Medium');
@@ -218,19 +229,19 @@ const KanbanBoard = () => {
     setAssignedTo(task.assignedTo?._id || '');
     setIsClientDeliverable(task.isClientDeliverable || false);
     setDependsOn(task.dependsOn?._id || task.dependsOn || '');
+    setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); // ✅ Copy milestone over
     
-    setIsModalOpen(true); // Pop the modal open!
+    setIsModalOpen(true); 
   };
+
   const exportToCSV = () => {
     if (tasks.length === 0) {
       toast.error("No tasks to export!", { type: 'error' });
       return;
     }
 
-    // 1. Define Headers
     const headers = ['Task Title', 'Description', 'Status', 'Priority', 'Department', 'Assignee', 'Due Date'];
 
-    // 2. Map data to rows
     const csvRows = tasks.map(task => {
       return [
         `"${task.title?.replace(/"/g, '""') || ''}"`,
@@ -243,7 +254,6 @@ const KanbanBoard = () => {
       ].join(',');
     });
 
-    // 3. Combine and trigger download
     const csvContent = [headers.join(','), ...csvRows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -258,6 +268,7 @@ const KanbanBoard = () => {
     
     toast.success("Tasks exported to Excel successfully!", { type: 'success' });
   };
+
   const handleDeleteTask = async (taskId) => {
     const taskToDelete = tasks.find((task) => task._id === taskId);
     if (!taskToDelete) return;
@@ -280,6 +291,7 @@ const KanbanBoard = () => {
     if (!canModifyTask(task)) return;
     e.dataTransfer.setData('taskId', taskId);
   };
+  
   const handleDragOver = (e) => e.preventDefault(); 
   
   const handleDrop = async (e, newStatus) => {
@@ -293,18 +305,15 @@ const KanbanBoard = () => {
       return;
     }
     if (taskToUpdate.dependsOn) {
-      // Find the task it depends on
       const dependencyId = typeof taskToUpdate.dependsOn === 'object' ? taskToUpdate.dependsOn._id : taskToUpdate.dependsOn;
       const blockingTask = tasks.find(t => t._id === dependencyId);
       
-      // Agar wo task mil gaya aur wo "Done" nahi hai, toh error de do aur move mat hone do
       if (blockingTask && blockingTask.status !== 'Done') {
         toast.push(`🔒 Task locked! You must finish "${blockingTask.title}" first.`, { type: 'error' });
         return; 
       }
     }
     
-
     const previousTasks = [...tasks];
     setTasks(tasks.map(task => task._id === taskId ? { ...task, status: newStatus } : task));
 
@@ -403,13 +412,12 @@ const KanbanBoard = () => {
         </button>
       </div>
 
-      {/* 3. Conditional Rendering (Jab showChart true hoga tabhi graph dikhega) */}
       {showChart && (
         <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
           <BurndownChartCard projectId={projectId} />
         </div>
       )}
-     
+      
       <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
 
         {/* Column: To Do */}
@@ -453,7 +461,7 @@ const KanbanBoard = () => {
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
             {getTasksByStatus('In Progress').map(task => (
-              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
             ))}
           </div>
         </div>
@@ -469,7 +477,7 @@ const KanbanBoard = () => {
           </div>
           <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
             {getTasksByStatus('Done').map(task => (
-              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
             ))}
           </div>
         </div>
@@ -546,37 +554,56 @@ const KanbanBoard = () => {
                       <option value="DevOps">DevOps</option>
                     </select>
                   </div>
-                  <div className="col-span-1 sm:col-span-2 mt-2">
-  <label className="flex items-center gap-3 cursor-pointer p-3 bg-[#121218] border border-white/5 rounded-lg hover:border-[#7c7fff]/50 transition">
-    <input 
-      type="checkbox" 
-      checked={isClientDeliverable}
-      onChange={(e) => setIsClientDeliverable(e.target.checked)}
-      className="w-4 h-4 rounded bg-[#1a1c26] border-white/10 text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0"
-    />
-    <div>
-      <span className="block text-sm font-semibold text-white">Client Deliverable</span>
-      <span className="block text-[10px] sm:text-xs text-[#84889c]">Check this if you want the client to see and approve this specific task.</span>
-    </div>
-  </label>
-</div>
- </div>
+                  
+                  {/* ✅ NEW: Milestone Dropdown inside the form */}
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Milestone (Optional)</label>
+                    <select 
+                      value={milestoneId} 
+                      onChange={(e) => setMilestoneId(e.target.value)} 
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+                    >
+                      <option value="">None</option>
+                      {milestones.map(m => (
+                        <option key={m._id} value={m._id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Assign To</label>
-                  <select 
-                    value={assignedTo} 
-                    onChange={(e) => setAssignedTo(e.target.value)} 
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
-                  >
-                    <option value="">Unassigned</option>
-                    {team.map(member => (
-                      <option key={member._id} value={member._id}>
-                        {member.name} ({member.role})
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Assign To</label>
+                    <select 
+                      value={assignedTo} 
+                      onChange={(e) => setAssignedTo(e.target.value)} 
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+                    >
+                      <option value="">Unassigned</option>
+                      {team.map(member => (
+                        <option key={member._id} value={member._id}>
+                          {member.name} ({member.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-span-1 sm:col-span-2 mt-2">
+                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-[#121218] border border-white/5 rounded-lg hover:border-[#7c7fff]/50 transition">
+                      <input 
+                        type="checkbox" 
+                        checked={isClientDeliverable}
+                        onChange={(e) => setIsClientDeliverable(e.target.checked)}
+                        className="w-4 h-4 rounded bg-[#1a1c26] border-white/10 text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0"
+                      />
+                      <div>
+                        <span className="block text-sm font-semibold text-white">Client Deliverable</span>
+                        <span className="block text-[10px] sm:text-xs text-[#84889c]">Check this if you want the client to see and approve this specific task.</span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
+
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-white/5 shrink-0">
@@ -627,7 +654,7 @@ const KanbanBoard = () => {
   );
 };
 
-const TaskCard = ({ task, onDragStart, onEdit, onDelete,onDuplicate, canModifyTask, canManageBoard, onClick ,isBlocked}) => { 
+const TaskCard = ({ task, onDragStart, onEdit, onDelete, onDuplicate, canModifyTask, canManageBoard, onClick, isBlocked }) => { 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
   const canInteract = canManageBoard || canModifyTask(task);
 
