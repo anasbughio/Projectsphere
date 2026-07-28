@@ -3,9 +3,12 @@ import api from '../services/api';
 import { Megaphone, X, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const AnnouncementBanner = () => {
-  // Extract the user's role to check if they are a Super Admin
+  // 1. Safely extract user role to determine if they are Client, Super Admin, or Tenant
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
-  const isSuperAdmin = storedUser?.role?.toLowerCase() === 'super admin';
+  const userRole = storedUser?.role?.toLowerCase() || '';
+  
+  const isSuperAdmin = userRole === 'super admin';
+  const isClient = userRole === 'client';
 
   const [announcements, setAnnouncements] = useState([]);
   
@@ -15,7 +18,6 @@ const AnnouncementBanner = () => {
   });
 
   useEffect(() => {
-    // If the user is a Super Admin, don't even bother fetching the announcements
     if (isSuperAdmin) return;
 
     const fetchAnnouncements = async () => {
@@ -27,13 +29,8 @@ const AnnouncementBanner = () => {
       }
     };
 
-    // when dasboard open automatically load
     fetchAnnouncements();
-
-    // Auto refresh after 10 sec
     const intervalId = setInterval(fetchAnnouncements, 10000);
-
-    // when user close it clear
     return () => clearInterval(intervalId);
   }, [isSuperAdmin]);
 
@@ -43,17 +40,25 @@ const AnnouncementBanner = () => {
     localStorage.setItem('dismissedAnnouncements', JSON.stringify(newHiddenList));
   };
 
-  //  Immediately return null (hide the banner) if the user is a Super Admin
   if (isSuperAdmin) return null;
 
-  const visibleAnnouncements = announcements.filter(a => !hidden.includes(a._id));
+  // ✅ FIX: The filtering logic now strictly enforces the Target Audience!
+  const visibleAnnouncements = announcements.filter(a => {
+    // Hide if the user already dismissed it
+    if (hidden.includes(a._id)) return false;
+
+    // Audience Targeting Logic:
+    if (a.targetAudience === 'clients' && !isClient) return false; // Only clients see this
+    if (a.targetAudience === 'tenants' && isClient) return false;  // Clients cannot see tenant broadcasts
+
+    return true; // 'all' audience, or passed the checks above
+  });
 
   if (visibleAnnouncements.length === 0) return null;
 
   return (
     <div className="w-full flex flex-col gap-2 mb-6">
       {visibleAnnouncements.map((item) => {
-        // Theme colors based on type
         let bgColor = "bg-[#7c7fff]/10";
         let borderColor = "border-[#7c7fff]/20";
         let iconColor = "text-[#7c7fff]";
