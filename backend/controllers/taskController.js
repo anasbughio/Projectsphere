@@ -343,7 +343,6 @@ exports.getTaskAnalytics = async (req, res) => {
 
 exports.uploadTaskAttachment = async (req, res) => {
   try {
-    // checking file is come or not
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
@@ -355,15 +354,20 @@ exports.uploadTaskAttachment = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // creating object of new attchment
     const newAttachment = {
-      fileName: req.file.originalname, // name of user on computer
-      fileUrl: `/uploads/${req.file.filename}` // path save on server
+      fileName: req.file.originalname, 
+      fileUrl: `/uploads/${req.file.filename}` 
     };
 
-    // push the task of attacments in array and save it
     task.attachments.push(newAttachment);
     await task.save();
+
+    //  Broadcast the attachment to the organization room instantly
+    const io = getIO();
+    io.to(req.user.organizationId.toString()).emit('newAttachment', {
+      taskId,
+      attachment: newAttachment
+    });
 
     res.status(200).json({ 
       message: 'File attached successfully!', 
