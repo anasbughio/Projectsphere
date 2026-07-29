@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Users, AlertCircle, Activity, Loader2, RefreshCw, ShieldCheck, Ban, CheckCircle2, Clock, AlertTriangle, X } from 'lucide-react';
+import { Building2, Users, AlertCircle, Activity, Loader2, RefreshCw, ShieldCheck, Ban, CheckCircle2, Clock, AlertTriangle, X, Search } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 import { useToast } from '../components/ToastProvider';
@@ -16,14 +16,18 @@ const SuperAdminDashboard = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Search and Filter States
   const [searchTerm, setSearchTerm] = useState('');
+  const [orgSearchTerm, setOrgSearchTerm] = useState(''); // NEW: Tenant search
+  const [orgFilter, setOrgFilter] = useState('All'); // NEW: Tenant status filter
+
   const [loading, setLoading] = useState(true);
   const [auditLoading, setAuditLoading] = useState(true);
   const [orgLoading, setOrgLoading] = useState(true);
   const [orgError, setOrgError] = useState('');
   const toast = useToast();
 
-  //  States for the custom confirmation modal
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, org: null, nextStatus: '', actionLabel: '' });
   const [isToggling, setIsToggling] = useState(false);
 
@@ -107,7 +111,6 @@ const SuperAdminDashboard = () => {
     fetchOrganizations();
   };
 
-  //  Opens the modal instead of window.confirm
   const handleToggleOrganizationStatus = (org) => {
     const nextStatus = org.status === 'Active' ? 'Suspended' : 'Active';
     const actionLabel = nextStatus === 'Active' ? 'unblock' : 'block';
@@ -120,7 +123,6 @@ const SuperAdminDashboard = () => {
     });
   };
 
-  // Executes the API call after user confirms inside the modal
   const executeToggleStatus = async () => {
     const { org, nextStatus, actionLabel } = confirmModal;
     setIsToggling(true);
@@ -130,7 +132,7 @@ const SuperAdminDashboard = () => {
       setOrganizations((prev) => prev.map((item) => item._id === org._id ? response.data : item));
       window.dispatchEvent(new Event('platformStatsUpdated'));
       fetchAuditLogs();
-      toast.push(`Organization ${actionLabel}ed successfully.`, { type: 'info' });
+      toast.push(`Organization ${actionLabel}ed successfully.`, { type: 'success' });
       setConfirmModal({ isOpen: false, org: null, nextStatus: '', actionLabel: '' });
     } catch (error) {
       toast.push(error.response?.data?.message || `Failed to ${actionLabel} organization`, { type: 'error' });
@@ -159,8 +161,16 @@ const SuperAdminDashboard = () => {
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
+  // NEW: Filter logic for organizations
+  const filteredOrganizations = organizations.filter(org => {
+    const matchesFilter = orgFilter === 'All' || org.status === orgFilter;
+    const matchesSearch = org.name.toLowerCase().includes(orgSearchTerm.toLowerCase()) || 
+                          (org.domain && org.domain.toLowerCase().includes(orgSearchTerm.toLowerCase()));
+    return matchesFilter && matchesSearch;
+  });
+
   return (
-    <div className="p-6 font-sans relative">
+    <div className="p-6 font-sans relative max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Platform Overview</h1>
@@ -168,19 +178,21 @@ const SuperAdminDashboard = () => {
         </div>
         <button 
           onClick={handleManualRefresh} 
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2a2d3e] border border-white/5 text-[#a0a4b8] hover:text-white transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2a2d3e] border border-white/5 text-[#a0a4b8] hover:text-white transition-colors hover:bg-white/5 shadow-sm"
         >
-          <RefreshCw size={16} /> Refresh
+          <RefreshCw size={16} /> Refresh Data
         </button>
       </div>
       
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {kpiCards.map((card, idx) => (
-          <div key={idx} className="bg-[#1a1c26] p-6 rounded-xl border border-white/5 shadow-sm transition-all hover:border-white/10">
+          <div key={idx} className="bg-[#1a1c26] p-6 rounded-2xl border border-white/5 shadow-lg transition-all hover:border-white/10 group">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xs font-semibold text-[#84889c] uppercase tracking-widest">{card.title}</h3>
-              <card.icon className={card.color} size={20} />
+              <div className={`p-2 rounded-lg bg-[#121218] border border-white/5 group-hover:scale-110 transition-transform ${card.color}`}>
+                <card.icon size={18} />
+              </div>
             </div>
             <div className="text-3xl font-bold text-white">{card.value}</div>
           </div>
@@ -188,57 +200,93 @@ const SuperAdminDashboard = () => {
       </div>
 
       {/* Organization Management Section */}
-      <div className="bg-[#1a1c26] rounded-xl border border-white/5 overflow-hidden shadow-sm flex flex-col mb-8">
-        <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between gap-3">
+      <div className="bg-[#1a1c26] rounded-2xl border border-white/5 overflow-hidden shadow-lg flex flex-col mb-8">
+        <div className="px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Activity className="text-[#7c7fff]" size={20} />
             <h2 className="text-lg font-bold text-white">Tenant Management</h2>
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-white/5 text-[#84889c] text-xs font-medium border border-white/10">
+              {filteredOrganizations.length} Total
+            </span>
           </div>
-          <span className="text-[11px] uppercase tracking-[0.2em] text-[#84889c]">
-            {organizations.filter((org) => org.status === 'Active').length} Active / {organizations.filter((org) => org.status === 'Suspended').length} Suspended
-          </span>
+          
+          {/* NEW: Tenant Search and Filters */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex items-center bg-[#121218] border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-[#7c7fff] transition-colors">
+              <Search size={14} className="text-[#606479] mr-2" />
+              <input 
+                type="text"
+                placeholder="Find tenant..."
+                value={orgSearchTerm}
+                onChange={(e) => setOrgSearchTerm(e.target.value)}
+                className="bg-transparent border-none focus:outline-none text-sm text-white w-full sm:w-40"
+              />
+            </div>
+            <div className="flex bg-[#121218] border border-white/10 rounded-lg p-1">
+              {['All', 'Active', 'Suspended'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setOrgFilter(status)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    orgFilter === status ? 'bg-[#2a2d3e] text-white shadow-sm' : 'text-[#606479] hover:text-[#84889c]'
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="p-6">
           {orgLoading ? (
-            <div className="flex items-center justify-center py-8 text-[#84889c]">
-              <Loader2 className="animate-spin mr-2" size={18} />
+            <div className="flex items-center justify-center py-12 text-[#84889c]">
+              <Loader2 className="animate-spin mr-2" size={20} />
               Loading organizations...
             </div>
           ) : orgError ? (
-            <div className="text-red-400 text-sm">{orgError}</div>
-          ) : organizations.length === 0 ? (
-            <div className="text-[#84889c] text-sm">No organizations available.</div>
+            <div className="text-red-400 text-sm p-4 bg-red-500/10 rounded-lg border border-red-500/20 text-center">{orgError}</div>
+          ) : filteredOrganizations.length === 0 ? (
+            <div className="text-[#606479] text-sm text-center py-12 flex flex-col items-center">
+              <Search size={32} className="mb-3 opacity-20" />
+              No organizations found matching your criteria.
+            </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {organizations.map((org) => (
-                <div key={org._id} className="bg-[#16171d] border border-white/5 rounded-xl p-4">
+              {filteredOrganizations.map((org) => (
+                <div key={org._id} className="bg-[#121218] border border-white/5 rounded-xl p-5 hover:border-white/10 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-white font-semibold">{org.name}</h3>
-                      <p className="text-sm text-[#84889c] mt-1">{org.domain || 'No custom domain'}</p>
+                      <h3 className="text-white font-bold text-base">{org.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="w-2 h-2 rounded-full bg-[#7c7fff]/50"></span>
+                        <p className="text-xs text-[#84889c]">{org.domain || 'No custom domain configured'}</p>
+                      </div>
                     </div>
-                    <span className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                      org.status === 'Active' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-red-500/30 bg-red-500/10 text-red-400'
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                      org.status === 'Active' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' : 'border-red-500/30 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
                     }`}>
                       {org.status || 'Active'}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
-                    <span className="text-xs uppercase tracking-[0.2em] text-[#606479]">
-                      {org.subscriptionPlan || 'Free'}
-                    </span>
+                  <div className="flex items-center justify-between mt-5 pt-4 border-t border-white/5">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-widest text-[#606479] mb-0.5">Plan</span>
+                      <span className="text-sm font-semibold text-white capitalize">
+                        {org.subscriptionPlan || 'Free'}
+                      </span>
+                    </div>
                     <button
                       onClick={() => handleToggleOrganizationStatus(org)}
-                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
                         org.status === 'Active'
-                          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                          : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/10'
+                          : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/10'
                       }`}
                     >
                       {org.status === 'Active' ? <Ban size={16} /> : <CheckCircle2 size={16} />}
-                      {org.status === 'Active' ? 'Block' : 'Unblock'}
+                      {org.status === 'Active' ? 'Block Access' : 'Unblock Access'}
                     </button>
                   </div>
                 </div>
@@ -249,52 +297,57 @@ const SuperAdminDashboard = () => {
       </div>
 
       {/* Platform Activity Feed Module */}
-      <div className="bg-[#1a1c26] rounded-xl border border-white/5 overflow-hidden shadow-sm flex flex-col">
-        <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
-          <ShieldCheck className="text-[#7c7fff]" size={20} />
-          <h2 className="text-lg font-bold text-white">Recent Platform Activity</h2>
-          <input 
-            type="text"
-            placeholder="Search logs..."
-            className="bg-[#2a2d3e] text-white text-sm px-3 py-1.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#7c7fff] ml-auto"
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              fetchAuditLogs(1, e.target.value); 
-            }}
-          />
+      <div className="bg-[#1a1c26] rounded-2xl border border-white/5 overflow-hidden shadow-lg flex flex-col">
+        <div className="px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="text-[#7c7fff]" size={20} />
+            <h2 className="text-lg font-bold text-white">Recent Security & Activity Logs</h2>
+          </div>
+          <div className="flex items-center bg-[#121218] border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-[#7c7fff] transition-colors">
+            <Search size={14} className="text-[#606479] mr-2" />
+            <input 
+              type="text"
+              placeholder="Search logs..."
+              className="bg-transparent border-none focus:outline-none text-sm text-white w-full sm:w-48"
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                fetchAuditLogs(1, e.target.value); 
+              }}
+            />
+          </div>
         </div>
         
         <div className="p-0">
           {auditLoading ? (
-            <div className="flex items-center justify-center py-10 text-[#84889c]">
-              <Loader2 className="animate-spin mr-2" size={18} /> Loading activity logs...
+            <div className="flex items-center justify-center py-12 text-[#84889c]">
+              <Loader2 className="animate-spin mr-2" size={20} /> Loading security logs...
             </div>
           ) : auditLogs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-[#606479]">
-              <ShieldCheck size={48} className="mb-4 opacity-30" />
-              <p className="text-sm font-medium">No recent activity found.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-[#606479]">
+              <ShieldCheck size={48} className="mb-4 opacity-20" />
+              <p className="text-sm font-medium">No recent activity found matching your search.</p>
             </div>
           ) : (
-            <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto custom-scrollbar">
+            <div className="divide-y divide-white/5 max-h-[450px] overflow-y-auto custom-scrollbar">
               {auditLogs.map((log) => (
-                <div key={log._id} className="p-4 hover:bg-white/[0.02] transition-colors flex items-start gap-4">
-                  <div className={`p-2 rounded-lg shrink-0 mt-1 ${
+                <div key={log._id} className="p-5 hover:bg-white/[0.02] transition-colors flex items-start gap-4">
+                  <div className={`p-2.5 rounded-xl shrink-0 mt-0.5 border ${
                     log.action.includes('Blocked') || log.action.includes('Suspended') 
-                      ? 'bg-red-500/10 text-red-400' 
+                      ? 'bg-red-500/10 text-red-400 border-red-500/20' 
                       : log.action.includes('Created') || log.action.includes('Active')
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : 'bg-[#7c7fff]/10 text-[#7c7fff]'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : 'bg-[#7c7fff]/10 text-[#7c7fff] border-[#7c7fff]/20'
                   }`}>
                     {log.action.includes('Blocked') ? <Ban size={16} /> : <Activity size={16} />}
                   </div>
                   <div className="flex-1">
-                    <p className="text-white text-sm font-medium">{log.action}</p>
-                    <div className="flex items-center gap-4 mt-1.5 text-xs text-[#606479]">
-                      <span className="flex items-center gap-1">
-                        <Users size={12} /> {log.user?.name || 'System User'}
+                    <p className="text-white text-sm font-semibold">{log.action}</p>
+                    <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-[#84889c]">
+                      <span className="flex items-center gap-1.5 bg-[#121218] px-2 py-1 rounded-md border border-white/5">
+                        <Users size={12} className="text-[#7c7fff]" /> {log.user?.name || 'System User'}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} /> {formatDate(log.createdAt)}
+                      <span className="flex items-center gap-1.5 bg-[#121218] px-2 py-1 rounded-md border border-white/5">
+                        <Clock size={12} className="text-[#7c7fff]" /> {formatDate(log.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -303,22 +356,26 @@ const SuperAdminDashboard = () => {
             </div>
           )}
         </div>
-        <div className="px-6 py-4 border-t border-white/5 flex justify-center gap-2">
-          <button 
-            disabled={currentPage === 1}
-            onClick={() => fetchAuditLogs(currentPage - 1, searchTerm)}
-            className="px-3 py-1 rounded bg-[#2a2d3e] text-white disabled:opacity-50 transition-opacity"
-          >Prev</button>
-          <span className="text-[#84889c] py-1">{currentPage} / {totalPages}</span>
-          <button 
-            disabled={currentPage === totalPages}
-            onClick={() => fetchAuditLogs(currentPage + 1, searchTerm)}
-            className="px-3 py-1 rounded bg-[#2a2d3e] text-white disabled:opacity-50 transition-opacity"
-          >Next</button>
+        
+        {/* Pagination */}
+        <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between bg-white/[0.01]">
+          <span className="text-xs text-[#606479]">Showing page {currentPage} of {totalPages}</span>
+          <div className="flex gap-2">
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => fetchAuditLogs(currentPage - 1, searchTerm)}
+              className="px-4 py-1.5 rounded-lg bg-[#2a2d3e] border border-white/10 text-white text-sm font-medium disabled:opacity-50 hover:bg-[#32364a] transition-colors"
+            >Prev</button>
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => fetchAuditLogs(currentPage + 1, searchTerm)}
+              className="px-4 py-1.5 rounded-lg bg-[#2a2d3e] border border-white/10 text-white text-sm font-medium disabled:opacity-50 hover:bg-[#32364a] transition-colors"
+            >Next</button>
+          </div>
         </div>
       </div>
 
-      {/*  CUSTOM CONFIRMATION MODAL */}
+      {/* CUSTOM CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-[#2a2d3e] border border-white/10 p-6 rounded-2xl shadow-2xl max-w-md w-full flex flex-col gap-4 animate-in zoom-in-95 duration-200">
@@ -336,7 +393,7 @@ const SuperAdminDashboard = () => {
             </div>
             
             <p className="text-sm text-gray-300 leading-relaxed bg-[#121218] p-4 rounded-xl border border-white/5">
-              Are you sure you want to <strong className="capitalize">{confirmModal.actionLabel}</strong> the organization <strong>{confirmModal.org?.name}</strong>?
+              Are you sure you want to <strong className="capitalize">{confirmModal.actionLabel}</strong> the organization <strong className="text-white">{confirmModal.org?.name}</strong>?
             </p>
             
             <div className="flex justify-end gap-3 mt-2">
