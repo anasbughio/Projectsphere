@@ -35,7 +35,7 @@ const getFileLink = (fileUrl) => {
     return fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
   };
 
-  useEffect(() => {
+useEffect(() => {
     fetchComments();
     
     if (!socket) return; 
@@ -50,8 +50,25 @@ const getFileLink = (fileUrl) => {
       }
     };
 
+    // 🔥 FIX: Add a listener for real-time images/attachments
+    const handleNewAttachment = (data) => {
+      if (String(data.taskId) === String(task._id)) {
+        setLocalAttachments((prev) => {
+          // Prevent duplicate if the sender already added it locally
+          const exists = prev.some(a => a.fileUrl === data.attachment.fileUrl);
+          if (exists) return prev;
+          return [...prev, data.attachment];
+        });
+      }
+    };
+
     socket.on('newComment', handleNewComment);
-    return () => socket.off('newComment', handleNewComment);
+    socket.on('newAttachment', handleNewAttachment);
+
+    return () => {
+      socket.off('newComment', handleNewComment);
+      socket.off('newAttachment', handleNewAttachment);
+    };
   }, [task._id, socket]);
 
   const fetchComments = async () => {

@@ -180,7 +180,7 @@ const KanbanBoard = () => {
     setIsModalOpen(true);
     setIsClientDeliverable(task.isClientDeliverable || false);
     setDependsOn(task.dependsOn?._id || task.dependsOn || '');
-    // ✅ Extract milestone ID if present
+    //  Extract milestone ID if present
     setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); 
   };
 
@@ -193,7 +193,7 @@ const KanbanBoard = () => {
      setIsSaving(true);
 
     try {
-      // ✅ ADDED milestoneId to the payload
+      //  ADDED milestoneId to the payload
       const payload = {
         title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null, isClientDeliverable,
         dependsOn: dependsOn || null,
@@ -555,7 +555,7 @@ const KanbanBoard = () => {
                     </select>
                   </div>
                   
-                  {/* ✅ NEW: Milestone Dropdown inside the form */}
+                  {/*  Milestone Dropdown inside the form */}
                   <div>
                     <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Milestone (Optional)</label>
                     <select 
