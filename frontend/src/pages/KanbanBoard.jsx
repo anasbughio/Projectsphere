@@ -8,6 +8,7 @@ import TaskDetailsModal from './TaskDetailsModal';
 import { useToast } from '../components/ToastProvider';
 import BurndownChartCard from '../components/BurndownChartCard';
 import ProjectGantt from '../components/ProjectGantt';
+import TaskTimerModal from '../components/TaskTimerModal';
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
@@ -19,6 +20,7 @@ const KanbanBoard = () => {
   const [team, setTeam] = useState([]); 
   const [milestones, setMilestones] = useState([]); 
   const [loading, setLoading] = useState(true);
+  const [timerTask, setTimerTask] = useState(null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
@@ -458,68 +460,69 @@ const KanbanBoard = () => {
       <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
 
         {/* Column: To Do */}
-        <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
-          <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
-            <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#606479]"></span> TO DO 
-              <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('To Do').length}</span>
-            </h3>
-            <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
-          </div>
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-            {getTasksByStatus('To Do').map(task => (
-              <TaskCard 
-                key={task._id} 
-                task={task} 
-                onDragStart={handleDragStart} 
-                onEdit={openEditModal} 
-                onDelete={handleDeleteTask} 
-                onDuplicate={handleDuplicateTask}
-                canModifyTask={canModifyTask} 
-                canManageBoard={canManageBoard}
-                onClick={() => setSelectedTask(task)} 
-                isBlocked={
-                  task.dependsOn && task.dependsOn.some(depId => {
-                    const id = typeof depId === 'object' ? depId._id : depId;
-                    const depTask = tasks.find(t => t._id === id);
-                    return depTask && depTask.status !== 'Done' && depTask.status !== 'Completed';
-                  })
-                }
-              />
-            ))}
-          </div>
-        </div>
+       <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
+  <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+    <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+      <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#606479]"></span> TO DO 
+      <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('To Do').length}</span>
+    </h3>
+    <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
+  </div>
+  <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+    {getTasksByStatus('To Do').map(task => (
+      <TaskCard 
+        key={task._id} 
+        task={task} 
+        onDragStart={handleDragStart} 
+        onEdit={openEditModal} 
+        onOpenTimer={setTimerTask}
+        onDelete={handleDeleteTask} 
+        onDuplicate={handleDuplicateTask}
+        canModifyTask={canModifyTask} 
+        canManageBoard={canManageBoard}
+        onClick={() => setSelectedTask(task)} 
+        isBlocked={
+          task.dependsOn && task.dependsOn.some(depId => {
+            const id = typeof depId === 'object' ? depId._id : depId;
+            const depTask = tasks.find(t => t._id === id);
+            return depTask && depTask.status !== 'Done' && depTask.status !== 'Completed';
+          })
+        }
+      />
+    ))}
+  </div>
+</div>
 
-        {/* Column: In Progress */}
-        <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'In Progress')}>
-          <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
-            <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-amber-500"></span> IN PROGRESS 
-              <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('In Progress').length}</span>
-            </h3>
-            <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
-          </div>
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-            {getTasksByStatus('In Progress').map(task => (
-              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
-            ))}
-          </div>
-        </div>
+{/* Column: In Progress */}
+<div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'In Progress')}>
+  <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+    <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+      <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-amber-500"></span> IN PROGRESS 
+      <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('In Progress').length}</span>
+    </h3>
+    <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
+  </div>
+  <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+    {getTasksByStatus('In Progress').map(task => (
+      <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onOpenTimer={setTimerTask} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+    ))}
+  </div>
+</div>
 
-        {/* Column: Done */}
-        <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'Done')}>
-          <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
-            <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-              <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500"></span> DONE 
-              <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('Done').length}</span>
-            </h3>
-            <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
-          </div>
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-            {getTasksByStatus('Done').map(task => (
-              <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
-            ))}
-          </div>
+{/* Column: Done */}
+<div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'Done')}>
+  <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+    <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+      <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500"></span> DONE 
+      <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('Done').length}</span>
+    </h3>
+    <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
+  </div>
+  <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+    {getTasksByStatus('Done').map(task => (
+      <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onOpenTimer={setTimerTask} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+    ))}
+  </div>
         </div>
       </div>
 
@@ -698,6 +701,12 @@ const KanbanBoard = () => {
         />
       )}
       
+      {timerTask && (
+  <TaskTimerModal 
+    task={timerTask} 
+    onClose={() => setTimerTask(null)} 
+  />
+)}
       <ChatPanel 
         isOpen={isChatOpen} 
         onClose={() => setIsChatOpen(false)} 
@@ -716,7 +725,7 @@ const KanbanBoard = () => {
   );
 };
 
-const TaskCard = ({ task, onDragStart, onEdit, onDelete, onDuplicate, canModifyTask, canManageBoard, onClick, isBlocked }) => { 
+const TaskCard = ({ task, onDragStart, onEdit, onDelete, onDuplicate, onOpenTimer,canModifyTask, canManageBoard, onClick, isBlocked }) => { 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Done';
   const canInteract = canManageBoard || canModifyTask(task);
 
@@ -734,6 +743,9 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, onDuplicate, canModifyT
             <button onClick={(e) => { e.stopPropagation(); onDuplicate(task); }} className="p-1 rounded text-[#606479] hover:text-emerald-400 transition" title="Duplicate task">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-[16px] sm:h-[16px]"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
               </button>
+              <button onClick={(e) => { e.stopPropagation(); onOpenTimer(task); }} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Track Time">
+        <Clock size={14} className="sm:w-[16px] sm:h-[16px]" />
+      </button>
               <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1 rounded text-[#606479] hover:text-[#7c7fff] transition" title="Edit task">
                 <Edit3 size={14} className="sm:w-[16px] sm:h-[16px]" />
               </button>
