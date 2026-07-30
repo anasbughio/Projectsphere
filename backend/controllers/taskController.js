@@ -5,6 +5,7 @@ const Notification = require('../models/Notification');
 const { logAudit } = require('../utils/auditLogger');
 const { getIO } = require('../config/socket');
 const ActivityLog = require('../models/ActivityLog');
+const { runWorkflows } = require('../utils/workflowEngine');
 
 const isAdmin = (user) => normalizeRole(user?.role) === 'admin';
 
@@ -239,7 +240,7 @@ exports.updateTaskStatus = async (req, res) => {
 
     const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
-
+runWorkflows(updatedTask).catch(err => console.error(err));
     res.json(updatedTask);
   } catch (error) {
     console.error("Update Status Error:", error);
@@ -279,7 +280,7 @@ exports.deleteTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
-    // 🔥 NEW: Added startDate and progress destructuring for updates
+    //  NEW: Added startDate and progress destructuring for updates
     const { title, description, priority, department, assignedTo, milestoneId, startDate, dueDate, progress, dependsOn, isClientDeliverable } = req.body;
     
     const task = await Task.findOne({ 
@@ -331,7 +332,7 @@ exports.updateTask = async (req, res) => {
 
     const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
-
+    runWorkflows(updatedTask).catch(err => console.error(err));
     res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });

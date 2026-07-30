@@ -84,6 +84,7 @@ app.use('/api/v1/activities', activityRoutes);
 app.use('/api/v1/superadmin', superAdminRoutes);
 app.use('/api/v1/announcements', announcementRoutes);
 app.use('/api/v1/stripe', stripeRoutes);
+app.use('/api/v1/workflows', require('./routes/workflowRoutes'));
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })

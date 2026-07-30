@@ -33,6 +33,7 @@ import SubscriptionManagement from './pages/SubscriptionManagement';
 import AnnouncementsManagement from './pages/AnnouncementsManagement';
 import Billing from './views/Billing';
 import WorkspaceAnalytics from './components/WorkspaceAnalytics';
+import WorkflowAutomations from './components/WorkflowAutomations';
 function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -85,6 +86,7 @@ function App() {
         <Route path="/accept-invite" element={<AcceptInvite />} />
 
         <Route element={<DashboardLayout />}>
+        <Route path="/automations"  element={<WorkflowAutomations />} />
           
           {/* Role-specific routes */}
           {isSuperAdmin ? (
