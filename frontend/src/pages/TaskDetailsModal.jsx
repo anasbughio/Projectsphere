@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Paperclip, FileText, Loader2 } from 'lucide-react';
+import { X, Send, Paperclip, FileText, Loader2, Clock } from 'lucide-react';
 import api from '../services/api';
 
-const TaskDetailsModal = ({ task, onClose, organizationId, socket }) => {
+const TaskDetailsModal = ({ task, onClose, onOpenTimer, organizationId, socket }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   
@@ -17,25 +17,24 @@ const TaskDetailsModal = ({ task, onClose, organizationId, socket }) => {
   const currentUserName = storedUser?.name;
 
   // Safely get file link
-const getFileLink = (fileUrl) => {
-  if (!fileUrl) return '#';
-  if (fileUrl.startsWith('http')) return fileUrl;
-  
-  
-  const liveBackend = "https://projectsphere-dlvv.onrender.com"; 
-  const baseUrl = import.meta.env?.VITE_API_BASE_URL 
-    ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
-    : liveBackend; 
+  const getFileLink = (fileUrl) => {
+    if (!fileUrl) return '#';
+    if (fileUrl.startsWith('http')) return fileUrl;
     
-  return `${baseUrl}${fileUrl}`;
-};
+    const liveBackend = "https://projectsphere-dlvv.onrender.com"; 
+    const baseUrl = import.meta.env?.VITE_API_BASE_URL 
+      ? import.meta.env.VITE_API_BASE_URL.split('/api')[0] 
+      : liveBackend; 
+      
+    return `${baseUrl}${fileUrl}`;
+  };
 
   // Check if file is an image
   const isImage = (fileName) => {
     return fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
   };
 
-useEffect(() => {
+  useEffect(() => {
     fetchComments();
     
     if (!socket) return; 
@@ -50,11 +49,9 @@ useEffect(() => {
       }
     };
 
-    // 🔥 FIX: Add a listener for real-time images/attachments
     const handleNewAttachment = (data) => {
       if (String(data.taskId) === String(task._id)) {
         setLocalAttachments((prev) => {
-          // Prevent duplicate if the sender already added it locally
           const exists = prev.some(a => a.fileUrl === data.attachment.fileUrl);
           if (exists) return prev;
           return [...prev, data.attachment];
@@ -78,7 +75,6 @@ useEffect(() => {
     } catch (err) { console.error('Error fetching comments', err); }
   };
 
-  // automatically scroll on new chat
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -88,7 +84,6 @@ useEffect(() => {
   const handleCombinedSubmit = async (e) => {
     e.preventDefault();
 
- 
     if (newComment.includes('ÿØÿà') || newComment.length > 3000) {
       alert("Please use the Paperclip icon to attach files! You pasted raw image data.");
       setNewComment('');
@@ -123,7 +118,6 @@ useEffect(() => {
     }
   };
 
-  // --- COMBINED FEED LOGIC (Comments + Attachments) ---
   const chatFeed = [
     ...comments.map(c => ({
       type: 'comment',
@@ -137,10 +131,10 @@ useEffect(() => {
       id: a._id || `attach-${index}`,
       fileName: a.fileName,
       fileUrl: a.fileUrl,
-      senderName: 'System', // Attachments abhi user ke naam se link nahi hain
+      senderName: 'System',
       date: new Date(a.uploadedAt || Date.now())
     }))
-  ].sort((a, b) => a.date - b.date); // Sort by time
+  ].sort((a, b) => a.date - b.date);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -149,7 +143,21 @@ useEffect(() => {
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
           <h2 className="text-xl font-bold text-white">{task.title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={20} /></button>
+          
+          <div className="flex items-center gap-2">
+            {/* 🔥 TIME LOG BUTTON */}
+            <button 
+              onClick={() => onOpenTimer(task)} 
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7c7fff]/10 hover:bg-[#7c7fff]/20 text-[#7c7fff] border border-[#7c7fff]/20 rounded-lg text-xs font-semibold transition"
+              title="Open Stopwatch & Time Logs"
+            >
+              <Clock size={14} /> Time Log
+            </button>
+
+            <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-lg bg-white/5 hover:bg-white/10 transition">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}
@@ -159,68 +167,60 @@ useEffect(() => {
           <div className="border-t border-white/5 pt-6 flex-1 flex flex-col">
             <h4 className="text-sm font-bold text-white mb-4">Discussion</h4>
             
-            {/* --- INLINE CHAT FEED --- */}
             <div className="space-y-4 mb-6 flex-1">
-{chatFeed.map((item) => {
-  const isOwner = item.senderName === currentUserName; 
-  // 🚨 NAYA CHECK: Kya yeh message client ka feedback hai?
-  const isClientFeedback = item.type === 'comment' && item.text.includes('[Client Feedback]');
-  // Tag hata kar clean message
-  const cleanText = isClientFeedback ? item.text.replace('[Client Feedback]', '').trim() : item.text;
+              {chatFeed.map((item) => {
+                const isOwner = item.senderName === currentUserName; 
+                const isClientFeedback = item.type === 'comment' && item.text.includes('[Client Feedback]');
+                const cleanText = isClientFeedback ? item.text.replace('[Client Feedback]', '').trim() : item.text;
 
-  return (
-    <div key={item.id} className={`flex gap-3 ${isOwner ? 'flex-row-reverse' : ''}`}>
-      {/* Avatar */}
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs text-white shrink-0 ${
-        isClientFeedback ? 'bg-red-500' : isOwner ? 'bg-[#7c7fff]' : 'bg-[#2a2d3e]'
-      }`}>
-        {isClientFeedback ? 'C' : item.senderName.charAt(0).toUpperCase()}
-      </div>
+                return (
+                  <div key={item.id} className={`flex gap-3 ${isOwner ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs text-white shrink-0 ${
+                      isClientFeedback ? 'bg-red-500' : isOwner ? 'bg-[#7c7fff]' : 'bg-[#2a2d3e]'
+                    }`}>
+                      {isClientFeedback ? 'C' : item.senderName.charAt(0).toUpperCase()}
+                    </div>
 
-      {/* Bubble */}
-      <div className={`p-3 rounded-xl max-w-[85%] ${
-        isClientFeedback 
-          ? 'bg-red-500/20 border border-red-500/30 text-white rounded-tl-none' // Client feedback red bubble
-          : isOwner 
-            ? 'bg-[#7c7fff] text-white rounded-tr-none' 
-            : 'bg-[#2a2d3e] text-gray-200 rounded-tl-none'
-      }`}>
-        {item.type === 'comment' && (
-           <p className={`text-[10px] mb-1 font-bold flex items-center gap-1 ${
-             isClientFeedback ? 'text-red-400' : isOwner ? 'text-indigo-100' : 'text-[#7c7fff]'
-           }`}>
-             {isClientFeedback ? '🚨 Client Revision Request' : isOwner ? 'You' : item.senderName}
-           </p>
-        )}
-        
-        {/* Item Content (Text ya Attachment) */}
-        {item.type === 'comment' ? (
-          <p className="text-sm break-words whitespace-pre-wrap">{cleanText}</p>
-        ) : (
-          <div className="mt-1">
-            {isImage(item.fileName) ? (
-              <a href={getFileLink(item.fileUrl)} target="_blank" rel="noopener noreferrer">
-                <img src={getFileLink(item.fileUrl)} alt="att" className="max-w-full h-auto rounded-lg" />
-              </a>
-            ) : (
-              <a href={getFileLink(item.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-black/20 rounded-lg">
-                <FileText size={16} /> <span className="text-xs truncate">{item.fileName}</span>
-              </a>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-})}
+                    <div className={`p-3 rounded-xl max-w-[85%] ${
+                      isClientFeedback 
+                        ? 'bg-red-500/20 border border-red-500/30 text-white rounded-tl-none' 
+                        : isOwner 
+                          ? 'bg-[#7c7fff] text-white rounded-tr-none' 
+                          : 'bg-[#2a2d3e] text-gray-200 rounded-tl-none'
+                    }`}>
+                      {item.type === 'comment' && (
+                         <p className={`text-[10px] mb-1 font-bold flex items-center gap-1 ${
+                           isClientFeedback ? 'text-red-400' : isOwner ? 'text-indigo-100' : 'text-[#7c7fff]'
+                         }`}>
+                           {isClientFeedback ? '🚨 Client Revision Request' : isOwner ? 'You' : item.senderName}
+                         </p>
+                      )}
+                      
+                      {item.type === 'comment' ? (
+                        <p className="text-sm break-words whitespace-pre-wrap">{cleanText}</p>
+                      ) : (
+                        <div className="mt-1">
+                          {isImage(item.fileName) ? (
+                            <a href={getFileLink(item.fileUrl)} target="_blank" rel="noopener noreferrer">
+                              <img src={getFileLink(item.fileUrl)} alt="att" className="max-w-full h-auto rounded-lg" />
+                            </a>
+                          ) : (
+                            <a href={getFileLink(item.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-black/20 rounded-lg">
+                              <FileText size={16} /> <span className="text-xs truncate">{item.fileName}</span>
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            
           </div>
         </div>
 
-        {/* --- FIXED INPUT AREA (Bottom) --- */}
+        {/* Fixed Input Area */}
         <div className="p-4 border-t border-white/5 bg-[#1a1c26] shrink-0 rounded-b-2xl">
-          {/* Selected File Preview Bubble */}
           {selectedFile && (
             <div className="flex items-center gap-2 mb-3 px-3 py-1.5 bg-[#7c7fff]/10 border border-[#7c7fff]/20 rounded-lg w-fit animate-in fade-in slide-in-from-bottom-2">
               <FileText size={14} className="text-[#7c7fff]" />
@@ -240,7 +240,6 @@ useEffect(() => {
                 className="flex-1 bg-transparent py-2.5 px-2 text-white focus:outline-none text-sm"
               />
               
-              {/* Hidden File Input */}
               <input 
                 type="file" 
                 ref={fileInputRef}
@@ -248,7 +247,6 @@ useEffect(() => {
                 className="hidden"
               />
               
-              {/* Attachment Icon Button */}
               <button 
                 type="button" 
                 onClick={() => fileInputRef.current?.click()}
@@ -259,7 +257,6 @@ useEffect(() => {
               </button>
             </div>
             
-            {/* Send Button */}
             <button 
               type="submit" 
               disabled={isSubmitting || (!newComment.trim() && !selectedFile)}
