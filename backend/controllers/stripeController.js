@@ -203,3 +203,37 @@ exports.cancelSubscription = async (req, res) => {
     res.status(500).json({ message: `Failed to cancel: ${error.message}` });
   }
 };
+
+
+
+exports.getBillingHistory = async (req, res) => {
+  try {
+    const org = await Organization.findById(req.user.organizationId);
+    
+    // If the organization has never made a payment, they won't have a customer ID
+    if (!org || !org.stripeCustomerId) {
+      return res.status(200).json([]);
+    }
+
+    // Fetch the last 12 invoices for this customer directly from Stripe
+    const invoices = await stripe.invoices.list({
+      customer: org.stripeCustomerId,
+      limit: 12,
+    });
+
+    // Format the data so the frontend gets exactly what it needs
+    const formattedInvoices = invoices.data.map(inv => ({
+      id: inv.id,
+      amount: inv.amount_paid / 100, // Stripe returns cents, convert to dollars
+      status: inv.status, // e.g., 'paid', 'open', 'void'
+      date: new Date(inv.created * 1000), // Stripe returns unix timestamp in seconds
+      pdfUrl: inv.invoice_pdf, // Direct download link for the PDF
+      receiptUrl: inv.hosted_invoice_url // Link to view it online
+    }));
+
+    res.status(200).json(formattedInvoices);
+  } catch (error) {
+    console.error("Error fetching billing history:", error);
+    res.status(500).json({ message: "Failed to fetch billing history", error: error.message });
+  }
+};

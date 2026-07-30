@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createCheckoutSession, stripeWebhook,cancelSubscription } = require('../controllers/stripeController');
+const { createCheckoutSession, stripeWebhook,cancelSubscription,getBillingHistory } = require('../controllers/stripeController');
 const { protect } = require('../middlewares/authMiddleware');
 
 // Route for the frontend to request a payment screen
@@ -15,5 +15,6 @@ router.post(
   cancelSubscription
 );
 
+router.get('/history', protect, getBillingHistory);
 
 module.exports = router;

@@ -1,36 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Check, Zap, Shield, Loader2, AlertTriangle, X, CreditCard, ExternalLink, Star } from 'lucide-react';
+import { Check, Zap, Shield, Loader2, AlertTriangle, X, CreditCard, ExternalLink, Star, FileText, Download } from 'lucide-react';
 import { useToast } from '../components/ToastProvider';
 
 const Billing = () => {
   const toast = useToast();
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isRedirectingPortal, setIsRedirectingPortal] = useState(false); // NEW: Portal state
+  const [isRedirectingPortal, setIsRedirectingPortal] = useState(false);
   
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [currentPlan, setCurrentPlan] = useState('free');
   const [isCheckingDB, setIsCheckingDB] = useState(true);
 
+  // State for billing history
+  const [invoices, setInvoices] = useState([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(true);
+
   useEffect(() => {
-    const fetchPlanFromDB = async () => {
+    const fetchBillingData = async () => {
       try {
+        // 1. Fetch current plan
         const response = await api.get('/auth/me'); 
-        
         const orgData = response.data.organizationId || response.data.organization;
         const livePlan = orgData?.subscriptionPlan || 'free';
-        
         setCurrentPlan(livePlan);
+
+        //  2. Fetch invoice history
+        try {
+          const historyRes = await api.get('/stripe/history');
+          setInvoices(historyRes.data);
+        } catch (historyErr) {
+          console.error("Failed to load invoice history", historyErr);
+        }
+
       } catch (error) {
         console.error("Error fetching live plan from DB:", error);
         toast.push("Failed to load subscription details.", { type: 'error' });
       } finally {
         setIsCheckingDB(false);
+        setLoadingInvoices(false); // Stop invoice loader
       }
     };
 
-    fetchPlanFromDB();
+    fetchBillingData();
   }, []);
 
   const normalizedPlan = currentPlan.toLowerCase();
@@ -52,13 +65,10 @@ const Billing = () => {
     }
   };
 
-  // NEW: Placeholder for Stripe Customer Portal (Invoices/Card updates)
   const handleManageBilling = async () => {
     setIsRedirectingPortal(true);
     try {
-      // Example endpoint: await api.post('/stripe/customer-portal');
       toast.push("Redirecting to Stripe Billing Portal...", { type: 'info' });
-      // Simulate API delay
       setTimeout(() => setIsRedirectingPortal(false), 1500);
     } catch (error) {
       toast.push("Failed to load billing portal.", { type: 'error' });
@@ -100,7 +110,7 @@ const Billing = () => {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto relative">
+    <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto relative pb-20">
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-white mb-4">Upgrade Your Workspace</h1>
         <p className="text-gray-400 max-w-xl mx-auto text-sm leading-relaxed">
@@ -108,7 +118,7 @@ const Billing = () => {
         </p>
       </div>
 
-      {/* NEW: Enhanced Current Plan Banner */}
+      {/* Enhanced Current Plan Banner */}
       <div className="max-w-5xl mx-auto mb-10">
         <div className="bg-[#1a1c26] border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl">
           <div className="flex items-center gap-4">
@@ -151,7 +161,7 @@ const Billing = () => {
         </div>
       </div>
 
-      {/* NEW: 3-Column Grid for better comparison */}
+      {/* 3-Column Grid for better comparison */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         
         {/* STARTER / FREE PLAN */}
@@ -261,7 +271,69 @@ const Billing = () => {
 
       </div>
 
-      {/* ✅ CUSTOM CONFIRMATION MODAL */}
+      {/*  INVOICE HISTORY TABLE */}
+      <div className="max-w-5xl mx-auto mt-16 mb-10">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+          <FileText size={20} className="text-[#7c7fff]" /> Billing History
+        </h2>
+        
+        <div className="bg-[#1a1c26] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+          {loadingInvoices ? (
+            <div className="p-10 flex justify-center items-center">
+              <Loader2 className="animate-spin text-[#7c7fff]" size={32} />
+            </div>
+          ) : invoices.length === 0 ? (
+            <div className="p-10 text-center text-[#84889c]">
+              <p>No past payments found for this workspace.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#121218] border-b border-white/5 text-xs uppercase tracking-wider text-[#84889c]">
+                    <th className="p-4 font-semibold">Date</th>
+                    <th className="p-4 font-semibold">Amount</th>
+                    <th className="p-4 font-semibold">Status</th>
+                    <th className="p-4 font-semibold text-right">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-sm text-gray-300">
+                  {invoices.map((inv) => (
+                    <tr key={inv.id} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4 whitespace-nowrap">
+                        {new Date(inv.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="p-4 font-medium text-white">
+                        ${inv.amount.toFixed(2)}
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                          inv.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                          'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {inv.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <a 
+                          href={inv.pdfUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2a2d3e] hover:bg-[#7c7fff]/20 text-[#7c7fff] rounded-lg transition-colors text-xs font-semibold border border-white/5"
+                        >
+                          <Download size={14} /> PDF
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* CUSTOM CONFIRMATION MODAL */}
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-[#2a2d3e] border border-white/10 p-6 rounded-3xl shadow-2xl max-w-md w-full flex flex-col gap-5 animate-in zoom-in-95 duration-200">
