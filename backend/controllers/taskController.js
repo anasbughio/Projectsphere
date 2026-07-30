@@ -23,7 +23,8 @@ const canModifyTask = (user, task) => {
 
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, status, priority, dueDate, department, projectId, assignedTo, milestoneId, isClientDeliverable, dependsOn } = req.body;
+    // 🔥 NEW: Added startDate and progress for Gantt chart support
+    const { title, description, status, priority, startDate, dueDate, progress, department, projectId, assignedTo, milestoneId, isClientDeliverable, dependsOn } = req.body;
 
     const project = await Project.findOne({ 
       _id: projectId, 
@@ -35,15 +36,16 @@ exports.createTask = async (req, res) => {
 
     // 1. Task Created
     const task = await Task.create({
-      title, description, status, priority, dueDate, department, projectId, assignedTo,
+      title, description, status, priority, 
+      startDate, dueDate, progress: progress || 0, // 🔥 Saved Gantt fields
+      department, projectId, assignedTo,
       milestoneId: milestoneId || null, 
       isClientDeliverable: isClientDeliverable || false,
-      dependsOn: dependsOn || null,
+      dependsOn: dependsOn || [], // 🔥 Ensure it defaults to an empty array
       isGlobal: false,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
     });
-
     
     await ActivityLog.create({
       organizationId: req.user.organizationId,
@@ -84,15 +86,14 @@ exports.createTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 // Create new Global Task (Org Admin Only)
-// POST /api/v1/tasks/global
 exports.createGlobalTask = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
       return res.status(403).json({ message: 'Only admins can create global tasks' });
     }
 
-    // 🔥 Yahan milestoneId add kiya
     const { title, description, status, priority, dueDate, department, assignedTo, milestoneId } = req.body;
 
     const task = await Task.create({
@@ -114,8 +115,8 @@ exports.createGlobalTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-//   Get tasks for a specific project (Strict User Isolation & Deliverables Check)
-//   GET /api/v1/tasks/project/:projectId
+
+// Get tasks for a specific project
 exports.getTasksByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -130,11 +131,9 @@ exports.getTasksByProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found or unauthorized' });
     }
 
-    // Role check for Client
     const role = normalizeRole(req.user?.role);
     const isClient = role === 'client';
     
-    // Security check: Client sirf apna project dekh sake
     if (isClient && project.clientId && project.clientId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to view tasks for this project' });
     }
@@ -145,9 +144,7 @@ exports.getTasksByProject = async (req, res) => {
       isDeleted: false 
     };
 
-  
     if (isClient) {
-   
       query.isClientDeliverable = true;
     } else if (!isAdmin(req.user)) {
       query.$or = [
@@ -165,8 +162,8 @@ exports.getTasksByProject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-//    Get ALL Global tasks for the logged-in user's organization
-//    GET /api/v1/tasks/global/all
+
+// Get ALL Global tasks
 exports.getGlobalTasks = async (req, res) => {
   try {
     const tasks = await Task.find({ 
@@ -189,6 +186,32 @@ exports.updateTaskStatus = async (req, res) => {
     console.log(`\n🚦 --- UPDATE TASK STATUS HIT ---`);
     console.log(`Naya Status jo frontend se aaya: "${status}"`);
     
+    // 🔥 NEW: Check Dependencies before allowing status update
+    if (status && status !== 'To Do') {
+      const taskToCheck = await Task.findOne({
+        _id: req.params.id,
+        organizationId: req.user.organizationId,
+        isDeleted: false
+      }).populate('dependsOn');
+
+      if (!taskToCheck) return res.status(404).json({ message: 'Task not found' });
+      if (!canModifyTask(req.user, taskToCheck)) return res.status(403).json({ message: 'Unauthorized' });
+
+      if (taskToCheck.dependsOn && taskToCheck.dependsOn.length > 0) {
+        const incompleteDependencies = taskToCheck.dependsOn.filter(
+          (dep) => dep.status !== 'Done' && dep.status !== 'Completed'
+        );
+
+        if (incompleteDependencies.length > 0) {
+          const depNames = incompleteDependencies.map(t => t.title).join(', ');
+          console.log(`❌ Update blocked. Task is waiting on: ${depNames}`);
+          return res.status(400).json({ 
+            message: `Cannot start this task yet. It is waiting on: ${depNames}` 
+          });
+        }
+      }
+    }
+    
     const task = await Task.findOne({ 
       _id: req.params.id, 
       organizationId: req.user.organizationId,
@@ -207,7 +230,6 @@ exports.updateTaskStatus = async (req, res) => {
     console.log(`Task ka apna _id: ${updatedTask._id}`);
     console.log(`Task ke andar Milestone ID hai? : ${updatedTask.milestoneId || 'NAHI HAI ❌'}`);
 
-    // Calculation call
     if (updatedTask && updatedTask.milestoneId) {
       console.log(`Milestone ID mil gayi, ab calculation function call ho raha hai...`);
       await Task.calculateMilestoneProgress(updatedTask.milestoneId);
@@ -257,8 +279,8 @@ exports.deleteTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
-    // adding milestone here
-    const { title, description, priority, department, assignedTo, milestoneId, dueDate ,dependsOn,isClientDeliverable} = req.body;
+    // 🔥 NEW: Added startDate and progress destructuring for updates
+    const { title, description, priority, department, assignedTo, milestoneId, startDate, dueDate, progress, dependsOn, isClientDeliverable } = req.body;
     
     const task = await Task.findOne({ 
       _id: req.params.id, 
@@ -271,22 +293,24 @@ exports.updateTask = async (req, res) => {
 
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id },
-      // add and update milestone and duedate
-      { title, description, priority, department, dueDate, assignedTo: assignedTo || null, milestoneId: milestoneId || null,
+      { 
+        title, description, priority, department, 
+        startDate, dueDate, progress, // 🔥 Added to the update payload
+        assignedTo: assignedTo || null, 
+        milestoneId: milestoneId || null,
         isClientDeliverable: isClientDeliverable || false,
-        dependsOn: dependsOn || null
+        dependsOn: dependsOn || [] // 🔥 Array format enforced
        },
-      { returnDocument: 'after' },
-      
+      { returnDocument: 'after' }
     ).populate('assignedTo', 'name');
 
-
     await ActivityLog.create({
-  organizationId: req.user.organizationId,
-  user: req.user._id,
-  action: `Updated task status to ${updatedTask.status}`,
-  details: `Task: ${updatedTask.title}`
-});
+      organizationId: req.user.organizationId,
+      user: req.user._id,
+      action: `Updated task details`,
+      details: `Task: ${updatedTask.title}`
+    });
+
     try {
       const io = getIO();
       const prevAssignee = task.assignedTo ? String(task.assignedTo) : null;
@@ -340,7 +364,6 @@ exports.getTaskAnalytics = async (req, res) => {
   }
 };
 
-
 exports.uploadTaskAttachment = async (req, res) => {
   try {
     if (!req.file) {
@@ -362,7 +385,6 @@ exports.uploadTaskAttachment = async (req, res) => {
     task.attachments.push(newAttachment);
     await task.save();
 
-    //  Broadcast the attachment to the organization room instantly
     const io = getIO();
     io.to(req.user.organizationId.toString()).emit('newAttachment', {
       taskId,
@@ -380,11 +402,10 @@ exports.uploadTaskAttachment = async (req, res) => {
   }
 };
 
-
 exports.getAllOrganizationTasks = async (req, res) => {
   try {
-    
-    const tasks = await Task.find({ organizationId: req.user.organizationId ,
+    const tasks = await Task.find({ 
+      organizationId: req.user.organizationId ,
       isDeleted: false
     });
     res.status(200).json(tasks);
@@ -393,16 +414,14 @@ exports.getAllOrganizationTasks = async (req, res) => {
   }
 };
 
-
 exports.getBurndownData = async (req, res) => {
   try {
     const orgId = req.user.organizationId;
-    const { projectId } = req.query; // see a specific project
+    const { projectId } = req.query; 
 
     let query = { organizationId: orgId, isDeleted: false };
     if (projectId) query.projectId = projectId;
 
-    // Fetch all tasks
     const tasks = await Task.find(query).sort({ createdAt: 1 });
     if (tasks.length === 0) return res.json([]);
 
@@ -410,23 +429,15 @@ exports.getBurndownData = async (req, res) => {
     const chartData = [];
     const today = new Date();
 
-    // previous 14 days loop
     for (let i = 13; i >= 0; i--) {
       const targetDate = new Date();
       targetDate.setDate(today.getDate() - i);
-      targetDate.setHours(23, 59, 59, 999); // end of the day
+      targetDate.setHours(23, 59, 59, 999); 
 
-      // how many task created on that day
       const createdUpToDate = tasks.filter(t => new Date(t.createdAt) <= targetDate).length;
-      
-      // how many tasksdone on that day
-      // Note: we use updateDate for completion
       const doneUpToDate = tasks.filter(t => t.status === 'Done' && new Date(t.updatedAt) <= targetDate).length;
 
-      // Actual Remaining Tasks
       const actualRemaining = createdUpToDate - doneUpToDate;
-
-      // Ideal Remaining (Formula: from total to zero)
       const idealRemaining = Math.max(0, Math.round(totalTasks - (totalTasks / 13) * (13 - i)));
 
       chartData.push({
@@ -442,7 +453,6 @@ exports.getBurndownData = async (req, res) => {
   }
 };
 
-
 exports.clientTaskReview = async (req, res) => {
   try {
     const { status, comment } = req.body;
@@ -455,7 +465,6 @@ exports.clientTaskReview = async (req, res) => {
     let notificationMsg = '';
 
     if (status === 'Done' || status === 'Completed') {
-      // when client said for apporve
       task.isClientApproved = true;
       task.status = 'Done';
       
@@ -463,7 +472,6 @@ exports.clientTaskReview = async (req, res) => {
       notificationMsg = `Client has approved the task: "${task.title}"`;
       
     } else {
-  
       task.isClientApproved = false;
       task.status = 'In Progress';
       
@@ -480,7 +488,6 @@ exports.clientTaskReview = async (req, res) => {
           organizationId: req.user.organizationId
         });
 
-        // Chat update event
         const populatedComment = await newComment.populate('createdBy', 'name');
         io.to(req.user.organizationId.toString()).emit('newComment', { 
           taskId: task._id, 
@@ -490,44 +497,33 @@ exports.clientTaskReview = async (req, res) => {
     }
 
     await task.save();
-
-   
-    //  REAL-TIME NOTIFICATION SYSTEM (NEWLY ADDED) 
-  
     
-    // 1. Notify the Assigned Developer
     if (task.assignedTo) {
       const devNotification = await Notification.create({
         recipient: task.assignedTo,
-        sender: req.user._id, // Client
+        sender: req.user._id, 
         type: status === 'Done' ? 'TASK_APPROVED' : 'TASK_REVISED',
         title: notificationTitle,
         message: notificationMsg,
         relatedId: task._id
       });
-      // Send real-time alert to Developer
       io.to(String(task.assignedTo)).emit('newNotification', devNotification);
     }
 
-    // 2. Notify the Project Manager / Admin (who created the task)
     if (task.createdBy && String(task.createdBy) !== String(task.assignedTo)) {
       const pmNotification = await Notification.create({
         recipient: task.createdBy,
-        sender: req.user._id, // Client
+        sender: req.user._id, 
         type: status === 'Done' ? 'TASK_APPROVED' : 'TASK_REVISED',
         title: notificationTitle,
         message: notificationMsg,
         relatedId: task._id
       });
-      // Send real-time alert to PM
       io.to(String(task.createdBy)).emit('newNotification', pmNotification);
     }
 
-    // 3. Update the Kanban Board for the whole team instantly
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
     io.to(req.user.organizationId.toString()).emit('taskUpdated', populatedTask);
-    
-  
 
     res.status(200).json({ message: 'Task updated successfully', task: populatedTask });
   } catch (error) {
@@ -536,10 +532,8 @@ exports.clientTaskReview = async (req, res) => {
   }
 };
 
-
 exports.getClientHubFiles = async (req, res) => {
   try {
-    // Find task client approved
     const tasks = await Task.find({
       organizationId: req.user.organizationId,
       isClientDeliverable: true,
@@ -561,7 +555,6 @@ exports.getClientHubFiles = async (req, res) => {
       });
     });
 
-        // sort on dates
     allFiles.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
 
     res.status(200).json(allFiles);

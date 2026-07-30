@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search, TrendingDown } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search, TrendingDown, Clock } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
 import TaskDetailsModal from './TaskDetailsModal';
 import { useToast } from '../components/ToastProvider';
 import BurndownChartCard from '../components/BurndownChartCard';
+import ProjectGantt from '../components/ProjectGantt';
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
@@ -16,7 +17,6 @@ const KanbanBoard = () => {
   
   const [tasks, setTasks] = useState([]);
   const [team, setTeam] = useState([]); 
-  // ✅ NEW: Added milestones state
   const [milestones, setMilestones] = useState([]); 
   const [loading, setLoading] = useState(true);
   
@@ -28,19 +28,23 @@ const KanbanBoard = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   
+  // 🔥 FORM STATE UPDATES for Gantt
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('To Do');
   const [priority, setPriority] = useState('Medium');
+  const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [progress, setProgress] = useState(0);
   const [department, setDepartment] = useState('General');
   const [assignedTo, setAssignedTo] = useState(''); 
+  const [isClientDeliverable, setIsClientDeliverable] = useState(false);
+  const [dependsOn, setDependsOn] = useState([]); // Array for multiple dependencies
+  const [milestoneId, setMilestoneId] = useState(''); 
+
   const [socketInstance, setSocketInstance] = useState(null);
   const [showChart, setShowChart] = useState(false);
-  const [isClientDeliverable, setIsClientDeliverable] = useState(false);
-  const [dependsOn, setDependsOn] = useState('');
-  // ✅ NEW: Added milestoneId state for the form
-  const [milestoneId, setMilestoneId] = useState(''); 
+  const [showGantt, setShowGantt] = useState(false); // Toggle for Gantt view
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -66,7 +70,6 @@ const KanbanBoard = () => {
 
   const fetchBoardData = async () => {
     try {
-      // ✅ FIX: Fetch milestones alongside tasks and team
       const [taskRes, teamRes, milestoneRes] = await Promise.all([
         api.get(`/tasks/project/${projectId}`),
         api.get('/team'),
@@ -87,7 +90,7 @@ const KanbanBoard = () => {
       
       setTasks(normalizedTasks);
       setTeam(teamRes.data);
-      setMilestones(milestoneRes.data); // Save fetched milestones
+      setMilestones(milestoneRes.data); 
     } catch (error) { 
       console.error('Failed to load board data', error); 
     } finally { 
@@ -99,7 +102,6 @@ const KanbanBoard = () => {
     fetchBoardData();
   }, [projectId]);
 
-  // Real-time updates for Kanban tasks
   useEffect(() => {
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://projectsphere-dlvv.onrender.com';
     const socket = io(SOCKET_URL, {
@@ -154,12 +156,14 @@ const KanbanBoard = () => {
     setDescription('');
     setStatus('To Do');
     setPriority('Medium');
+    setStartDate('');
     setDueDate('');
+    setProgress(0);
     setDepartment('General');
     setAssignedTo('');
     setIsClientDeliverable(false);
-    setDependsOn('');
-    setMilestoneId(''); // ✅ Reset milestone ID
+    setDependsOn([]);
+    setMilestoneId(''); 
   };
 
   const openCreateModal = () => {
@@ -174,14 +178,22 @@ const KanbanBoard = () => {
     setDescription(task.description || '');
     setStatus(task.status || 'To Do');
     setPriority(task.priority || 'Medium');
+    setStartDate(task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '');
     setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+    setProgress(task.progress || 0);
     setDepartment(task.department || 'General');
     setAssignedTo(task.assignedTo?._id || '');
     setIsModalOpen(true);
     setIsClientDeliverable(task.isClientDeliverable || false);
-    setDependsOn(task.dependsOn?._id || task.dependsOn || '');
-    //  Extract milestone ID if present
+    // Maps dependencies to array of IDs safely
+    setDependsOn(task.dependsOn ? task.dependsOn.map(d => d._id || d) : []);
     setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); 
+  };
+
+  // Helper for multi-select dependencies
+  const handleDependsOnChange = (e) => {
+    const options = Array.from(e.target.selectedOptions);
+    setDependsOn(options.map(option => option.value));
   };
 
   const handleSubmitTask = async (e) => {
@@ -193,10 +205,15 @@ const KanbanBoard = () => {
      setIsSaving(true);
 
     try {
-      //  ADDED milestoneId to the payload
       const payload = {
-        title, description, status, priority, dueDate: dueDate || null, department, projectId, assignedTo: assignedTo || null, isClientDeliverable,
-        dependsOn: dependsOn || null,
+        title, description, status, priority, 
+        startDate: startDate || null,
+        dueDate: dueDate || null, 
+        progress: Number(progress),
+        department, projectId, 
+        assignedTo: assignedTo || null, 
+        isClientDeliverable,
+        dependsOn: dependsOn, // Send array directly
         milestoneId: milestoneId || null 
       };
 
@@ -222,14 +239,16 @@ const KanbanBoard = () => {
     setEditingTask(null); 
     setTitle(`${task.title} (Copy)`);
     setDescription(task.description || '');
-    setStatus(task.status || columns[0]);
+    setStatus(task.status || 'To Do');
     setPriority(task.priority || 'Medium');
+    setStartDate(task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '');
     setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+    setProgress(task.progress || 0);
     setDepartment(task.department || 'General');
     setAssignedTo(task.assignedTo?._id || '');
     setIsClientDeliverable(task.isClientDeliverable || false);
-    setDependsOn(task.dependsOn?._id || task.dependsOn || '');
-    setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); // ✅ Copy milestone over
+    setDependsOn(task.dependsOn ? task.dependsOn.map(d => d._id || d) : []);
+    setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); 
     
     setIsModalOpen(true); 
   };
@@ -240,7 +259,7 @@ const KanbanBoard = () => {
       return;
     }
 
-    const headers = ['Task Title', 'Description', 'Status', 'Priority', 'Department', 'Assignee', 'Due Date'];
+    const headers = ['Task Title', 'Description', 'Status', 'Priority', 'Department', 'Assignee', 'Start Date', 'Due Date'];
 
     const csvRows = tasks.map(task => {
       return [
@@ -250,6 +269,7 @@ const KanbanBoard = () => {
         `"${task.priority || ''}"`,
         `"${task.department || ''}"`,
         `"${task.assignedTo?.name || 'Unassigned'}"`,
+        `"${task.startDate ? new Date(task.startDate).toLocaleDateString() : 'No date'}"`,
         `"${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}"`
       ].join(',');
     });
@@ -304,12 +324,17 @@ const KanbanBoard = () => {
       toast.push('You do not have permission to move this task.', { type: 'error' });
       return;
     }
-    if (taskToUpdate.dependsOn) {
-      const dependencyId = typeof taskToUpdate.dependsOn === 'object' ? taskToUpdate.dependsOn._id : taskToUpdate.dependsOn;
-      const blockingTask = tasks.find(t => t._id === dependencyId);
+
+    // 🔥 NEW: Check Array-based Dependencies
+    if (taskToUpdate.dependsOn && taskToUpdate.dependsOn.length > 0) {
+      const incompleteDeps = taskToUpdate.dependsOn.filter(depId => {
+        const id = typeof depId === 'object' ? depId._id : depId;
+        const blockingTask = tasks.find(t => t._id === id);
+        return blockingTask && blockingTask.status !== 'Done' && blockingTask.status !== 'Completed';
+      });
       
-      if (blockingTask && blockingTask.status !== 'Done') {
-        toast.push(`🔒 Task locked! You must finish "${blockingTask.title}" first.`, { type: 'error' });
+      if (incompleteDeps.length > 0) {
+        toast.push(`🔒 Task locked! You must finish blocking tasks first.`, { type: 'error' });
         return; 
       }
     }
@@ -351,6 +376,12 @@ const KanbanBoard = () => {
         
         <div className="flex items-center flex-wrap gap-2 sm:gap-4"> 
           <button 
+            onClick={() => setShowGantt(!showGantt)}
+            className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-[#7c7fff] px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
+          >
+            <Clock size={16} /> {showGantt ? 'Hide Timeline' : 'View Timeline'}
+          </button>
+          <button 
             onClick={exportToCSV} 
             className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-emerald-400 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
           >
@@ -362,7 +393,6 @@ const KanbanBoard = () => {
           >
             <Plus size={18} /> New Task
           </button>
-        
           <button 
             onClick={() => setIsChatOpen(!isChatOpen)} 
             className="bg-[#1a1c26] border border-white/5 hover:bg-white/5 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
@@ -417,6 +447,13 @@ const KanbanBoard = () => {
           <BurndownChartCard projectId={projectId} />
         </div>
       )}
+
+      {/* NEW: Render Gantt Chart Here */}
+      {showGantt && (
+        <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+          <ProjectGantt projectId={projectId} />
+        </div>
+      )}
       
       <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
 
@@ -442,8 +479,11 @@ const KanbanBoard = () => {
                 canManageBoard={canManageBoard}
                 onClick={() => setSelectedTask(task)} 
                 isBlocked={
-                  task.dependsOn && 
-                  tasks.find(t => t._id === (task.dependsOn._id || task.dependsOn))?.status !== 'Done'
+                  task.dependsOn && task.dependsOn.some(depId => {
+                    const id = typeof depId === 'object' ? depId._id : depId;
+                    const depTask = tasks.find(t => t._id === id);
+                    return depTask && depTask.status !== 'Done' && depTask.status !== 'Completed';
+                  })
                 }
               />
             ))}
@@ -506,21 +546,6 @@ const KanbanBoard = () => {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Depends On (Optional)</label>
-                  <select 
-                    value={dependsOn} 
-                    onChange={(e) => setDependsOn(e.target.value)} 
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
-                  >
-                    <option value="">None (Can start immediately)</option>              
-                    {tasks.filter(t => t._id !== editingTask?._id && t.status !== 'Done').map(t => (
-                      <option key={t._id} value={t._id}>
-                        {t.title} ({t.status})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                  <div>
                     <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Status</label>
                     <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
                       <option value="To Do">To Do</option>
@@ -540,10 +565,48 @@ const KanbanBoard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* NEW: Start Date Added */}
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Start Date</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
+                  </div>
                   <div>
                     <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Due Date</label>
                     <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
                   </div>
+                </div>
+                
+                {/* NEW: Progress Slider */}
+                <div>
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">
+                    Task Progress ({progress}%)
+                  </label>
+                  <input 
+                    type="range" min="0" max="100" 
+                    value={progress} 
+                    onChange={(e) => setProgress(e.target.value)} 
+                    className="w-full h-2 bg-[#121218] rounded-lg appearance-none cursor-pointer accent-[#7c7fff]"
+                  />
+                </div>
+
+                {/* UPDATED: Multiple Selection for Dependencies */}
+                <div>
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Depends On (Hold Ctrl/Cmd to select multiple)</label>
+                  <select 
+                    multiple
+                    value={dependsOn} 
+                    onChange={handleDependsOnChange} 
+                    className="w-full h-24 px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+                  >
+                    {tasks.filter(t => t._id !== editingTask?._id && t.status !== 'Done').map(t => (
+                      <option key={t._id} value={t._id} className="p-1 hover:bg-[#7c7fff]/20 rounded">
+                        {t.title} ({t.status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Department</label>
                     <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer">
@@ -555,7 +618,6 @@ const KanbanBoard = () => {
                     </select>
                   </div>
                   
-                  {/*  Milestone Dropdown inside the form */}
                   <div>
                     <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Milestone (Optional)</label>
                     <select 
@@ -571,37 +633,37 @@ const KanbanBoard = () => {
                       ))}
                     </select>
                   </div>
+                </div>
 
-                  <div>
-                    <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Assign To</label>
-                    <select 
-                      value={assignedTo} 
-                      onChange={(e) => setAssignedTo(e.target.value)} 
-                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
-                    >
-                      <option value="">Unassigned</option>
-                      {team.map(member => (
-                        <option key={member._id} value={member._id}>
-                          {member.name} ({member.role})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Assign To</label>
+                  <select 
+                    value={assignedTo} 
+                    onChange={(e) => setAssignedTo(e.target.value)} 
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {team.map(member => (
+                      <option key={member._id} value={member._id}>
+                        {member.name} ({member.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                  <div className="col-span-1 sm:col-span-2 mt-2">
-                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-[#121218] border border-white/5 rounded-lg hover:border-[#7c7fff]/50 transition">
-                      <input 
-                        type="checkbox" 
-                        checked={isClientDeliverable}
-                        onChange={(e) => setIsClientDeliverable(e.target.checked)}
-                        className="w-4 h-4 rounded bg-[#1a1c26] border-white/10 text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0"
-                      />
-                      <div>
-                        <span className="block text-sm font-semibold text-white">Client Deliverable</span>
-                        <span className="block text-[10px] sm:text-xs text-[#84889c]">Check this if you want the client to see and approve this specific task.</span>
-                      </div>
-                    </label>
-                  </div>
+                <div className="col-span-1 sm:col-span-2 mt-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-3 bg-[#121218] border border-white/5 rounded-lg hover:border-[#7c7fff]/50 transition">
+                    <input 
+                      type="checkbox" 
+                      checked={isClientDeliverable}
+                      onChange={(e) => setIsClientDeliverable(e.target.checked)}
+                      className="w-4 h-4 rounded bg-[#1a1c26] border-white/10 text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0"
+                    />
+                    <div>
+                      <span className="block text-sm font-semibold text-white">Client Deliverable</span>
+                      <span className="block text-[10px] sm:text-xs text-[#84889c]">Check this if you want the client to see and approve this specific task.</span>
+                    </div>
+                  </label>
                 </div>
 
               </div>
@@ -700,7 +762,7 @@ const TaskCard = ({ task, onDragStart, onEdit, onDelete, onDuplicate, canModifyT
       </div>
       <h4 className="text-xs sm:text-sm font-bold text-white mb-2 leading-snug">{task.title}
         {isBlocked && (
-          <span className="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded-md border border-red-500/30 flex items-center gap-1" title="Blocked by another task">
+          <span className="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded-md border border-red-500/30 flex items-center gap-1 ml-2 inline-flex" title="Blocked by another task">
             🔒 Blocked
           </span>
         )}
