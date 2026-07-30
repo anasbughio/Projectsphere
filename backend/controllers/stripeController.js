@@ -123,7 +123,7 @@ exports.stripeWebhook = async (req, res) => {
   
   // 👉 NEW: Handle subscription cancellation or expiration (DOWNGRADE)
   else if (event.type === 'customer.subscription.deleted') {
-    console.log("⚠️ [WEBHOOK] Subscription Deleted/Expired! Downgrading to Free...");
+    console.log("[WEBHOOK] Subscription Deleted/Expired! Downgrading to Free...");
     const subscription = event.data.object;
     const customerId = subscription.customer;
 
@@ -149,7 +149,7 @@ exports.stripeWebhook = async (req, res) => {
   } 
   
   else {
-    console.log(`ℹ️ [WEBHOOK] Ignored Event: ${event.type}`);
+    console.log(`[WEBHOOK] Ignored Event: ${event.type}`);
   }
 
   // Return a 200 response to acknowledge receipt of the event
@@ -157,12 +157,12 @@ exports.stripeWebhook = async (req, res) => {
 };
 
 // 3. Cancel Active Subscription
-exports.cancelSubscription = async (req, res) => {
+exports.cancelSubscription = async (req,res) => {
   try {
     const organizationId = req.user.organizationId;
     const organization = await Organization.findById(organizationId);
 
-    if (!organization || !organization.stripeSubscriptionId) {
+    if (!organization || !organization.stripeSubscriptionId){
       return res.status(400).json({ message: "No active premium subscription found." });
     }
 
