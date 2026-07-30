@@ -23,8 +23,19 @@ const taskSchema = new mongoose.Schema(
       enum: ['Low', 'Medium', 'High', 'Urgent'],
       default: 'Medium',
     },
+    // 🔥 NEW: Added startDate for Gantt Chart
+    startDate: {
+      type: Date,
+    },
     dueDate: {
       type: Date,
+    },
+    // 🔥 NEW: Added progress for Gantt Chart (0 to 100%)
+    progress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
     },
     department: {
       type: String,
@@ -60,14 +71,13 @@ const taskSchema = new mongoose.Schema(
       default: false,
     },
     attachments: [
-    {
-      fileName: String, 
-      fileUrl: String,  
-      uploadedAt: { type: Date, default: Date.now }
-    }
-  ],
-
-  comments: [
+      {
+        fileName: String, 
+        fileUrl: String,  
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
+    comments: [
       {
         user: {
           type: mongoose.Schema.Types.ObjectId,
@@ -80,11 +90,11 @@ const taskSchema = new mongoose.Schema(
         }
       }
     ],
-    dependsOn: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Task', 
-    default: null 
-  },
+    // 🔥 UPDATED: Converted to an Array so a task can depend on multiple tasks
+    dependsOn: [{ 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Task'
+    }],
   },
   { timestamps: true }
 );
@@ -131,6 +141,7 @@ taskSchema.statics.calculateMilestoneProgress = async function(milestoneId) {
     console.error("Progress calculation error:", err);
   }
 };
+
 // when new task create or update
 taskSchema.post('save', function(doc) {
   if (doc.milestoneId) {
@@ -147,7 +158,6 @@ taskSchema.post('findOneAndDelete', function(doc) {
 
 // when drag and drop uses
 taskSchema.post('findOneAndUpdate', function(doc) {
-  
   if (doc && doc.milestoneId) {
     doc.constructor.calculateMilestoneProgress(doc.milestoneId);
   }
