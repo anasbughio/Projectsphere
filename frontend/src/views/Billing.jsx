@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Check, Zap, Shield, Loader2, AlertTriangle, X, CreditCard, ExternalLink, Star } from 'lucide-react';
+import { Check, Zap, Shield, Loader2, AlertTriangle, X, CreditCard, ExternalLink, Star, CalendarClock } from 'lucide-react'; // Added CalendarClock icon
 import { useToast } from '../components/ToastProvider';
 
 const Billing = () => {
   const toast = useToast();
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isRedirectingPortal, setIsRedirectingPortal] = useState(false); // NEW: Portal state
+  const [isRedirectingPortal, setIsRedirectingPortal] = useState(false);
   
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [currentPlan, setCurrentPlan] = useState('free');
+  const [expiresAt, setExpiresAt] = useState(null); // NEW: State for expiration date
   const [isCheckingDB, setIsCheckingDB] = useState(true);
 
   useEffect(() => {
     const fetchPlanFromDB = async () => {
       try {
         const response = await api.get('/auth/me'); 
-        
         const orgData = response.data.organizationId || response.data.organization;
-        const livePlan = orgData?.subscriptionPlan || 'free';
         
-        setCurrentPlan(livePlan);
+        setCurrentPlan(orgData?.subscriptionPlan || 'free');
+        setExpiresAt(orgData?.expiresAt || null); // NEW: Set expiration date
       } catch (error) {
         console.error("Error fetching live plan from DB:", error);
         toast.push("Failed to load subscription details.", { type: 'error' });
@@ -36,6 +36,12 @@ const Billing = () => {
   const normalizedPlan = currentPlan.toLowerCase();
   const isPremium = normalizedPlan !== 'free';
 
+  // NEW: Calculate remaining days
+  let daysLeft = null;
+  if (isPremium && expiresAt) {
+    const diffTime = new Date(expiresAt) - new Date();
+    daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
   const handleUpgrade = async (planName) => {
     try {
       setLoadingPlan(planName);
@@ -109,7 +115,7 @@ const Billing = () => {
       </div>
 
       {/* NEW: Enhanced Current Plan Banner */}
-      <div className="max-w-5xl mx-auto mb-10">
+     <div className="max-w-5xl mx-auto mb-10">
         <div className="bg-[#1a1c26] border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl">
           <div className="flex items-center gap-4">
             <div className={`p-3 rounded-xl ${isPremium ? 'bg-[#7c7fff]/10 text-[#7c7fff]' : 'bg-white/5 text-gray-400'}`}>
@@ -120,9 +126,18 @@ const Billing = () => {
                 Current Plan: <span className={`uppercase ${isPremium ? 'text-[#7c7fff]' : 'text-gray-300'}`}>{currentPlan}</span>
                 {isPremium && <span className="bg-[#10b981]/10 text-[#10b981] text-[10px] px-2 py-0.5 rounded-full border border-[#10b981]/20">ACTIVE</span>}
               </h3>
-              <p className="text-sm text-[#84889c] mt-1">
-                {isPremium ? 'Your premium workspace features are currently unlocked.' : 'You are currently on the baseline starter tier.'}
-              </p>
+              
+              {/* NEW: Dynamic subtext showing days left */}
+              {isPremium && daysLeft !== null ? (
+                <p className="text-sm text-emerald-400 mt-1 flex items-center gap-1.5 font-medium">
+                  <CalendarClock size={14} /> 
+                  Your plan has {daysLeft > 0 ? daysLeft : 0} days left in the current billing cycle.
+                </p>
+              ) : (
+                <p className="text-sm text-[#84889c] mt-1">
+                  You are currently on the baseline starter tier.
+                </p>
+              )}
             </div>
           </div>
           

@@ -70,10 +70,14 @@ exports.stripeWebhook = async (req, res) => {
       const organization = await Organization.findById(organizationId);
       
       if (organization) {
-        // Fetch line items to get exact price ID
+        // 1. Fetch line items to get exact price ID
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
         const priceId = lineItems.data[0]?.price?.id;
         console.log("👉 Price ID received:", priceId);
+        
+        // 2. NEW: Fetch the full subscription object from Stripe to get the end date
+        const subscriptionDetails = await stripe.subscriptions.retrieve(subscriptionId);
+        const currentPeriodEnd = new Date(subscriptionDetails.current_period_end * 1000); // Convert seconds to milliseconds
         
         let newPlan = 'free';
         let newMaxUsers = 5;
@@ -96,11 +100,12 @@ exports.stripeWebhook = async (req, res) => {
         organization.maxProjects = newMaxProjects;
         organization.stripeCustomerId = customerId;
         organization.stripeSubscriptionId = subscriptionId;
+        organization.expiresAt = currentPeriodEnd; // NEW: Save the expiration date
         
         await organization.save();
-        console.log(`✅ Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook.`);
+        console.log(` Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook. Expires at: ${currentPeriodEnd}`);
       } else {
-        console.error("❌ [WEBHOOK ERROR] Organization not found in DB for ID:", organizationId);
+        console.error(" [WEBHOOK ERROR] Organization not found in DB for ID:", organizationId);
       }
     } catch (dbError) {
       console.error('Error updating organization after payment:', dbError);
