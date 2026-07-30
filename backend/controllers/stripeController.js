@@ -70,14 +70,10 @@ exports.stripeWebhook = async (req, res) => {
       const organization = await Organization.findById(organizationId);
       
       if (organization) {
-        // 1. Fetch line items to get exact price ID
+        // Fetch line items to get exact price ID
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
         const priceId = lineItems.data[0]?.price?.id;
         console.log("👉 Price ID received:", priceId);
-        
-        // 2. NEW: Fetch the full subscription object from Stripe to get the end date
-        const subscriptionDetails = await stripe.subscriptions.retrieve(subscriptionId);
-        const currentPeriodEnd = new Date(subscriptionDetails.current_period_end * 1000); // Convert seconds to milliseconds
         
         let newPlan = 'free';
         let newMaxUsers = 5;
@@ -94,18 +90,31 @@ exports.stripeWebhook = async (req, res) => {
           newMaxProjects = 999;
         }
 
+        // SAFE EXPIRATION DATE FETCH (Won't crash webhook if it fails)
+        let currentPeriodEnd = null;
+        if (subscriptionId) {
+          try {
+            const subscriptionDetails = await stripe.subscriptions.retrieve(subscriptionId);
+            currentPeriodEnd = new Date(subscriptionDetails.current_period_end * 1000);
+          } catch (subErr) {
+            console.error("⚠️ Warning: Could not fetch subscription end date, defaulting to 30 days from now.", subErr.message);
+            // Fallback: automatically set 1 month from now if Stripe API fetch glitches
+            currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          }
+        }
+
         // Update Database Automatically
         organization.subscriptionPlan = newPlan;
         organization.maxUsers = newMaxUsers;
         organization.maxProjects = newMaxProjects;
         organization.stripeCustomerId = customerId;
         organization.stripeSubscriptionId = subscriptionId;
-        organization.expiresAt = currentPeriodEnd; // NEW: Save the expiration date
+        organization.expiresAt = currentPeriodEnd; 
         
         await organization.save();
-        console.log(` Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook. Expires at: ${currentPeriodEnd}`);
+        console.log(`✅ Organization ${organization.name} upgraded to ${newPlan} successfully via Webhook.`);
       } else {
-        console.error(" [WEBHOOK ERROR] Organization not found in DB for ID:", organizationId);
+        console.error("❌ [WEBHOOK ERROR] Organization not found in DB for ID:", organizationId);
       }
     } catch (dbError) {
       console.error('Error updating organization after payment:', dbError);
