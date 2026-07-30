@@ -58,7 +58,7 @@ exports.stripeWebhook = async (req, res) => {
   }
 
   // Handle successful checkout (UPGRADE)
-  if (event.type === 'checkout.session.completed') {
+ if (event.type === 'checkout.session.completed') {
     console.log("🎯 [WEBHOOK] Checkout Completed! Database update starting...");
     const session = event.data.object;
     const organizationId = session.client_reference_id;
@@ -70,9 +70,22 @@ exports.stripeWebhook = async (req, res) => {
       const organization = await Organization.findById(organizationId);
       
       if (organization) {
-        // Fetch line items to get exact price ID
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-        const priceId = lineItems.data[0]?.price?.id;
+        let priceId = '';
+        let currentPeriodEnd = null;
+
+        // Safely retrieve subscription details from Stripe
+        if (subscriptionId) {
+          try {
+            const subscriptionDetails = await stripe.subscriptions.retrieve(subscriptionId);
+            // Get the price ID directly from the subscription item
+            priceId = subscriptionDetails.items.data[0]?.price?.id;
+            currentPeriodEnd = new Date(subscriptionDetails.current_period_end * 1000);
+          } catch (subErr) {
+            console.error("⚠️ Warning: Could not fetch subscription details from Stripe.", subErr.message);
+            currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days fallback
+          }
+        }
+
         console.log("👉 Price ID received:", priceId);
         
         let newPlan = 'free';
@@ -88,19 +101,6 @@ exports.stripeWebhook = async (req, res) => {
           newPlan = 'enterprise';
           newMaxUsers = 999;
           newMaxProjects = 999;
-        }
-
-        // SAFE EXPIRATION DATE FETCH (Won't crash webhook if it fails)
-        let currentPeriodEnd = null;
-        if (subscriptionId) {
-          try {
-            const subscriptionDetails = await stripe.subscriptions.retrieve(subscriptionId);
-            currentPeriodEnd = new Date(subscriptionDetails.current_period_end * 1000);
-          } catch (subErr) {
-            console.error("⚠️ Warning: Could not fetch subscription end date, defaulting to 30 days from now.", subErr.message);
-            // Fallback: automatically set 1 month from now if Stripe API fetch glitches
-            currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-          }
         }
 
         // Update Database Automatically
