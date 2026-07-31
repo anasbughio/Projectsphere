@@ -34,6 +34,8 @@ import AnnouncementsManagement from './pages/AnnouncementsManagement';
 import Billing from './views/Billing';
 import WorkspaceAnalytics from './components/WorkspaceAnalytics';
 import WorkflowAutomations from './components/WorkflowAutomations';
+import TeamWorkload from './components/TeamWorkload';
+
 function App() {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -87,6 +89,9 @@ function App() {
 
         <Route element={<DashboardLayout />}>
         <Route path="/automations"  element={<WorkflowAutomations />} />
+        
+
+        <Route path="/workload" element={<TeamWorkload />}/>
           
           {/* Role-specific routes */}
           {isSuperAdmin ? (
