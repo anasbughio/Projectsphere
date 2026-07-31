@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 const connectDB = require('./config/db');
+require('./cron/weeklyReports');
 const http = require('http');
 const passport = require('passport');
 const path = require('path');

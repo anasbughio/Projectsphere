@@ -55,6 +55,8 @@ const Projects = () => {
   const [status, setStatus] = useState('Active'); 
   const [clients, setClients] = useState([]);
   const [clientId, setClientId] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [sendWeeklyReports, setSendWeeklyReports] = useState(false);
 
   // Search and Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +112,9 @@ const Projects = () => {
     setEditingProject(null);
     setName('');
     setDescription('');
-    setStatus('Active'); 
+    setStatus('Active');
+    setClientEmail('');
+    setSendWeeklyReports(false); 
   };
 
   const handleEditClick = (e, project) => {
@@ -120,19 +124,29 @@ const Projects = () => {
     setDescription(project.description || '');
     setStatus(project.status || 'Active'); 
     setIsModalOpen(true);
+    setClientEmail(project.clientEmail || '');
+    setSendWeeklyReports(project.sendWeeklyReports || false);
+    setIsModalOpen(true);
   };
 
   const handleSubmitProject = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // 🔥 UPDATE THE PAYLOADS:
       if (editingProject) {
-        const response = await api.put(`/projects/${editingProject._id}`, { name, description, status, client: clientId || null });
+        const response = await api.put(`/projects/${editingProject._id}`, { 
+          name, description, status, client: clientId || null, 
+          clientEmail, sendWeeklyReports // <-- Added here
+        });
         setProjects((prevProjects) => 
           prevProjects.map((p) => p._id === editingProject._id ? response.data : p)
         );
       } else {
-        const payload = { name, description, status, client: clientId || null };
+        const payload = { 
+          name, description, status, client: clientId || null, 
+          clientEmail, sendWeeklyReports // <-- Added here
+        };
         const response = await api.post('/projects', payload);
         setProjects((prevProjects) => [response.data, ...prevProjects]);
       }
@@ -409,6 +423,33 @@ const Projects = () => {
                       className="w-full px-3 sm:px-4 py-2.5 bg-[#121218] border border-white/5 rounded-lg text-sm sm:text-base text-white placeholder-[#4b4e63] focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] focus:outline-none transition-all resize-none h-20 sm:h-24 custom-scrollbar"
                       placeholder="Briefly describe the project goals..."
                     />
+                  </div>
+                  <div className="bg-[#121218] p-4 rounded-xl border border-white/5 space-y-4 mt-2">
+                    <h4 className="text-sm font-bold text-white mb-2">Automated Client Reporting</h4>
+                    
+                    <div>
+                      <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 uppercase">Client Email Address</label>
+                      <input 
+                        type="email" 
+                        placeholder="client@company.com"
+                        value={clientEmail} 
+                        onChange={(e) => setClientEmail(e.target.value)} 
+                        className="w-full px-3 py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm text-white focus:outline-none focus:border-[#7c7fff] focus:ring-1 focus:ring-[#7c7fff] transition-all" 
+                      />
+                    </div>
+
+                    <label className="flex items-start gap-3 cursor-pointer p-3 bg-[#1a1c26] border border-white/5 rounded-lg hover:border-[#7c7fff]/50 transition mt-3">
+                      <input 
+                        type="checkbox" 
+                        checked={sendWeeklyReports}
+                        onChange={(e) => setSendWeeklyReports(e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded bg-[#1a1c26] border-white/10 text-[#7c7fff] focus:ring-[#7c7fff] focus:ring-offset-0 cursor-pointer"
+                      />
+                      <div>
+                        <span className="block text-sm font-semibold text-white">Enable Weekly Automated Emails</span>
+                        <span className="block text-[10px] sm:text-xs text-[#84889c] mt-0.5 leading-snug">Automatically email the client a summary of completed tasks and billable hours every Friday.</span>
+                      </div>
+                    </label>
                   </div>
                 </div>
 
