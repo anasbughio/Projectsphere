@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
   LogOut, LayoutDashboard, FolderKanban, CheckSquare, Users, Search, 
-  Settings, HelpCircle, Rocket, Plus, Calendar, Briefcase, Menu, X, Shield,Folder,Megaphone,CreditCard,Activity,Zap
+  Settings, HelpCircle, Rocket, Plus,Calendar, Briefcase, Menu, X, Shield,Folder,Megaphone,CreditCard,Activity,Zap
 } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client';
@@ -250,12 +250,18 @@ const getProfileImage = () => {
               </li>
               <li>
               <Link 
-    to="/automations" 
-    className="flex items-center gap-3 px-4 py-3 text-[#84889c] hover:text-white hover:bg-white/5 rounded-xl transition"
-  >
-    <Zap size={20} className="text-[#7c7fff]" />
-    <span className="font-semibold">Automations</span>
-  </Link>
+            to="/automations" 
+            className="flex items-center gap-3 px-4 py-3 text-[#84889c] hover:text-white hover:bg-white/5 rounded-xl transition"
+            >
+          <Zap size={20} className="text-[#7c7fff]" />
+          <span className="font-semibold">Automations</span>
+            </Link>
+              </li>
+              <li>
+              <Link to="/workload" className="flex items-center gap-3 px-4 py-3 text-[#84889c] hover:text-white hover:bg-white/5 rounded-xl transition">
+            <Activity size={20} className="text-[#7c7fff]" />
+           <span className="font-semibold">Workload</span>
+          </Link>
               </li>
               </>
             )}
