@@ -35,7 +35,15 @@ const projectSchema = new mongoose.Schema(
     isDeleted: {
       type: Boolean,
       default: false,
-    }
+    },
+    clientEmail: {
+  type: String,
+  default: null
+},
+sendWeeklyReports: {
+  type: Boolean,
+  default: false
+}
   },
   { timestamps: true }
 );
