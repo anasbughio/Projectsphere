@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search, TrendingDown, Clock } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search, TrendingDown, Clock, Lock, LayoutDashboard } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
@@ -9,12 +9,16 @@ import { useToast } from '../components/ToastProvider';
 import BurndownChartCard from '../components/BurndownChartCard';
 import ProjectGantt from '../components/ProjectGantt';
 import TaskTimerModal from '../components/TaskTimerModal';
+import ProjectVault from '../components/ProjectVault'; // 🔥 Imported the Vault
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  
+  // 🔥 NEW: State to control which tab is active
+  const [activeTab, setActiveTab] = useState('board');
   
   const [tasks, setTasks] = useState([]);
   const [team, setTeam] = useState([]); 
@@ -30,7 +34,6 @@ const KanbanBoard = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   
-  // 🔥 FORM STATE UPDATES for Gantt
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('To Do');
@@ -41,12 +44,12 @@ const KanbanBoard = () => {
   const [department, setDepartment] = useState('General');
   const [assignedTo, setAssignedTo] = useState(''); 
   const [isClientDeliverable, setIsClientDeliverable] = useState(false);
-  const [dependsOn, setDependsOn] = useState([]); // Array for multiple dependencies
+  const [dependsOn, setDependsOn] = useState([]); 
   const [milestoneId, setMilestoneId] = useState(''); 
 
   const [socketInstance, setSocketInstance] = useState(null);
   const [showChart, setShowChart] = useState(false);
-  const [showGantt, setShowGantt] = useState(false); // Toggle for Gantt view
+  const [showGantt, setShowGantt] = useState(false); 
 
   const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
   const normalizeRole = (role) => {
@@ -187,12 +190,10 @@ const KanbanBoard = () => {
     setAssignedTo(task.assignedTo?._id || '');
     setIsModalOpen(true);
     setIsClientDeliverable(task.isClientDeliverable || false);
-    // Maps dependencies to array of IDs safely
     setDependsOn(task.dependsOn ? task.dependsOn.map(d => d._id || d) : []);
     setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); 
   };
 
-  // Helper for multi-select dependencies
   const handleDependsOnChange = (e) => {
     const options = Array.from(e.target.selectedOptions);
     setDependsOn(options.map(option => option.value));
@@ -215,7 +216,7 @@ const KanbanBoard = () => {
         department, projectId, 
         assignedTo: assignedTo || null, 
         isClientDeliverable,
-        dependsOn: dependsOn, // Send array directly
+        dependsOn: dependsOn, 
         milestoneId: milestoneId || null 
       };
 
@@ -327,7 +328,6 @@ const KanbanBoard = () => {
       return;
     }
 
-    // 🔥 NEW: Check Array-based Dependencies
     if (taskToUpdate.dependsOn && taskToUpdate.dependsOn.length > 0) {
       const incompleteDeps = taskToUpdate.dependsOn.filter(depId => {
         const id = typeof depId === 'object' ? depId._id : depId;
@@ -377,18 +377,22 @@ const KanbanBoard = () => {
         </div>
         
         <div className="flex items-center flex-wrap gap-2 sm:gap-4"> 
-          <button 
-            onClick={() => setShowGantt(!showGantt)}
-            className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-[#7c7fff] px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
-          >
-            <Clock size={16} /> {showGantt ? 'Hide Timeline' : 'View Timeline'}
-          </button>
-          <button 
-            onClick={exportToCSV} 
-            className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-emerald-400 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
-          >
-            📥 Export CSV
-          </button>
+          {activeTab === 'board' && (
+            <>
+              <button 
+                onClick={() => setShowGantt(!showGantt)}
+                className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-[#7c7fff] px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
+              >
+                <Clock size={16} /> {showGantt ? 'Hide Timeline' : 'View Timeline'}
+              </button>
+              <button 
+                onClick={exportToCSV} 
+                className="flex items-center gap-1.5 sm:gap-2 bg-[#1a1c26] border border-white/5 hover:bg-white/10 text-emerald-400 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition"
+              >
+                📥 Export CSV
+              </button>
+            </>
+          )}
           <button 
             onClick={openCreateModal} 
             className="flex items-center gap-1.5 sm:gap-2 bg-[#7c7fff] hover:bg-[#6b6de0] text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold transition shadow-lg shadow-[#7c7fff]/20"
@@ -404,128 +408,150 @@ const KanbanBoard = () => {
         </div>
       </div>
 
-      {/* --- ADVANCED FILTER BAR --- */}
-      <div className="bg-[#1a1c26] p-3 sm:p-4 rounded-xl border border-white/5 mb-6 flex flex-col lg:flex-row gap-3 sm:gap-4 shadow-sm w-full">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-2.5 text-[#606479]" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search project tasks..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#121218] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition"
-          />
-        </div>
-        <div className="flex gap-3 w-full lg:w-auto">
-          <select 
-            value={priorityFilter} 
-            onChange={(e) => setPriorityFilter(e.target.value)} 
-            className="w-1/2 lg:w-auto bg-[#121218] border border-white/5 rounded-lg px-3 sm:px-4 py-2 text-white text-xs sm:text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
-          >
-            <option value="All">All Priorities</option>
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-            <option value="Urgent">Urgent</option>
-          </select>
-         
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center mb-6">
-        
-        {/* Toggle Button */}
+      {/* 🔥 NEW: TAB NAVIGATION */}
+      <div className="flex items-center gap-4 border-b border-white/10 mb-6 pb-2">
         <button 
-          onClick={() => setShowChart(!showChart)}
-          className="flex items-center gap-2 bg-[#1a1c26] hover:bg-[#2a2d3e] text-gray-300 px-4 py-2 rounded-lg border border-white/10 transition-colors"
+          onClick={() => setActiveTab('board')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-colors ${
+            activeTab === 'board' 
+              ? 'text-[#7c7fff] border-b-2 border-[#7c7fff]' 
+              : 'text-[#84889c] hover:text-white'
+          }`}
         >
-          <TrendingDown size={18} className={showChart ? "text-emerald-400" : "text-[#7c7fff]"} />
-          {showChart ? 'Hide Analytics' : 'View Burndown Chart'}
+          <LayoutDashboard size={16} />
+          Task Board
+        </button>
+        
+        <button 
+          onClick={() => setActiveTab('vault')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-colors ${
+            activeTab === 'vault' 
+              ? 'text-emerald-400 border-b-2 border-emerald-400' 
+              : 'text-[#84889c] hover:text-white'
+          }`}
+        >
+          <Lock size={16} />
+          Credentials Vault
         </button>
       </div>
 
-      {showChart && (
-        <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
-          <BurndownChartCard projectId={projectId} />
+      {/* 🔥 CONDITIONAL RENDERING BASED ON ACTIVE TAB */}
+      {activeTab === 'board' ? (
+        <>
+          {/* --- ADVANCED FILTER BAR --- */}
+          <div className="bg-[#1a1c26] p-3 sm:p-4 rounded-xl border border-white/5 mb-6 flex flex-col lg:flex-row gap-3 sm:gap-4 shadow-sm w-full">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-2.5 text-[#606479]" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search project tasks..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#121218] border border-white/5 rounded-lg py-2 pl-10 pr-4 text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition"
+              />
+            </div>
+            <div className="flex gap-3 w-full lg:w-auto">
+              <select 
+                value={priorityFilter} 
+                onChange={(e) => setPriorityFilter(e.target.value)} 
+                className="w-1/2 lg:w-auto bg-[#121218] border border-white/5 rounded-lg px-3 sm:px-4 py-2 text-white text-xs sm:text-sm focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+              >
+                <option value="All">All Priorities</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center mb-6">
+            <button 
+              onClick={() => setShowChart(!showChart)}
+              className="flex items-center gap-2 bg-[#1a1c26] hover:bg-[#2a2d3e] text-gray-300 px-4 py-2 rounded-lg border border-white/10 transition-colors"
+            >
+              <TrendingDown size={18} className={showChart ? "text-emerald-400" : "text-[#7c7fff]"} />
+              {showChart ? 'Hide Analytics' : 'View Burndown Chart'}
+            </button>
+          </div>
+
+          {showChart && (
+            <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+              <BurndownChartCard projectId={projectId} />
+            </div>
+          )}
+
+          {showGantt && (
+            <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+              <ProjectGantt projectId={projectId} />
+            </div>
+          )}
+          
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
+            {/* Column: To Do */}
+            <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
+              <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+                <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                  <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#606479]"></span> TO DO 
+                  <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('To Do').length}</span>
+                </h3>
+                <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
+              </div>
+              <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+                {getTasksByStatus('To Do').map(task => (
+                  <TaskCard 
+                    key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onOpenTimer={setTimerTask} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)} 
+                    isBlocked={task.dependsOn && task.dependsOn.some(depId => {
+                      const id = typeof depId === 'object' ? depId._id : depId;
+                      const depTask = tasks.find(t => t._id === id);
+                      return depTask && depTask.status !== 'Done' && depTask.status !== 'Completed';
+                    })}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Column: In Progress */}
+            <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'In Progress')}>
+              <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+                <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                  <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-amber-500"></span> IN PROGRESS 
+                  <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('In Progress').length}</span>
+                </h3>
+                <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
+              </div>
+              <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+                {getTasksByStatus('In Progress').map(task => (
+                  <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onOpenTimer={setTimerTask} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+                ))}
+              </div>
+            </div>
+
+            {/* Column: Done */}
+            <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'Done')}>
+              <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
+                <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                  <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500"></span> DONE 
+                  <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('Done').length}</span>
+                </h3>
+                <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
+              </div>
+              <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+                {getTasksByStatus('Done').map(task => (
+                  <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onOpenTimer={setTimerTask} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* 🔥 THE VAULT COMPONENT RENDERS HERE WHEN TAB IS SWITCHED */
+        <div className="max-w-4xl mx-auto mt-4 w-full animate-in fade-in duration-300">
+          <ProjectVault projectId={projectId} />
         </div>
       )}
 
-      {/* NEW: Render Gantt Chart Here */}
-      {showGantt && (
-        <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
-          <ProjectGantt projectId={projectId} />
-        </div>
-      )}
-      
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 pb-4 w-full min-h-0">
-
-        {/* Column: To Do */}
-       <div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'To Do')}>
-  <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
-    <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-      <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#606479]"></span> TO DO 
-      <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('To Do').length}</span>
-    </h3>
-    <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
-  </div>
-  <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-    {getTasksByStatus('To Do').map(task => (
-      <TaskCard 
-        key={task._id} 
-        task={task} 
-        onDragStart={handleDragStart} 
-        onEdit={openEditModal} 
-        onOpenTimer={setTimerTask}
-        onDelete={handleDeleteTask} 
-        onDuplicate={handleDuplicateTask}
-        canModifyTask={canModifyTask} 
-        canManageBoard={canManageBoard}
-        onClick={() => setSelectedTask(task)} 
-        isBlocked={
-          task.dependsOn && task.dependsOn.some(depId => {
-            const id = typeof depId === 'object' ? depId._id : depId;
-            const depTask = tasks.find(t => t._id === id);
-            return depTask && depTask.status !== 'Done' && depTask.status !== 'Completed';
-          })
-        }
-      />
-    ))}
-  </div>
-</div>
-
-{/* Column: In Progress */}
-<div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'In Progress')}>
-  <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
-    <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-      <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-amber-500"></span> IN PROGRESS 
-      <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('In Progress').length}</span>
-    </h3>
-    <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
-  </div>
-  <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-    {getTasksByStatus('In Progress').map(task => (
-      <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onOpenTimer={setTimerTask} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
-    ))}
-  </div>
-</div>
-
-{/* Column: Done */}
-<div className="flex-1 w-full flex flex-col bg-[#1a1c26] rounded-xl border border-white/5 p-3 sm:p-4 transition-colors hover:bg-[#1f222e] min-h-[400px] lg:min-h-0" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'Done')}>
-  <div className="flex items-center justify-between mb-4 px-1 sm:px-2 shrink-0">
-    <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-      <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500"></span> DONE 
-      <span className="ml-1 text-[10px] sm:text-xs text-[#606479] bg-[#121218] px-2 py-0.5 rounded-full">{getTasksByStatus('Done').length}</span>
-    </h3>
-    <button className="text-[#606479] hover:text-white"><MoreHorizontal size={16} /></button>
-  </div>
-  <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-    {getTasksByStatus('Done').map(task => (
-      <TaskCard key={task._id} task={task} onDragStart={handleDragStart} onEdit={openEditModal} onOpenTimer={setTimerTask} onDelete={handleDeleteTask} onDuplicate={handleDuplicateTask} canModifyTask={canModifyTask} canManageBoard={canManageBoard} onClick={() => setSelectedTask(task)}/>
-    ))}
-  </div>
-        </div>
-      </div>
-
+      {/* --- MODALS & CHAT (Kept outside so they work globally) --- */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div 
@@ -568,7 +594,6 @@ const KanbanBoard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* NEW: Start Date Added */}
                   <div>
                     <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Start Date</label>
                     <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
@@ -579,7 +604,6 @@ const KanbanBoard = () => {
                   </div>
                 </div>
                 
-                {/* NEW: Progress Slider */}
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">
                     Task Progress ({progress}%)
@@ -592,7 +616,6 @@ const KanbanBoard = () => {
                   />
                 </div>
 
-                {/* UPDATED: Multiple Selection for Dependencies */}
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">Depends On (Hold Ctrl/Cmd to select multiple)</label>
                   <select 
@@ -702,11 +725,12 @@ const KanbanBoard = () => {
       )}
       
       {timerTask && (
-  <TaskTimerModal 
-    task={timerTask} 
-    onClose={() => setTimerTask(null)} 
-  />
-)}
+        <TaskTimerModal 
+          task={timerTask} 
+          onClose={() => setTimerTask(null)} 
+        />
+      )}
+      
       <ChatPanel 
         isOpen={isChatOpen} 
         onClose={() => setIsChatOpen(false)} 

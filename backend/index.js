@@ -88,6 +88,7 @@ app.use('/api/v1/stripe', stripeRoutes);
 app.use('/api/v1/workflows', require('./routes/workflowRoutes'));
 app.use('/api/v1/timelogs', require('./routes/timeLogRoutes'));
 app.use('/api/v1/workload', require('./routes/workloadRoutes'));
+app.use('/api/v1/vault', require('./routes/vaultRoutes'));
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })
