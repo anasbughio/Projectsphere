@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Paperclip, FileText, Loader2, Clock } from 'lucide-react';
 import api from '../services/api';
+import AITaskBreakdown from '../components/AITaskBreakdown';
 
 const TaskDetailsModal = ({ task, onClose, onOpenTimer, organizationId, socket }) => {
   const [comments, setComments] = useState([]);
@@ -9,6 +10,7 @@ const TaskDetailsModal = ({ task, onClose, onOpenTimer, organizationId, socket }
   const [selectedFile, setSelectedFile] = useState(null);
   const [localAttachments, setLocalAttachments] = useState(task.attachments || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
 
   const fileInputRef = useRef(null);
   const chatContainerRef = useRef(null);
@@ -145,7 +147,7 @@ const TaskDetailsModal = ({ task, onClose, onOpenTimer, organizationId, socket }
           <h2 className="text-xl font-bold text-white">{task.title}</h2>
           
           <div className="flex items-center gap-2">
-            {/* 🔥 TIME LOG BUTTON */}
+            {/* TIME LOG BUTTON */}
             <button 
               onClick={() => onOpenTimer(task)} 
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7c7fff]/10 hover:bg-[#7c7fff]/20 text-[#7c7fff] border border-[#7c7fff]/20 rounded-lg text-xs font-semibold transition"
@@ -164,6 +166,11 @@ const TaskDetailsModal = ({ task, onClose, onOpenTimer, organizationId, socket }
         <div className="p-6 overflow-y-auto flex-1 flex flex-col min-h-0" ref={chatContainerRef}>
           <p className="text-[#84889c] mb-6">{task.description || 'No description provided.'}</p>
           
+          <AITaskBreakdown 
+            task={task} 
+            projectId={task.projectId || task.project} 
+            onSubtasksCreated={() => window.location.reload()} 
+          />
           <div className="border-t border-white/5 pt-6 flex-1 flex flex-col">
             <h4 className="text-sm font-bold text-white mb-4">Discussion</h4>
             
