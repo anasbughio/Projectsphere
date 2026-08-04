@@ -1,25 +1,175 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
-import Login from './pages/Login';
+import ProtectedRoute from './components/ProtectedRoute'; // Agar use karna ho future mein
+import Profile from './pages/Profile';
 
-// Placeholder for Kanban Board
-const KanbanBoard = () => <div className="text-xl">Kanban Board Area</div>;
+// Pages
+import LandingPage from './pages/LandingPage'; 
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Projects from './pages/Projects';
+import Dashboard from './pages/Dashboard';
+import KanbanBoard from './pages/KanbanBoard'; // Puraana agar use karna ho
+import Team from './pages/Team';
+import AuthSuccess from './pages/AuthSuccess';
+import TaskForm from './pages/TaskForm';
+import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword'; 
+import ResetPassword from './pages/ResetPassword';
+import AcceptInvite from './pages/AcceptInvite'; 
+import AuditLogs from './pages/AuditLogs'; // Import available
+import CalendarView from './components/CalendarView';
+import ClientPortal from './pages/ClientPortal';
+import ProfileSettings from './pages/ProfileSettings';
+import AdminPanel from './pages/AdminPanel'; // Import available
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import ClientDeliverables from './pages/ClientDeliverables';
+import ClientDashboard from './pages/ClientDashboard';
+import ClientFileHub from './pages/ClientFileHub';
+import ClientCalendar from './pages/ClientCalendar';
+import HelpDesk from './pages/HelpDesk';
+import SubscriptionManagement from './pages/SubscriptionManagement';
+import AnnouncementsManagement from './pages/AnnouncementsManagement';
+import Billing from './views/Billing';
+import WorkspaceAnalytics from './components/WorkspaceAnalytics';
+import WorkflowAutomations from './components/WorkflowAutomations';
+import TeamWorkload from './components/TeamWorkload';
 
 function App() {
+  const storedUser = localStorage.getItem('user');
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  
+  const normalizeRole = (role) => {
+    const value = role?.toString().trim().toLowerCase();
+    if (!value) return '';
+    if (['org admin', 'organization admin', 'admin'].includes(value)) return 'admin';
+    if (['project manager', 'project-manager'].includes(value)) return 'project manager';
+    if (['team member', 'member'].includes(value)) return 'team member';
+    if (value === 'client') return 'client';
+    return value;
+  };
+
+  const role = normalizeRole(user?.role);
+  const isSuperAdmin = role === 'super admin';
+  const isOrgAdmin = role === 'admin';
+  const isProjectManager = role === 'project manager';
+  const isTeamMember = role === 'team member';
+  const isClient = role === 'client';
+  const roleHomePath = isSuperAdmin ? '/admin' : isClient ? '/client-dashboard' : '/board';
+
   return (
     <BrowserRouter>
       <Routes>
+        
+        {/* SMART ROOT ROUTE */}
+        <Route 
+          path="/" 
+          element={
+            user ? (
+              <Navigate to={roleHomePath} replace />
+            ) : (
+              <LandingPage />
+            )
+          } 
+        />
+        
+        <Route path="/auth-success" element={<AuthSuccess />} />
+
         {/* Auth Routes */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/* Dashboard Routes */}
+        <Route path="/accept-invite" element={<AcceptInvite />} />
+
         <Route element={<DashboardLayout />}>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/board" element={<KanbanBoard />} />
+        <Route path="/automations"  element={<WorkflowAutomations />} />
+        
+
+        <Route path="/workload" element={<TeamWorkload />}/>
+          
+          {/* Role-specific routes */}
+          {isSuperAdmin ? (
+            <>
+              <Route path="/admin" element={<SuperAdminDashboard />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/activity" element={<AuditLogs />} />
+              <Route path="/super-admin/subscriptions" element={<SubscriptionManagement />} />
+              <Route path="/super-admin/announcements" element={<AnnouncementsManagement />} />
+              <Route path="/workspace-analytics" element={<WorkspaceAnalytics />} />
+            </>
+          ) : isOrgAdmin ? (
+            <>
+              <Route path="/board" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/billing" element={<Billing />} />
+              <Route path="/projects/:projectId" element={<KanbanBoard />} />
+              <Route path="/tasks" element={<TaskForm />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/activity" element={<AuditLogs />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
+              
+            </>
+          ) : isProjectManager ? (
+            <>
+              <Route path="/board" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<KanbanBoard />} />
+              <Route path="/tasks" element={<TaskForm />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/activity" element={<AuditLogs />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
+              
+            </>
+          ) : isTeamMember ? (
+            <>
+              <Route path="/board" element={<Dashboard />} />
+              <Route path="/projects/:projectId" element={<KanbanBoard />} />
+              <Route path="/tasks" element={<TaskForm />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
+              
+            </>
+          ) : isClient ? (
+            <>
+              <Route path="/client-dashboard" element={<ClientDashboard />} />
+              <Route path="/client-portal" element={<ClientPortal />} />
+              <Route path="/client-portal/:projectId" element={<ClientDeliverables />} />
+              <Route element={<ClientFileHub />} path="/client-files"/> 
+              <Route path="/client-calendar" element={<ClientCalendar />} />
+              <Route path="/help-desk" element={<HelpDesk />} />
+              
+            </>
+          ) : (
+            <>
+              <Route path="/board" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<KanbanBoard />} />
+              <Route path="/tasks" element={<TaskForm />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/client-portal" element={<ClientPortal />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/activity" element={<AuditLogs />} />
+              
+            </>
+          )}
+          
+          {/* Common Routes inside Dashboard */}
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<ProfileSettings />} />
         </Route>
+
+        {/* ================= CATCH-ALL ROUTE ================= */}
+        <Route path="*" element={<Navigate to={user ? roleHomePath : '/'} replace />} />
+        
       </Routes>
     </BrowserRouter>
   );
