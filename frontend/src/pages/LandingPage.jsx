@@ -589,7 +589,7 @@ const LandingPage = () => {
         </div>
         
         <motion.div variants={fadeUpVariant} className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-white/5 text-sm text-gray-600 font-light">
-          <p>© 2026 ProjectSphere Inc. All rights reserved.</p>
+          <p>© 2026 ProjectSphere  Inc. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 hover:text-white cursor-pointer transition-colors border border-white/5">𝕏</div>
             <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 hover:text-white cursor-pointer transition-colors border border-white/5">in</div>
