@@ -70,6 +70,11 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    customData: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
     attachments: [
       {
         fileName: String, 
@@ -101,25 +106,25 @@ const taskSchema = new mongoose.Schema(
 
 taskSchema.index({ organizationId: 1, projectId: 1, milestoneId: 1 });
 
-// 🔥 1. SINGLE MASTER FUNCTION tp update progress and status
+//  1. SINGLE MASTER FUNCTION tp update progress and status
 taskSchema.statics.calculateMilestoneProgress = async function(milestoneId) {
   if (!milestoneId) return;
 
   try {
-    console.log(`\n📊 --- PROGRESS CALCULATION SHURU ---`);
+    console.log(`\n --- PROGRESS CALCULATION SHURU ---`);
     console.log(`Milestone ID: ${milestoneId}`);
     
     const totalTasks = await this.countDocuments({ milestoneId });
     const completedTasks = await this.countDocuments({ milestoneId, status: 'Done' });
 
-    console.log(`🧮 Total Tasks: ${totalTasks} | Done Tasks: ${completedTasks}`);
+    console.log(` Total Tasks: ${totalTasks} | Done Tasks: ${completedTasks}`);
 
     let progress = 0;
     if (totalTasks > 0) {
       progress = Math.round((completedTasks / totalTasks) * 100);
     }
 
-    console.log(`📈 Naya Progress: ${progress}%`);
+    console.log(` Naya Progress: ${progress}%`);
 
     const status = progress === 100 ? 'Completed' : 'In Progress';
 
@@ -131,9 +136,9 @@ taskSchema.statics.calculateMilestoneProgress = async function(milestoneId) {
     );
     
     if (updatedMilestone) {
-      console.log(`✅ Milestone Database mein Update ho gaya! New Progress: ${updatedMilestone.progress}%`);
+      console.log(` Milestone Database mein Update ho gaya! New Progress: ${updatedMilestone.progress}%`);
     } else {
-      console.log(`❌ ERROR: Is ID ka Milestone database mein mila hi nahi!`);
+      console.log(` ERROR: Is ID ka Milestone database mein mila hi nahi!`);
     }
     console.log(`------------------------------------\n`);
     

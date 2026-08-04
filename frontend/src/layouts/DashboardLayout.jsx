@@ -206,6 +206,15 @@ const getProfileImage = () => {
                     <Calendar size={18} /> <span>Help Desk</span>
                   </Link>
                 </li>
+                 <li>
+                  <Link 
+  to="/settings/workspace" 
+  className="flex items-center gap-3 px-4 py-2 text-[#84889c] hover:text-white hover:bg-white/5 rounded-lg transition"
+>
+  <Settings size={18} />
+  <span>Workspace Settings</span>
+</Link>
+                </li>
                
               </>
             )}

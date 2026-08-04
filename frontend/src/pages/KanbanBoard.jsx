@@ -9,7 +9,7 @@ import { useToast } from '../components/ToastProvider';
 import BurndownChartCard from '../components/BurndownChartCard';
 import ProjectGantt from '../components/ProjectGantt';
 import TaskTimerModal from '../components/TaskTimerModal';
-import ProjectVault from '../components/ProjectVault'; // 🔥 Imported the Vault
+import ProjectVault from '../components/ProjectVault'; //  Imported the Vault
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
@@ -17,7 +17,7 @@ const KanbanBoard = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   
-  // 🔥 NEW: State to control which tab is active
+  //  State to control which tab is active
   const [activeTab, setActiveTab] = useState('board');
   
   const [tasks, setTasks] = useState([]);
@@ -46,6 +46,8 @@ const KanbanBoard = () => {
   const [isClientDeliverable, setIsClientDeliverable] = useState(false);
   const [dependsOn, setDependsOn] = useState([]); 
   const [milestoneId, setMilestoneId] = useState(''); 
+  const [orgFields, setOrgFields] = useState([]);
+  const [customData, setCustomData] = useState({});
 
   const [socketInstance, setSocketInstance] = useState(null);
   const [showChart, setShowChart] = useState(false);
@@ -64,6 +66,18 @@ const KanbanBoard = () => {
   const isAdmin = userRole === 'admin';
   const canManageBoard = isAdmin;
   
+useEffect(() => {
+    const fetchFields = async () => {
+      try {
+        const res = await api.get('/organizations/fields');
+        setOrgFields(res.data);
+      } catch (err) {
+        console.error('Failed to load custom fields', err);
+      }
+    };
+    fetchFields();
+  }, []);
+
   const canModifyTask = (task) => {
     if (isAdmin) return true;
     if (!currentUserId) return false;
@@ -169,6 +183,7 @@ const KanbanBoard = () => {
     setIsClientDeliverable(false);
     setDependsOn([]);
     setMilestoneId(''); 
+    setCustomData({});
   };
 
   const openCreateModal = () => {
@@ -192,6 +207,7 @@ const KanbanBoard = () => {
     setIsClientDeliverable(task.isClientDeliverable || false);
     setDependsOn(task.dependsOn ? task.dependsOn.map(d => d._id || d) : []);
     setMilestoneId(task.milestoneId?._id || task.milestoneId || ''); 
+    setCustomData(task.customData || {});
   };
 
   const handleDependsOnChange = (e) => {
@@ -217,7 +233,8 @@ const KanbanBoard = () => {
         assignedTo: assignedTo || null, 
         isClientDeliverable,
         dependsOn: dependsOn, 
-        milestoneId: milestoneId || null 
+        milestoneId: milestoneId || null,
+        customData
       };
 
       if (editingTask) {
@@ -677,7 +694,7 @@ const KanbanBoard = () => {
                   </select>
                 </div>
 
-                <div className="col-span-1 sm:col-span-2 mt-2">
+             <div className="col-span-1 sm:col-span-2 mt-2">
                   <label className="flex items-center gap-3 cursor-pointer p-3 bg-[#121218] border border-white/5 rounded-lg hover:border-[#7c7fff]/50 transition">
                     <input 
                       type="checkbox" 
@@ -691,6 +708,52 @@ const KanbanBoard = () => {
                     </div>
                   </label>
                 </div>
+
+                {/* DYNAMIC CUSTOM FIELDS RENDERER */}
+                {orgFields.length > 0 && (
+                  <div className="col-span-1 sm:col-span-2 mt-2 pt-4 border-t border-white/5">
+                    <h4 className="text-[10px] sm:text-xs font-semibold text-[#84889c] mb-4 uppercase tracking-wider">Custom Workspace Fields</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {orgFields.map((field) => (
+                        <div key={field.name}>
+                          <label className="block text-[10px] sm:text-xs font-semibold text-[#84889c] mb-1.5 sm:mb-2 uppercase">{field.name}</label>
+                          
+                          {field.fieldType === 'text' && (
+                            <input type="text" 
+                              value={customData[field.name] || ''} 
+                              onChange={(e) => setCustomData({...customData, [field.name]: e.target.value})} 
+                              className="w-full px-3 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
+                          )}
+
+                          {field.fieldType === 'number' && (
+                            <input type="number" 
+                              value={customData[field.name] || ''} 
+                              onChange={(e) => setCustomData({...customData, [field.name]: Number(e.target.value)})} 
+                              className="w-full px-3 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
+                          )}
+
+                          {field.fieldType === 'url' && (
+                            <input type="url" placeholder="https://"
+                              value={customData[field.name] || ''} 
+                              onChange={(e) => setCustomData({...customData, [field.name]: e.target.value})} 
+                              className="w-full px-3 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition" />
+                          )}
+
+                          {field.fieldType === 'dropdown' && (
+                            <select 
+                              value={customData[field.name] || ''} 
+                              onChange={(e) => setCustomData({...customData, [field.name]: e.target.value})} 
+                              className="w-full px-3 py-2 sm:py-2.5 bg-[#1a1c26] border border-white/5 rounded-lg text-sm sm:text-base text-white focus:outline-none focus:border-[#7c7fff] transition cursor-pointer"
+                            >
+                              <option value="">Select...</option>
+                              {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               </div>
 

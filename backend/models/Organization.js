@@ -47,7 +47,21 @@ const organizationSchema = new mongoose.Schema(
     stripeSubscriptionId: {
       type: String,
       default: null
-    }
+    },
+    customFields: [{
+      name: { 
+        type: String, 
+        required: true 
+      },
+      fieldType: { 
+        type: String, 
+        enum: ['text', 'number', 'dropdown', 'url'], 
+        default: 'text' 
+      },
+      options: [{ 
+        type: String 
+      }]
+    }]
   
   },
   { timestamps: true }

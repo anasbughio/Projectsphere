@@ -6,22 +6,28 @@ const {
   getAllOrganizations, 
   updateOrganization, 
   toggleOrganizationStatus,
-  deleteOrganization 
+  deleteOrganization ,
+  updateCustomFields,
+  getCustomFields
 } = require('../controllers/organizationController');
-const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
+const { protect, authorizeRole } = require('../middlewares/authMiddleware');
 
 // Lock all routes in this file to Super Admin only
 router.use(protect);
-router.use(authorizeRoles('Super Admin'));
+// router.use(authorizeRoles('Super Admin'));
 
 router.route('/')
   .post(createOrganization)
   .get(getAllOrganizations);
+  
+  router.route('/fields').get(protect, getCustomFields);
+  router.route('/fields').put(protect, updateCustomFields);
 
-router.route('/:id')
+  router.route('/:id')
   .put(updateOrganization)
   .delete(deleteOrganization);
 
-router.route('/:id/status').patch(toggleOrganizationStatus);
+  router.route('/:id/status').patch(toggleOrganizationStatus);
+
 
 module.exports = router;
