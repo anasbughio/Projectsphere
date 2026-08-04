@@ -155,3 +155,33 @@ exports.deleteOrganization = async (req, res) => {
     res.status(500).json({ message: 'Error deleting organization', error: error.message });
   }
 };
+
+
+exports.updateCustomFields = async (req, res) => {
+  try {
+    
+    // req.user.organizationId comes from your auth middleware
+    const orgId = req.user.organizationId;
+    const { customFields } = req.body;
+
+    const org = await Organization.findByIdAndUpdate(
+      orgId,
+      { customFields },
+      { new: true }
+    );
+
+    res.json({ message: 'Custom fields updated successfully', customFields: org.customFields });
+  } catch (error) {
+    console.error('Failed to update custom fields:', error);
+    res.status(500).json({ message: 'Server error updating fields' });
+  }
+};
+
+exports.getCustomFields = async (req, res) => {
+  try {
+    const org = await Organization.findById(req.user.organizationId);
+    res.json(org.customFields || []);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch fields' });
+  }
+};

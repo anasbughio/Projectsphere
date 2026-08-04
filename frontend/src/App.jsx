@@ -35,6 +35,7 @@ import Billing from './views/Billing';
 import WorkspaceAnalytics from './components/WorkspaceAnalytics';
 import WorkflowAutomations from './components/WorkflowAutomations';
 import TeamWorkload from './components/TeamWorkload';
+import WorkspaceSettings from './pages/WorkspaceSettings';
 
 function App() {
   const storedUser = localStorage.getItem('user');
@@ -92,6 +93,7 @@ function App() {
         
 
         <Route path="/workload" element={<TeamWorkload />}/>
+        <Route path="/settings/workspace" element={<WorkspaceSettings />} />
           
           {/* Role-specific routes */}
           {isSuperAdmin ? (

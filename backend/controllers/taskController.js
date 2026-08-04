@@ -24,8 +24,12 @@ const canModifyTask = (user, task) => {
 
 exports.createTask = async (req, res) => {
   try {
-    // 🔥 NEW: Added startDate and progress for Gantt chart support
-    const { title, description, status, priority, startDate, dueDate, progress, department, projectId, assignedTo, milestoneId, isClientDeliverable, dependsOn } = req.body;
+    const { 
+      title, description, status, priority, 
+      startDate, dueDate, progress, department, 
+      projectId, assignedTo, milestoneId, 
+      isClientDeliverable, dependsOn ,customData
+    } = req.body;
 
     const project = await Project.findOne({ 
       _id: projectId, 
@@ -38,11 +42,13 @@ exports.createTask = async (req, res) => {
     // 1. Task Created
     const task = await Task.create({
       title, description, status, priority, 
-      startDate, dueDate, progress: progress || 0, // 🔥 Saved Gantt fields
+      startDate, dueDate, 
+      progress: progress ?? 0, // Used ?? to safely allow 0
       department, projectId, assignedTo,
       milestoneId: milestoneId || null, 
-      isClientDeliverable: isClientDeliverable || false,
-      dependsOn: dependsOn || [], // 🔥 Ensure it defaults to an empty array
+      isClientDeliverable: isClientDeliverable ?? false, // Safely handle boolean
+      dependsOn: dependsOn || [], 
+      customData: customData || {},
       isGlobal: false,
       createdBy: req.user._id,
       organizationId: req.user.organizationId,
@@ -67,6 +73,7 @@ exports.createTask = async (req, res) => {
     });
 
     const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name');
+    
     const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskCreated', populatedTask);
 
@@ -280,9 +287,7 @@ exports.deleteTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
-    //  NEW: Added startDate and progress destructuring for updates
-    const { title, description, priority, department, assignedTo, milestoneId, startDate, dueDate, progress, dependsOn, isClientDeliverable } = req.body;
-    
+    // Find the task first for auth checks
     const task = await Task.findOne({ 
       _id: req.params.id, 
       organizationId: req.user.organizationId,
@@ -292,47 +297,66 @@ exports.updateTask = async (req, res) => {
     if (!task) return res.status(404).json({ message: 'Task not found' });
     if (!canModifyTask(req.user, task)) return res.status(403).json({ message: 'Unauthorized' });
 
-    const updatedTask = await Task.findOneAndUpdate(
-      { _id: req.params.id },
-      { 
-        title, description, priority, department, 
-        startDate, dueDate, progress, // 🔥 Added to the update payload
-        assignedTo: assignedTo || null, 
-        milestoneId: milestoneId || null,
-        isClientDeliverable: isClientDeliverable || false,
-        dependsOn: dependsOn || [] // 🔥 Array format enforced
-       },
-      { returnDocument: 'after' }
-    ).populate('assignedTo', 'name');
+    // Dynamically apply only the fields provided in the request body to prevent data wiping
+    const allowedUpdates = [
+      'title', 'description', 'status', 'priority', 'department', 
+      'startDate', 'dueDate', 'progress', 'assignedTo', 
+      'milestoneId', 'isClientDeliverable', 'dependsOn','customData'
+    ];
+
+    let assigneeChanged = false;
+    const prevAssignee = task.assignedTo ? String(task.assignedTo) : null;
+
+    allowedUpdates.forEach(field => {
+      if (req.body[field] !== undefined) {
+        task[field] = req.body[field];
+      }
+    });
+
+    // Check if assignee was explicitly changed during this update
+    if (req.body.assignedTo !== undefined && String(req.body.assignedTo) !== prevAssignee) {
+      assigneeChanged = true;
+    }
+
+    // Save the document (triggers mongoose validations/hooks)
+    await task.save();
+    
+    // Populate for the client response
+    const updatedTask = await task.populate('assignedTo', 'name');
 
     await ActivityLog.create({
       organizationId: req.user.organizationId,
       user: req.user._id,
-      action: `Updated task details`,
+      action: 'Updated task details',
       details: `Task: ${updatedTask.title}`
     });
 
-    try {
-      const io = getIO();
-      const prevAssignee = task.assignedTo ? String(task.assignedTo) : null;
-      if (assignedTo && String(assignedTo) !== prevAssignee) {
+    // Notify new assignee if changed
+    if (assigneeChanged && task.assignedTo) {
+      try {
+        const io = getIO();
         const notification = await Notification.create({
-          recipient: assignedTo,
+          recipient: task.assignedTo,
           sender: req.user._id,
           type: 'TASK_ASSIGNED',
           title: 'Task Assigned',
           message: `You have been assigned to task: "${updatedTask.title}"`,
           relatedId: updatedTask._id
         });
-        io.to(String(assignedTo)).emit('newNotification', notification);
+        io.to(String(task.assignedTo)).emit('newNotification', notification);
+      } catch (e) {
+        console.warn('Failed to notify assignee on task update', e.message);
       }
-    } catch (e) {
-      console.warn('Failed to notify assignee on task update', e.message);
     }
 
     const io = getIO();
     io.to(req.user.organizationId.toString()).emit('taskUpdated', updatedTask);
-    runWorkflows(updatedTask).catch(err => console.error(err));
+    
+    // Assuming runWorkflows is defined elsewhere
+    if (typeof runWorkflows === 'function') {
+      runWorkflows(updatedTask).catch(err => console.error(err));
+    }
+
     res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });

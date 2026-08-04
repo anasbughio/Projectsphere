@@ -165,7 +165,28 @@ const TaskDetailsModal = ({ task, onClose, onOpenTimer, organizationId, socket }
         {/* Scrollable Content */}
         <div className="p-6 overflow-y-auto flex-1 flex flex-col min-h-0" ref={chatContainerRef}>
           <p className="text-[#84889c] mb-6">{task.description || 'No description provided.'}</p>
-          
+          {task.customData && Object.keys(task.customData).length > 0 && (
+            <div className="mb-6 p-4 bg-[#121218] rounded-xl border border-white/5">
+              <h4 className="text-[10px] font-bold text-[#606479] uppercase tracking-wider mb-3">Custom Data</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(task.customData).map(([key, value]) => (
+                  <div key={key}>
+                    <span className="block text-[10px] text-[#84889c] mb-1">{key}</span>
+                    <span className="text-sm font-medium text-white break-words">
+                      {/* Check if the value is a valid URL to render it as a clickable link */}
+                      {typeof value === 'string' && value.startsWith('http') ? (
+                        <a href={value} target="_blank" rel="noreferrer" className="text-[#7c7fff] hover:underline">
+                          {value}
+                        </a>
+                      ) : (
+                        value.toString()
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <AITaskBreakdown 
             task={task} 
             projectId={task.projectId || task.project} 
