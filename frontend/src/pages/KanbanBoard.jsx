@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search, TrendingDown, Clock, Lock, LayoutDashboard } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, MoreHorizontal, Calendar, AlignLeft, User, Edit3, Trash2, Search, TrendingDown, Clock, Lock, LayoutDashboard,FileText } from 'lucide-react';
 import api from '../services/api';
 import { io } from 'socket.io-client'; 
 import ChatPanel from './ChatPanel';
@@ -10,6 +10,7 @@ import BurndownChartCard from '../components/BurndownChartCard';
 import ProjectGantt from '../components/ProjectGantt';
 import TaskTimerModal from '../components/TaskTimerModal';
 import ProjectVault from '../components/ProjectVault'; //  Imported the Vault
+import ProjectWiki from '../components/ProjectWiki';
 
 const KanbanBoard = () => {
   const { projectId } = useParams();
@@ -425,8 +426,11 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 🔥 NEW: TAB NAVIGATION */}
+      
+   {/* 🔥 NEW: TAB NAVIGATION */}
       <div className="flex items-center gap-4 border-b border-white/10 mb-6 pb-2">
+        
+        {/* Task Board Tab */}
         <button 
           onClick={() => setActiveTab('board')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-colors ${
@@ -438,7 +442,21 @@ useEffect(() => {
           <LayoutDashboard size={16} />
           Task Board
         </button>
+
+        {/* Project Wiki Tab */}
+        <button 
+          onClick={() => setActiveTab('wiki')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-colors ${
+            activeTab === 'wiki' 
+              ? 'text-blue-400 border-b-2 border-blue-400' 
+              : 'text-[#84889c] hover:text-white'
+          }`}
+        >
+          <FileText size={16} />
+          Project Wiki
+        </button>
         
+        {/* Credentials Vault Tab */}
         <button 
           onClick={() => setActiveTab('vault')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-bold transition-colors ${
@@ -452,7 +470,7 @@ useEffect(() => {
         </button>
       </div>
 
-      {/* 🔥 CONDITIONAL RENDERING BASED ON ACTIVE TAB */}
+      {/*  CONDITIONAL RENDERING BASED ON ACTIVE TAB */}
       {activeTab === 'board' ? (
         <>
           {/* --- ADVANCED FILTER BAR --- */}
@@ -561,12 +579,21 @@ useEffect(() => {
             </div>
           </div>
         </>
-      ) : (
-        /* 🔥 THE VAULT COMPONENT RENDERS HERE WHEN TAB IS SWITCHED */
+      ): activeTab === 'wiki' ? (
+        
+        /* 🔥 THE WIKI COMPONENT RENDERS HERE */
+        <div className="max-w-5xl mx-auto mt-4 w-full h-[70vh] animate-in fade-in duration-300">
+          <ProjectWiki projectId={projectId} />
+        </div>
+
+      ) : activeTab === 'vault' ? (
+
+        /* 🔥 THE VAULT COMPONENT RENDERS HERE */
         <div className="max-w-4xl mx-auto mt-4 w-full animate-in fade-in duration-300">
           <ProjectVault projectId={projectId} />
         </div>
-      )}
+
+      ) : null}
 
       {/* --- MODALS & CHAT (Kept outside so they work globally) --- */}
       {isModalOpen && (
