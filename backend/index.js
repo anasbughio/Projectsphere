@@ -91,6 +91,7 @@ app.use('/api/v1/workload', require('./routes/workloadRoutes'));
 app.use('/api/v1/vault', require('./routes/vaultRoutes'));
 app.use('/api/v1/ai', require('./routes/aiRoutes'));
 app.use('/api/v1/wikis', require('./routes/wikiRoutes'));
+app.use('/api/v1/automations', require('./routes/automationRoutes'));
 app.get('/api/v1/messages/:projectId', async (req, res) => {
   try {
     const messages = await Message.find({ projectId: req.params.projectId })

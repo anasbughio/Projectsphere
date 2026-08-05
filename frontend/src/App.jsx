@@ -33,9 +33,9 @@ import SubscriptionManagement from './pages/SubscriptionManagement';
 import AnnouncementsManagement from './pages/AnnouncementsManagement';
 import Billing from './views/Billing';
 import WorkspaceAnalytics from './components/WorkspaceAnalytics';
-import WorkflowAutomations from './components/WorkflowAutomations';
 import TeamWorkload from './components/TeamWorkload';
 import WorkspaceSettings from './pages/WorkspaceSettings';
+import Automations from './pages/Automations';
 
 function App() {
   const storedUser = localStorage.getItem('user');
@@ -89,12 +89,12 @@ function App() {
         <Route path="/accept-invite" element={<AcceptInvite />} />
 
         <Route element={<DashboardLayout />}>
-        <Route path="/automations"  element={<WorkflowAutomations />} />
+        
         
 
         <Route path="/workload" element={<TeamWorkload />}/>
         <Route path="/settings/workspace" element={<WorkspaceSettings />} />
-          
+          <Route path="/automations" element={<Automations />} />
           {/* Role-specific routes */}
           {isSuperAdmin ? (
             <>
